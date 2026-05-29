@@ -137,5 +137,66 @@ Create a `/components` folder with reusable components:
 }
 ```
 
-Start building the frontend system. Wow the user with your premium designs and functional fidelity!
+---
+
+## 6. Panduan Akses & Integrasi API (API Access Guide)
+Untuk menghubungkan antarmuka Front-End dengan backend Rongsokin API, gunakan spesifikasi berikut:
+
+### A. Konfigurasi Environment & Base URL
+Backend API Rongsokin saat ini sudah dideploy di Caprover dengan domain `be-rongsokin.hallojanu.xyz`. Gunakan konfigurasi environment variabel berikut pada file `.env`:
+
+**Development (Lokal):**
+- React Vite: `VITE_API_BASE_URL=http://localhost:8000/api/v1`
+- Next.js: `NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1`
+
+**Production (Hosted di Caprover):**
+- React Vite: `VITE_API_BASE_URL=https://be-rongsokin.hallojanu.xyz/api/v1`
+- Next.js: `NEXT_PUBLIC_API_URL=https://be-rongsokin.hallojanu.xyz/api/v1`
+
+### B. Headers Keamanan & Autentikasi
+Setiap permintaan API (kecuali Login & Register) harus menyertakan token JWT pada header otorisasi:
+```http
+Authorization: Bearer <token_jwt_pengguna>
+Content-Type: application/json
 ```
+
+### C. Daftar Endpoints Utama yang Harus Diintegrasikan
+Gunakan standard fetch/axios untuk melakukan request ke backend dengan rincian endpoint sebagai berikut:
+
+#### 1. Autentikasi & Pengguna (Auth & User)
+- **POST** `/auth/login`
+  - Body: `{ "email": "user@example.com", "password": "securepassword" }`
+  - Response: `{ "token": "jwt_string", "user": { "id": "uuid", "name": "Budi", "role": "SELLER" } }`
+- **POST** `/auth/register`
+  - Body: `{ "name": "Budi", "email": "user@example.com", "phone": "0812345678", "password": "securepassword", "role": "SELLER" }`
+
+#### 2. Katalog Sampah & Harga (Scrap Catalog - Dinamis)
+- **GET** `/scrap-items`
+  - Mengambil daftar jenis sampah beserta harga terupdate/Kg untuk ditampilkan ke Seller/Collector.
+- **PUT** `/scrap-items/:id` (Admin Only)
+  - Body: `{ "price_per_unit_seller": 9000, "price_per_unit_collector": 10500 }`
+  - Memperbarui harga sampah harian.
+
+#### 3. Transaksi Penjemputan (Pickups)
+- **POST** `/pickups` (Seller)
+  - Body: `{ "category_id": 1, "estimated_weight": 20, "address_detail": "Jl. Kamboja No. 5", "latitude": -6.2, "longitude": 106.8, "photo_url": "s3_link" }`
+- **GET** `/pickups/active` (Collector - Radius Terdekat)
+  - Mengambil daftar pesanan berstatus `PENDING` dalam radius lokasi aktif kolektor (menggunakan koordinat `lat` & `lng`).
+- **POST** `/pickups/:id/accept` (Collector)
+  - Mengubah status pesanan menjadi `ACCEPTED` dan menugaskan kolektor tersebut ke pesanan.
+- **PUT** `/pickups/:id/weigh` (Collector)
+  - Body: `{ "items": [ { "scrap_item_id": 1, "actual_weight": 22.5 } ] }`
+  - Menyimpan hasil penimbangan real-time di lapangan.
+- **POST** `/pickups/:id/confirm` (Seller)
+  - Seller menyetujui hasil timbangan fisik, memicu pemotongan saldo deposit kolektor dan pengiriman ke dompet seller.
+
+#### 4. Pelacakan Real-time & Notifikasi (WebSockets)
+- **WebSocket (Lokal)**: `ws://localhost:8000/api/v1/pickups/:id/track`
+- **WebSocket (Production)**: `wss://be-rongsokin.hallojanu.xyz/api/v1/pickups/:id/track`
+  - Koneksi dua arah untuk mengirim koordinat lokasi kolektor (`lat`, `lng`) saat menuju rumah seller secara real-time.
+
+---
+
+Start building the frontend system. Ensure smooth integration with the API endpoints above.
+```
+
