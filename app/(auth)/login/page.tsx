@@ -24,7 +24,8 @@ export default function LoginPage() {
       {
         onSuccess: (data) => {
           toast.success(`Selamat datang kembali, ${data.data.user.name}!`);
-          const target = data.data.user.role === "COLLECTOR" ? "/collector" : "/dashboard";
+          const role = data.data.user.role;
+          const target = role === "ADMIN" ? "/admin" : (role === "COLLECTOR" ? "/collector" : "/dashboard");
           router.push(target);
         },
         onError: (err: any) => {
