@@ -36,22 +36,18 @@ export const useSearchCollectors = (params: SearchQueryParams) => {
         if (found) activeCategoryId = found.id;
       }
 
-      if (!activeCategoryId) {
-        // Fallback: use first category if none matched, or return empty list
-        if (categories && categories.length > 0) {
-          activeCategoryId = categories[0].id;
-        } else {
-          return [];
-        }
+      const queryParams: Record<string, any> = {
+        lat: params.lat,
+        lng: params.lng,
+        radius: params.radius || 5,
+      };
+
+      if (activeCategoryId) {
+        queryParams.categoryId = activeCategoryId;
       }
 
       const res = await api.get<{ status: string; data: any[] }>('/discovery/search', {
-        params: {
-          lat: params.lat,
-          lng: params.lng,
-          categoryId: activeCategoryId,
-          radius: params.radius || 5,
-        },
+        params: queryParams,
       });
 
       // Map result database fields into front-end models
@@ -65,7 +61,7 @@ export const useSearchCollectors = (params: SearchQueryParams) => {
         isOpen: true,
       }));
     },
-    enabled: !!params.categoryId || !!params.category || !!categories,
+    enabled: !params.category || !!categories,
   });
 };
 
