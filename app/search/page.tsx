@@ -62,7 +62,7 @@ export default function SearchPage() {
     lat: coords.lat,
     lng: coords.lng,
     category: selectedCategoryName,
-    radius: 10,
+    radius: 50,
   });
 
   // Filter collectors by query if typed
