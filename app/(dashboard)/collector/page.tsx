@@ -10,7 +10,7 @@ import {
 } from "flowbite-react-icons/outline";
 import { 
   Wallet, CreditCard, ArrowUpRight, Map, Navigation, User, MapPin, 
-  AlertCircle, CheckCircle2, ChevronRight, MessageSquare
+  AlertCircle, CheckCircle2, ChevronRight, MessageSquare, Plus
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -172,13 +172,16 @@ export default function CollectorDashboard() {
   >({});
 
   // ─── PREMIUM E-WALLET STATES ──────────────────────────────────────────
-  const [walletBalance, setWalletBalance] = useState(254500);
-  const [recentTransactions, setRecentTransactions] = useState([
-    { id: "TRX-043", date: "Hari ini", type: "INCOME", label: "Setoran Rosok #RSK-9921", amount: 33000 },
-    { id: "TRX-042", date: "Kemarin", type: "INCOME", label: "Setoran Rosok #RSK-9812", amount: 45000 },
-    { id: "TRX-041", date: "27 Mei", type: "WITHDRAW", label: "Penarikan Bank BCA", amount: 150000 }
-  ]);
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [localTransactions, setLocalTransactions] = useState<any[]>([]);
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
+  const [isTopUpOpen, setIsTopUpOpen] = useState(false);
+
+  // Top Up States
+  const [topUpAmount, setTopUpAmount] = useState("");
+  const [topUpMethod, setTopUpMethod] = useState("QRIS");
+  const [topUpStatus, setTopUpStatus] = useState<"idle" | "processing" | "success">("idle");
+
   const [selectedBank, setSelectedBank] = useState("BCA");
   const [accountNumber, setAccountNumber] = useState("");
   const [withdrawAmount, setWithdrawAmount] = useState("");
@@ -230,6 +233,19 @@ export default function CollectorDashboard() {
   const todayTrxCount = completedToday.length;
   const todayWeight = completedToday.reduce((sum, o) => sum + (o.actualWeight || 0), 0);
   const todayPayout = completedToday.reduce((sum, o) => sum + (o.totalPrice || o.agreedPrice || 0), 0);
+
+  // Combine dynamic completed orders and local session transactions
+  const completedOrdersList = orders?.filter((o) => o.status === "COMPLETED") || [];
+  const recentTransactions = [
+    ...localTransactions,
+    ...completedOrdersList.map((o) => ({
+      id: `TRX-${o.id.slice(-4).toUpperCase()}`,
+      date: formatDate(o.updatedAt),
+      type: "PAYOUT",
+      label: `Pembelian Rosok #${o.id.slice(-5).toUpperCase()}`,
+      amount: o.totalPrice || (o.actualWeight || 0) * (o.agreedPrice || 0)
+    }))
+  ];
 
   const handleToggleOpen = () => {
     const newStatus = !profile?.isOpen;
@@ -290,6 +306,41 @@ export default function CollectorDashboard() {
   };
 
   // ─── E-WALLET HANDLERS ──────────────────────────────────────────────
+  const handleTopUpSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!topUpAmount) {
+      toast.error("Mohon isi nominal pengisian.");
+      return;
+    }
+    const amt = Number(topUpAmount);
+    if (amt < 10000) {
+      toast.error("Minimal pengisian adalah Rp 10.000.");
+      return;
+    }
+
+    setTopUpStatus("processing");
+    setTimeout(() => {
+      setTopUpStatus("success");
+      setTimeout(() => {
+        setWalletBalance((prev) => prev + amt);
+        setLocalTransactions((prev) => [
+          {
+            id: `TRX-${Math.floor(Math.random() * 900) + 100}`,
+            date: "Hari ini",
+            type: "INCOME",
+            label: `Top Up Saldo via ${topUpMethod}`,
+            amount: amt
+          },
+          ...prev
+        ]);
+        toast.success(`Berhasil mengisi saldo ${formatRupiah(amt)}!`);
+        setIsTopUpOpen(false);
+        setTopUpStatus("idle");
+        setTopUpAmount("");
+      }, 1500);
+    }, 2000);
+  };
+
   const handleWithdrawSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!accountNumber || !withdrawAmount) {
@@ -311,7 +362,7 @@ export default function CollectorDashboard() {
       setWithdrawStatus("success");
       setTimeout(() => {
         setWalletBalance((prev) => prev - amt);
-        setRecentTransactions((prev) => [
+        setLocalTransactions((prev) => [
           {
             id: `TRX-${Math.floor(Math.random() * 900) + 100}`,
             date: "Hari ini",
@@ -607,8 +658,14 @@ export default function CollectorDashboard() {
 
             <div className="mt-6 flex gap-3">
               <button 
-                onClick={() => setIsWithdrawOpen(true)}
+                onClick={() => setIsTopUpOpen(true)}
                 className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-slate-950 text-xs font-bold py-2.5 rounded-xl shadow-md shadow-emerald-500/10 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Plus size={14} /> Isi Saldo
+              </button>
+              <button 
+                onClick={() => setIsWithdrawOpen(true)}
+                className="flex-1 border border-slate-700 hover:border-slate-500 text-slate-300 hover:text-white text-xs font-bold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <ArrowUpRight size={14} /> Tarik Saldo
               </button>
@@ -868,6 +925,113 @@ export default function CollectorDashboard() {
                 <div className="text-center">
                   <span className="text-base font-extrabold text-brand-600">Pencairan Berhasil!</span>
                   <p className="text-xs text-ink-muted mt-1">Saldo telah berhasil ditransfer ke rekening Anda.</p>
+                </div>
+              </div>
+            )}
+
+          </div>
+        </div>
+      )}
+
+      {/* PREMIUM TOP UP MODAL */}
+      {isTopUpOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl border border-ink-faint p-6 space-y-6 relative overflow-hidden animate-in zoom-in-95">
+            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-emerald-500 to-green-400" />
+
+            <div className="text-center space-y-2">
+              <div className="w-12 h-12 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto border border-emerald-100">
+                <Plus size={24} />
+              </div>
+              <h3 className="font-display font-extrabold text-base text-ink">Isi Saldo Deposito</h3>
+              <p className="text-xs text-ink-muted">Isi saldo deposit Anda untuk melakukan pembelian rosok</p>
+            </div>
+
+            {topUpStatus === "idle" && (
+              <form onSubmit={handleTopUpSubmit} className="space-y-4">
+                <div>
+                  <label className="text-[10px] font-bold text-ink-muted uppercase tracking-widest mb-1.5 block">Metode Pengisian</label>
+                  <select 
+                    value={topUpMethod}
+                    onChange={(e) => setTopUpMethod(e.target.value)}
+                    className="w-full bg-white border border-ink-faint rounded-xl p-3 text-xs focus:outline-none focus:ring-2 focus:ring-brand-500 font-semibold"
+                  >
+                    <option value="QRIS">QRIS Instan (GlowPay/GoPay/OVO)</option>
+                    <option value="BCA">Transfer Bank BCA</option>
+                    <option value="Mandiri">Transfer Bank Mandiri</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-ink-muted uppercase tracking-widest mb-1.5 block">Nominal Isi Saldo (Rp)</label>
+                  <Input 
+                    type="number"
+                    placeholder="Minimal Rp 10.000"
+                    value={topUpAmount}
+                    onChange={(e) => setTopUpAmount(e.target.value)}
+                    className="rounded-xl font-bold font-mono h-11 text-emerald-600 focus:text-emerald-700"
+                    min="10000"
+                    required
+                  />
+                  <div className="flex gap-2 mt-2">
+                    <button 
+                      type="button"
+                      onClick={() => setTopUpAmount("50000")}
+                      className="flex-1 py-1 bg-surface-raised border border-ink-faint rounded text-[10px] font-extrabold text-ink-muted hover:border-brand-500 transition-colors"
+                    >
+                      50rb
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => setTopUpAmount("100000")}
+                      className="flex-1 py-1 bg-surface-raised border border-ink-faint rounded text-[10px] font-extrabold text-ink-muted hover:border-brand-500 transition-colors"
+                    >
+                      100rb
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => setTopUpAmount("250000")}
+                      className="flex-1 py-1 bg-surface-raised border border-ink-faint rounded text-[10px] font-extrabold text-ink-muted hover:border-brand-500 transition-colors"
+                    >
+                      250rb
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <button 
+                    type="button"
+                    onClick={() => setIsTopUpOpen(false)}
+                    className="flex-1 py-3 border border-ink-faint hover:bg-surface-raised text-ink-muted font-bold rounded-xl text-xs transition-colors cursor-pointer"
+                  >
+                    Batal
+                  </button>
+                  <Button 
+                    type="submit"
+                    className="flex-[2] py-3 text-xs font-bold shadow-md bg-emerald-500 hover:bg-emerald-600 text-slate-950"
+                  >
+                    Lanjutkan Pembayaran
+                  </Button>
+                </div>
+              </form>
+            )}
+
+            {topUpStatus === "processing" && (
+              <div className="py-8 flex flex-col items-center justify-center space-y-4 animate-in fade-in">
+                <Refresh className="w-12 h-12 text-emerald-500 animate-spin" />
+                <div className="text-center">
+                  <span className="text-sm font-bold text-ink">Memproses Transaksi...</span>
+                  <p className="text-[10px] text-ink-muted mt-1">Menghubungkan ke gateway pembayaran</p>
+                </div>
+              </div>
+            )}
+
+            {topUpStatus === "success" && (
+              <div className="py-8 flex flex-col items-center justify-center space-y-4 animate-in zoom-in-95">
+                <CheckCircle2 className="w-14 h-14 text-status-success animate-bounce" />
+                <div className="text-center">
+                  <span className="text-base font-extrabold text-brand-600">Isi Saldo Berhasil!</span>
+                  <p className="text-xs text-ink-muted mt-1">Saldo Anda telah berhasil ditambahkan.</p>
                 </div>
               </div>
             )}
