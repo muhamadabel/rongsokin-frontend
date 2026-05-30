@@ -143,6 +143,15 @@ export default function AdminDashboard() {
 
       <main className="flex-1 px-4 md:px-8 py-6 md:py-8 max-w-6xl w-full mx-auto space-y-8">
         
+        {/* BACKEND STATUS NOTICE */}
+        <div className="backdrop-blur-md bg-amber-500/10 border-2 border-amber-500/30 rounded-2xl p-4 flex items-center gap-3 text-amber-400 shadow-lg animate-pulse">
+          <ShieldCheck size={20} className="shrink-0" />
+          <div className="text-xs md:text-sm font-semibold">
+            <span className="font-extrabold uppercase tracking-wider text-[9px] bg-amber-500/20 px-2 py-0.5 rounded mr-2 border border-amber-500/30">Status Sistem</span>
+            Endpoint BE bagian (Manajemen KYC &amp; Statistik Global) belum dibuat
+          </div>
+        </div>
+        
         {/* KPI CARDS */}
         <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[

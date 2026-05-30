@@ -10,7 +10,7 @@ import {
 } from "flowbite-react-icons/outline";
 import { 
   Wallet, CreditCard, ArrowUpRight, Map, Navigation, User, MapPin, 
-  AlertCircle, CheckCircle2, ChevronRight, MessageSquare, Plus
+  AlertCircle, CheckCircle2, ChevronRight, MessageSquare, Plus, FileText
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -171,32 +171,14 @@ export default function CollectorDashboard() {
     Record<string, { minPrice: number; maxPrice: number; isActive: boolean }>
   >({});
 
-  // ─── PREMIUM E-WALLET STATES ──────────────────────────────────────────
-  const [walletBalance, setWalletBalance] = useState(0);
-  const [localTransactions, setLocalTransactions] = useState<any[]>([]);
-  const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
-  const [isTopUpOpen, setIsTopUpOpen] = useState(false);
-
-  // Top Up States
-  const [topUpAmount, setTopUpAmount] = useState("");
-  const [topUpMethod, setTopUpMethod] = useState("QRIS");
-  const [topUpStatus, setTopUpStatus] = useState<"idle" | "processing" | "success">("idle");
-
-  const [selectedBank, setSelectedBank] = useState("BCA");
-  const [accountNumber, setAccountNumber] = useState("");
-  const [withdrawAmount, setWithdrawAmount] = useState("");
-  const [withdrawStatus, setWithdrawStatus] = useState<"idle" | "processing" | "success">("idle");
+  // (E-Wallet states removed as payments are fully manual/COD)
 
   // ─── PREMIUM INTERACTIVE MAP STATES ──────────────────────────────────
   const [selectedMapOrder, setSelectedMapOrder] = useState<any | null>(null);
   const [hiddenPins, setHiddenPins] = useState<string[]>([]);
   
-  // Static mockup pins representing nearby requests
-  const mockMapPins = [
-    { id: "MOCK-001", sellerName: "Ibu Ratna", categoryName: "Kardus", categoryId: "kardus", estimatedWeight: 15, distance: "1.2 km", coords: { x: 140, y: 70 }, estEarnings: 33000, method: "PICKUP", phone: "08123456789" },
-    { id: "MOCK-002", sellerName: "Mas Danang", categoryName: "Logam", categoryId: "logam", estimatedWeight: 8, distance: "2.5 km", coords: { x: 270, y: 100 }, estEarnings: 68000, method: "PICKUP", phone: "08987654321" },
-    { id: "MOCK-003", sellerName: "Mbak Dwi", categoryName: "Plastik", categoryId: "plastik", estimatedWeight: 22, distance: "1.8 km", coords: { x: 170, y: 220 }, estEarnings: 99000, method: "DROPOFF", phone: "087712345678" }
-  ];
+  // Static mockup pins representing nearby requests (Removed for pure production data mode)
+  const mockMapPins: any[] = [];
 
   // Sync profile catalogs with state
   useEffect(() => {
@@ -237,7 +219,6 @@ export default function CollectorDashboard() {
   // Combine dynamic completed orders and local session transactions
   const completedOrdersList = orders?.filter((o) => o.status === "COMPLETED") || [];
   const recentTransactions = [
-    ...localTransactions,
     ...completedOrdersList.map((o) => ({
       id: `TRX-${o.id.slice(-4).toUpperCase()}`,
       date: formatDate(o.updatedAt),
@@ -250,7 +231,12 @@ export default function CollectorDashboard() {
   const handleToggleOpen = () => {
     const newStatus = !profile?.isOpen;
     updateProfile.mutate(
-      { isOpen: newStatus },
+      { 
+        isOpen: newStatus,
+        shopName: profile?.shopName || "Lapak Pengepul",
+        description: profile?.description || "",
+        radiusKm: profile?.radiusKm || 5
+      },
       {
         onSuccess: () => {
           toast.success(`Lapak berhasil ${newStatus ? "DIBUKA" : "DITUTUP"}!`);
@@ -305,81 +291,7 @@ export default function CollectorDashboard() {
     router.push("/login");
   };
 
-  // ─── E-WALLET HANDLERS ──────────────────────────────────────────────
-  const handleTopUpSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!topUpAmount) {
-      toast.error("Mohon isi nominal pengisian.");
-      return;
-    }
-    const amt = Number(topUpAmount);
-    if (amt < 10000) {
-      toast.error("Minimal pengisian adalah Rp 10.000.");
-      return;
-    }
 
-    setTopUpStatus("processing");
-    setTimeout(() => {
-      setTopUpStatus("success");
-      setTimeout(() => {
-        setWalletBalance((prev) => prev + amt);
-        setLocalTransactions((prev) => [
-          {
-            id: `TRX-${Math.floor(Math.random() * 900) + 100}`,
-            date: "Hari ini",
-            type: "INCOME",
-            label: `Top Up Saldo via ${topUpMethod}`,
-            amount: amt
-          },
-          ...prev
-        ]);
-        toast.success(`Berhasil mengisi saldo ${formatRupiah(amt)}!`);
-        setIsTopUpOpen(false);
-        setTopUpStatus("idle");
-        setTopUpAmount("");
-      }, 1500);
-    }, 2000);
-  };
-
-  const handleWithdrawSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!accountNumber || !withdrawAmount) {
-      toast.error("Mohon isi semua data penarikan.");
-      return;
-    }
-    const amt = Number(withdrawAmount);
-    if (amt > walletBalance) {
-      toast.error("Saldo tidak mencukupi!");
-      return;
-    }
-    if (amt < 10000) {
-      toast.error("Minimal penarikan adalah Rp 10.000.");
-      return;
-    }
-
-    setWithdrawStatus("processing");
-    setTimeout(() => {
-      setWithdrawStatus("success");
-      setTimeout(() => {
-        setWalletBalance((prev) => prev - amt);
-        setLocalTransactions((prev) => [
-          {
-            id: `TRX-${Math.floor(Math.random() * 900) + 100}`,
-            date: "Hari ini",
-            type: "WITHDRAW",
-            label: `Penarikan Bank ${selectedBank}`,
-            amount: amt
-          },
-          ...prev
-        ]);
-        toast.success(`Berhasil mencairkan ${formatRupiah(amt)} ke rekening ${selectedBank}!`);
-        setIsWithdrawOpen(false);
-        setWithdrawStatus("idle");
-        setAccountNumber("");
-        setWithdrawAmount("");
-      }, 1500);
-    }, 2000);
-  };
 
   // ─── MAP PIN HANDLERS ────────────────────────────────────────────────
   const handleMapOrderAccept = (order: any) => {
@@ -495,115 +407,86 @@ export default function CollectorDashboard() {
             <div className="flex justify-between items-center">
               <div>
                 <h3 className="font-display font-extrabold text-base text-ink tracking-tight flex items-center gap-2">
-                  <Map className="text-brand-500" size={18} />
-                  Peta Pesanan Terdekat
+                  <FileText className="text-brand-500" size={18} />
+                  Daftar Request Jemput Terdekat
                 </h3>
-                <p className="text-xs text-ink-muted">Pantau titik penjemputan sampah rosok di Yogyakarta</p>
+                <p className="text-xs text-ink-muted">Daftar permintaan setoran sampah rosok aktif dari customer di sekitar Anda</p>
               </div>
-              <span className="text-[10px] font-bold text-brand-600 bg-brand-50 border border-brand-200 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                Interactive Map
-              </span>
+              {activeMapPins.length > 0 && (
+                <span className="bg-emerald-50 text-emerald-600 border border-emerald-200 text-[9px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md animate-pulse">
+                  {activeMapPins.length} Request Aktif
+                </span>
+              )}
             </div>
 
-            {/* Styled vector map of Yogyakarta */}
-            <div className="relative h-64 w-full bg-slate-950 rounded-xl overflow-hidden shadow-inner">
-              <svg viewBox="0 0 400 300" className="w-full h-full">
-                {/* Grid Pattern */}
-                <defs>
-                  <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
-                    <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
-                  </pattern>
-                </defs>
-                <rect width="100%" height="100%" fill="url(#grid)" />
-
-                {/* Sleman (North) Boundary */}
-                <path d="M 50 10 L 350 10 L 330 110 L 70 110 Z" fill="rgba(16,185,129,0.01)" stroke="rgba(16,185,129,0.1)" strokeWidth="1" strokeDasharray="3 3" />
-                <text x="200" y="35" className="fill-slate-600 font-extrabold text-[8px] uppercase tracking-widest text-center" textAnchor="middle">Sleman</text>
-
-                {/* Kota Yogyakarta Boundary */}
-                <path d="M 70 110 L 330 110 L 300 200 L 100 200 Z" fill="rgba(16,185,129,0.04)" stroke="rgba(16,185,129,0.2)" strokeWidth="1.5" />
-                <text x="200" y="155" className="fill-brand-400/40 font-extrabold text-[8px] uppercase tracking-widest text-center" textAnchor="middle">Kota Yogyakarta</text>
-
-                {/* Bantul Boundary */}
-                <path d="M 100 200 L 300 200 L 260 290 L 140 290 Z" fill="rgba(16,185,129,0.01)" stroke="rgba(16,185,129,0.1)" strokeWidth="1" strokeDasharray="3 3" />
-                <text x="200" y="245" className="fill-slate-600 font-extrabold text-[8px] uppercase tracking-widest text-center" textAnchor="middle">Bantul</text>
-
-                {/* River Styling */}
-                <path d="M 180 10 Q 150 150 160 295" fill="none" stroke="rgba(59,130,246,0.1)" strokeWidth="2.5" />
-                <path d="M 230 10 Q 250 130 220 295" fill="none" stroke="rgba(59,130,246,0.08)" strokeWidth="2" />
-
-                {/* Lapak/Gudang Center Marker */}
-                <g transform="translate(200, 150)">
-                  <circle r="12" className="fill-brand-500/20 stroke-brand-500/30 stroke-1 animate-ping" />
-                  <circle r="6" className="fill-brand-500 stroke-white stroke-2 shadow" />
-                  <text y="-10" className="fill-brand-300 font-bold text-[8px] uppercase tracking-wider text-center" textAnchor="middle">Lapak Anda</text>
-                </g>
-
-                {/* Dynamic/Mock Order Pins */}
-                {activeMapPins.map((pin) => {
-                  const isSelected = selectedMapOrder?.id === pin.id;
-                  return (
-                    <g 
-                      key={pin.id} 
-                      transform={`translate(${pin.coords.x}, ${pin.coords.y})`}
-                      className="cursor-pointer"
-                      onClick={() => setSelectedMapOrder(pin)}
-                    >
-                      <circle r="10" className={`stroke-white stroke-1 transition-all ${isSelected ? 'fill-amber-500 scale-120 animate-pulse' : 'fill-brand-600 hover:fill-amber-500'}`} />
-                      <circle r="4" className="fill-white" />
-                      <text y="-12" className="fill-white font-extrabold text-[9px] bg-slate-900 border border-slate-800 px-1 py-0.5 rounded shadow" textAnchor="middle">
-                        {pin.estimatedWeight}kg
-                      </text>
-                    </g>
-                  );
-                })}
-              </svg>
-
-              {/* Float helper */}
-              <div className="absolute bottom-3 left-3 bg-slate-900/90 border border-slate-800 rounded-lg px-2.5 py-1.5 text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                <div className="w-2 h-2 rounded-full bg-brand-500 animate-pulse" /> Tap Marker Pin Untuk Detail
-              </div>
+            {/* Table layout of incoming pickup requests */}
+            <div className="overflow-x-auto border border-ink-faint rounded-xl bg-white shadow-sm">
+              <table className="w-full text-left border-collapse text-xs md:text-sm">
+                <thead>
+                  <tr className="bg-surface-raised border-b border-ink-faint text-ink-muted font-bold text-[10px] uppercase tracking-wider font-mono">
+                    <th className="p-3">Nama &amp; Area</th>
+                    <th className="p-3">Kategori</th>
+                    <th className="p-3">Berat Est.</th>
+                    <th className="p-3">Jarak</th>
+                    <th className="p-3">Metode</th>
+                    <th className="p-3 text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-ink-faint">
+                  {activeMapPins.length > 0 ? (
+                    activeMapPins.map((pin) => (
+                      <tr key={pin.id} className="hover:bg-surface-raised/50 transition-colors">
+                        <td className="p-3 font-bold text-ink">
+                          {pin.sellerName}
+                        </td>
+                        <td className="p-3">
+                          <span className="bg-brand-50 text-brand-700 border border-brand-200 px-2 py-0.5 rounded font-black uppercase tracking-wide text-[9px] font-mono">
+                            {pin.categoryName}
+                          </span>
+                        </td>
+                        <td className="p-3 font-extrabold font-mono text-ink">
+                          {pin.estimatedWeight} kg
+                        </td>
+                        <td className="p-3 text-ink-muted font-mono font-medium">
+                          {pin.distance}
+                        </td>
+                        <td className="p-3">
+                          <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider border ${
+                            pin.method === 'PICKUP' 
+                              ? 'bg-blue-50 text-blue-700 border-blue-200' 
+                              : 'bg-amber-50 text-amber-700 border-amber-200'
+                          }`}>
+                            {pin.method}
+                          </span>
+                        </td>
+                        <td className="p-3 text-right flex justify-end gap-2">
+                          <button
+                            onClick={() => handleMapOrderAccept(pin)}
+                            className="bg-brand-600 hover:bg-brand-700 text-white font-bold text-[10px] px-3.5 py-1.5 rounded-lg shadow-sm transition-all flex items-center gap-1 cursor-pointer"
+                          >
+                            <Check size={10} /> Ambil
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="p-10 text-center">
+                        <div className="flex flex-col items-center gap-3">
+                          <div className="w-12 h-12 bg-surface-raised rounded-full border border-ink-faint flex items-center justify-center text-ink-muted">
+                            <Archive size={20} />
+                          </div>
+                          <div className="space-y-1">
+                            <p className="font-bold text-ink text-sm">Tidak Ada Request Aktif</p>
+                            <p className="text-xs text-ink-muted">Belum ada request penjemputan baru di sekitar Anda. Pastikan status lapak BUKA.</p>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
-
-            {/* EXPANDABLE MAP ORDER DRAWER */}
-            {selectedMapOrder && (
-              <div className="bg-brand-50 border border-brand-200 rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-in slide-in-from-bottom-3 duration-200">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 bg-brand-500 text-white rounded-lg flex items-center justify-center shrink-0 shadow-sm border border-brand-400">
-                    <Navigation size={18} className="animate-spin" />
-                  </div>
-                  <div>
-                    <h4 className="font-extrabold text-sm text-brand-900 font-display flex items-center gap-2">
-                      Setoran Kategori: {selectedMapOrder.categoryName}
-                      <span className="bg-amber-100 text-amber-700 border border-amber-200 text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider font-mono">
-                        {selectedMapOrder.distance}
-                      </span>
-                    </h4>
-                    <p className="text-xs text-brand-700 font-medium mt-0.5">
-                      Seller: {selectedMapOrder.sellerName} · {selectedMapOrder.method}
-                    </p>
-                    <div className="flex gap-4 mt-2.5 text-[11px] font-bold text-brand-900 font-mono">
-                      <span>Estimasi: {selectedMapOrder.estimatedWeight} Kg</span>
-                      <span>Pendapatan: {formatRupiah(selectedMapOrder.estEarnings)}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <button 
-                    onClick={() => setSelectedMapOrder(null)}
-                    className="px-3 py-2 border border-brand-300 hover:border-brand-400 text-brand-700 hover:text-brand-900 font-bold rounded-lg text-xs transition-colors cursor-pointer bg-white"
-                  >
-                    Batal
-                  </button>
-                  <button 
-                    onClick={() => handleMapOrderAccept(selectedMapOrder)}
-                    className="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-lg text-xs shadow-md transition-colors cursor-pointer flex items-center gap-1.5"
-                  >
-                    <Check size={14} /> Ambil Pesanan
-                  </button>
-                </div>
-              </div>
-            )}
           </section>
 
           {/* INCOMING ORDERS SIDEBAR */}
@@ -638,58 +521,60 @@ export default function CollectorDashboard() {
         {/* E-WALLET AND STATS PANEL */}
         <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
           
-          {/* PREMIUM E-WALLET CARD */}
+          {/* INFORMASI PEMBAYARAN MANUAL */}
           <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 border border-slate-800 rounded-2xl p-5 shadow-xl text-slate-100 flex flex-col justify-between relative overflow-hidden">
             {/* Gloss pattern design */}
-            <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl -mr-6 -mt-6" />
+            <div className="absolute top-0 right-0 w-24 h-24 bg-brand-500/10 rounded-full blur-2xl -mr-6 -mt-6" />
             
             <div>
               <div className="flex justify-between items-center">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Dompet Mitra</span>
-                <Wallet className="text-emerald-400" size={16} />
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Metode Pembayaran</span>
+                <Wallet className="text-brand-400" size={16} />
               </div>
-              <div className="mt-4">
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">SALDO AKTIF</span>
-                <h3 className="font-display font-black text-2xl text-emerald-400 tracking-tight mt-1 font-mono">
-                  {formatRupiah(walletBalance)}
-                </h3>
+              <div className="mt-3">
+                <span className="bg-brand-500/20 text-brand-400 border border-brand-500/30 rounded px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-wider inline-flex items-center gap-1">
+                  🤝 Pembayaran Manual (COD) Aktif
+                </span>
+              </div>
+              <div className="mt-5 space-y-2">
+                <h4 className="font-display font-extrabold text-sm text-white">Transaksi Tatap Muka</h4>
+                <p className="text-[11px] text-slate-400 leading-relaxed font-semibold">
+                  Semua penyelesaian pembayaran dilakukan secara langsung dan mandiri oleh Pengepul kepada Penjual (Tunai / Transfer Bank / QRIS Personal) setelah timbangan disepakati.
+                </p>
               </div>
             </div>
 
-            <div className="mt-6 flex gap-3">
-              <button 
-                onClick={() => setIsTopUpOpen(true)}
-                className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-slate-950 text-xs font-bold py-2.5 rounded-xl shadow-md shadow-emerald-500/10 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <Plus size={14} /> Isi Saldo
-              </button>
-              <button 
-                onClick={() => setIsWithdrawOpen(true)}
-                className="flex-1 border border-slate-700 hover:border-slate-500 text-slate-300 hover:text-white text-xs font-bold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <ArrowUpRight size={14} /> Tarik Saldo
-              </button>
+            <div className="mt-5 bg-slate-800/40 border border-slate-700/50 rounded-xl p-3 text-[10px] text-slate-400 leading-normal flex items-start gap-2">
+              <AlertCircle size={14} className="text-amber-400 shrink-0 mt-0.5" />
+              <span>Sistem Rongsok.in hanya memvalidasi nominal timbangan &amp; harga sepakat untuk menerbitkan Nota Digital resmi.</span>
             </div>
           </div>
 
-          {/* RIWAYAT MUTASI DOMPET */}
+          {/* RIWAYAT TRANSAKSI PEMBELIAN */}
           <div className="bg-white border border-ink-faint rounded-2xl p-5 shadow-sm space-y-3 flex flex-col justify-between">
             <h4 className="font-display font-extrabold text-xs text-ink-muted uppercase tracking-widest">
-              Riwayat Mutasi Saldo
+              Riwayat Pembelian Rosok
             </h4>
             
-            <div className="space-y-2.5 flex-1 mt-2">
-              {recentTransactions.map((trx) => (
-                <div key={trx.id} className="flex justify-between items-center text-xs pb-2 border-b border-surface-raised last:border-none">
-                  <div>
-                    <span className="font-bold text-ink block leading-tight">{trx.label}</span>
-                    <span className="text-[10px] text-ink-muted mt-0.5 block">{trx.date} • {trx.id}</span>
+            <div className="space-y-2.5 flex-1 mt-2 overflow-y-auto max-h-48 pr-1">
+              {recentTransactions && recentTransactions.length > 0 ? (
+                recentTransactions.map((trx) => (
+                  <div key={trx.id} className="flex justify-between items-center text-xs pb-2 border-b border-surface-raised last:border-none">
+                    <div>
+                      <span className="font-bold text-ink block leading-tight">{trx.label}</span>
+                      <span className="text-[10px] text-ink-muted mt-0.5 block">{trx.date} • {trx.id}</span>
+                    </div>
+                    <span className="font-bold font-mono text-status-error">
+                      -{formatRupiah(trx.amount)}
+                    </span>
                   </div>
-                  <span className={`font-bold font-mono ${trx.type === 'INCOME' ? 'text-status-success' : 'text-status-error'}`}>
-                    {trx.type === 'INCOME' ? `+${formatRupiah(trx.amount)}` : `-${formatRupiah(trx.amount)}`}
-                  </span>
+                ))
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center text-center py-8 text-xs text-ink-muted">
+                  <FileText size={24} className="text-ink-faint mb-2" />
+                  Belum ada transaksi pembelian selesai.
                 </div>
-              ))}
+              )}
             </div>
           </div>
 
@@ -812,233 +697,7 @@ export default function CollectorDashboard() {
 
       </main>
 
-      {/* PREMIUM TARIK SALDO MODAL */}
-      {isWithdrawOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in">
-          <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl border border-ink-faint p-6 space-y-6 relative overflow-hidden animate-in zoom-in-95">
-            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-emerald-500 to-green-400" />
 
-            <div className="text-center space-y-2">
-              <div className="w-12 h-12 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto border border-emerald-100">
-                <Wallet size={24} />
-              </div>
-              <h3 className="font-display font-extrabold text-base text-ink">Penarikan Saldo Dompet</h3>
-              <p className="text-xs text-ink-muted">Transfer pencairan pendapatan lapak Anda ke rekening Bank</p>
-            </div>
-
-            {withdrawStatus === "idle" && (
-              <form onSubmit={handleWithdrawSubmit} className="space-y-4">
-                <div>
-                  <label className="text-[10px] font-bold text-ink-muted uppercase tracking-widest mb-1.5 block">Bank Tujuan</label>
-                  <select 
-                    value={selectedBank}
-                    onChange={(e) => setSelectedBank(e.target.value)}
-                    className="w-full bg-white border border-ink-faint rounded-xl p-3 text-xs focus:outline-none focus:ring-2 focus:ring-brand-500 font-semibold"
-                  >
-                    <option value="BCA">Bank Central Asia (BCA)</option>
-                    <option value="Mandiri">Bank Mandiri</option>
-                    <option value="BNI">Bank Negara Indonesia (BNI)</option>
-                    <option value="BRI">Bank Rakyat Indonesia (BRI)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-[10px] font-bold text-ink-muted uppercase tracking-widest mb-1.5 block">Nomor Rekening</label>
-                  <Input 
-                    type="number"
-                    placeholder="Contoh: 8012345678"
-                    value={accountNumber}
-                    onChange={(e) => setAccountNumber(e.target.value)}
-                    className="rounded-xl font-bold font-mono h-11"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[10px] font-bold text-ink-muted uppercase tracking-widest mb-1.5 block">Nominal Pencairan (Rp)</label>
-                  <Input 
-                    type="number"
-                    placeholder="Minimal Rp 10.000"
-                    value={withdrawAmount}
-                    onChange={(e) => setWithdrawAmount(e.target.value)}
-                    className="rounded-xl font-bold font-mono h-11 text-emerald-600 focus:text-emerald-700"
-                    max={walletBalance}
-                    min="10000"
-                    required
-                  />
-                  <div className="flex gap-2 mt-2">
-                    <button 
-                      type="button"
-                      onClick={() => setWithdrawAmount(String(Math.min(50000, walletBalance)))}
-                      className="flex-1 py-1 bg-surface-raised border border-ink-faint rounded text-[10px] font-extrabold text-ink-muted hover:border-brand-500 transition-colors"
-                    >
-                      50rb
-                    </button>
-                    <button 
-                      type="button"
-                      onClick={() => setWithdrawAmount(String(Math.min(100000, walletBalance)))}
-                      className="flex-1 py-1 bg-surface-raised border border-ink-faint rounded text-[10px] font-extrabold text-ink-muted hover:border-brand-500 transition-colors"
-                    >
-                      100rb
-                    </button>
-                    <button 
-                      type="button"
-                      onClick={() => setWithdrawAmount(String(walletBalance))}
-                      className="flex-1 py-1 bg-surface-raised border border-ink-faint rounded text-[10px] font-extrabold text-ink-muted hover:border-brand-500 transition-colors"
-                    >
-                      Semua
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex gap-2 pt-2">
-                  <button 
-                    type="button"
-                    onClick={() => setIsWithdrawOpen(false)}
-                    className="flex-1 py-3 border border-ink-faint hover:bg-surface-raised text-ink-muted font-bold rounded-xl text-xs transition-colors cursor-pointer"
-                  >
-                    Batal
-                  </button>
-                  <Button 
-                    type="submit"
-                    className="flex-[2] py-3 text-xs font-bold shadow-md bg-emerald-500 hover:bg-emerald-600 text-slate-950"
-                  >
-                    Kirim Pencairan
-                  </Button>
-                </div>
-              </form>
-            )}
-
-            {withdrawStatus === "processing" && (
-              <div className="py-8 flex flex-col items-center justify-center space-y-4 animate-in fade-in">
-                <Refresh className="w-12 h-12 text-emerald-500 animate-spin" />
-                <div className="text-center">
-                  <span className="text-sm font-bold text-ink">Mengirim Permintaan...</span>
-                  <p className="text-[10px] text-ink-muted mt-1">Mengamankan jaringan transfer perbankan</p>
-                </div>
-              </div>
-            )}
-
-            {withdrawStatus === "success" && (
-              <div className="py-8 flex flex-col items-center justify-center space-y-4 animate-in zoom-in-95">
-                <CheckCircle2 className="w-14 h-14 text-status-success animate-bounce" />
-                <div className="text-center">
-                  <span className="text-base font-extrabold text-brand-600">Pencairan Berhasil!</span>
-                  <p className="text-xs text-ink-muted mt-1">Saldo telah berhasil ditransfer ke rekening Anda.</p>
-                </div>
-              </div>
-            )}
-
-          </div>
-        </div>
-      )}
-
-      {/* PREMIUM TOP UP MODAL */}
-      {isTopUpOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in">
-          <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl border border-ink-faint p-6 space-y-6 relative overflow-hidden animate-in zoom-in-95">
-            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-emerald-500 to-green-400" />
-
-            <div className="text-center space-y-2">
-              <div className="w-12 h-12 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto border border-emerald-100">
-                <Plus size={24} />
-              </div>
-              <h3 className="font-display font-extrabold text-base text-ink">Isi Saldo Deposito</h3>
-              <p className="text-xs text-ink-muted">Isi saldo deposit Anda untuk melakukan pembelian rosok</p>
-            </div>
-
-            {topUpStatus === "idle" && (
-              <form onSubmit={handleTopUpSubmit} className="space-y-4">
-                <div>
-                  <label className="text-[10px] font-bold text-ink-muted uppercase tracking-widest mb-1.5 block">Metode Pengisian</label>
-                  <select 
-                    value={topUpMethod}
-                    onChange={(e) => setTopUpMethod(e.target.value)}
-                    className="w-full bg-white border border-ink-faint rounded-xl p-3 text-xs focus:outline-none focus:ring-2 focus:ring-brand-500 font-semibold"
-                  >
-                    <option value="QRIS">QRIS Instan (GlowPay/GoPay/OVO)</option>
-                    <option value="BCA">Transfer Bank BCA</option>
-                    <option value="Mandiri">Transfer Bank Mandiri</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-[10px] font-bold text-ink-muted uppercase tracking-widest mb-1.5 block">Nominal Isi Saldo (Rp)</label>
-                  <Input 
-                    type="number"
-                    placeholder="Minimal Rp 10.000"
-                    value={topUpAmount}
-                    onChange={(e) => setTopUpAmount(e.target.value)}
-                    className="rounded-xl font-bold font-mono h-11 text-emerald-600 focus:text-emerald-700"
-                    min="10000"
-                    required
-                  />
-                  <div className="flex gap-2 mt-2">
-                    <button 
-                      type="button"
-                      onClick={() => setTopUpAmount("50000")}
-                      className="flex-1 py-1 bg-surface-raised border border-ink-faint rounded text-[10px] font-extrabold text-ink-muted hover:border-brand-500 transition-colors"
-                    >
-                      50rb
-                    </button>
-                    <button 
-                      type="button"
-                      onClick={() => setTopUpAmount("100000")}
-                      className="flex-1 py-1 bg-surface-raised border border-ink-faint rounded text-[10px] font-extrabold text-ink-muted hover:border-brand-500 transition-colors"
-                    >
-                      100rb
-                    </button>
-                    <button 
-                      type="button"
-                      onClick={() => setTopUpAmount("250000")}
-                      className="flex-1 py-1 bg-surface-raised border border-ink-faint rounded text-[10px] font-extrabold text-ink-muted hover:border-brand-500 transition-colors"
-                    >
-                      250rb
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex gap-2 pt-2">
-                  <button 
-                    type="button"
-                    onClick={() => setIsTopUpOpen(false)}
-                    className="flex-1 py-3 border border-ink-faint hover:bg-surface-raised text-ink-muted font-bold rounded-xl text-xs transition-colors cursor-pointer"
-                  >
-                    Batal
-                  </button>
-                  <Button 
-                    type="submit"
-                    className="flex-[2] py-3 text-xs font-bold shadow-md bg-emerald-500 hover:bg-emerald-600 text-slate-950"
-                  >
-                    Lanjutkan Pembayaran
-                  </Button>
-                </div>
-              </form>
-            )}
-
-            {topUpStatus === "processing" && (
-              <div className="py-8 flex flex-col items-center justify-center space-y-4 animate-in fade-in">
-                <Refresh className="w-12 h-12 text-emerald-500 animate-spin" />
-                <div className="text-center">
-                  <span className="text-sm font-bold text-ink">Memproses Transaksi...</span>
-                  <p className="text-[10px] text-ink-muted mt-1">Menghubungkan ke gateway pembayaran</p>
-                </div>
-              </div>
-            )}
-
-            {topUpStatus === "success" && (
-              <div className="py-8 flex flex-col items-center justify-center space-y-4 animate-in zoom-in-95">
-                <CheckCircle2 className="w-14 h-14 text-status-success animate-bounce" />
-                <div className="text-center">
-                  <span className="text-base font-extrabold text-brand-600">Isi Saldo Berhasil!</span>
-                  <p className="text-xs text-ink-muted mt-1">Saldo Anda telah berhasil ditambahkan.</p>
-                </div>
-              </div>
-            )}
-
-          </div>
-        </div>
-      )}
 
       <BottomNav />
     </div>
