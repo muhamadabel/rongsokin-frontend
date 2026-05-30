@@ -90,8 +90,11 @@ function OrderForm() {
   // Pre-select category from URL
   useEffect(() => {
     if (initCat && dbCategories) {
-      setCategoryId(initCat);
-      setStep(2);
+      const timer = setTimeout(() => {
+        setCategoryId(initCat);
+        setStep(2);
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [initCat, dbCategories]);
 

@@ -189,10 +189,10 @@ export default function OrderTrackingPage() {
     try {
       const rateeId = isCustomer ? order.collectorId : order.customerId;
       await api.post("/ratings", {
-        order_id: order.id,
-        ratee_id: rateeId,
+        orderId: order.id,
+        rateeId: rateeId,
         score: ratingScore,
-        comment: ratingComment,
+        reviewText: ratingComment,
       });
       toast.success("Ulasan Anda berhasil dikirim!");
       setRatingSubmitted(true);
@@ -339,7 +339,7 @@ export default function OrderTrackingPage() {
           <div className="space-y-6">
             
             {/* ACTION CARD: COLLECTOR WEIGH & VALIDATE */}
-            {isCollector && order.status === "IN_PROGRESS" && (
+            {isCollector && (order.status === "CONFIRMED" || order.status === "IN_PROGRESS") && (
               <section className="bg-white border-2 border-brand-500 rounded-2xl p-6 shadow-md space-y-4 animate-in fade-in zoom-in-95">
                 <div className="flex items-center gap-2 text-brand-600">
                   <Scale size={20} className="animate-bounce" />
