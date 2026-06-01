@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { getSocket, disconnectSocket } from '@/lib/socket';
 import { useAuthStore } from '@/store/authStore';
 import { useOrderStore } from '@/store/orderStore';
-import { Order } from '@/types';
+import { Order, OrderItem } from '@/types';
 import { toast } from 'react-hot-toast';
 
 export const useSocket = () => {
@@ -26,22 +26,46 @@ export const useSocket = () => {
       socket.emit('join_room', `customer:${user.id}`);
     }
 
-    // Handle new order received (Collector)
+    // Handle new order received (Collector) — support BE legacy (single category)
+    // dan BE baru (items array). Total weight di-aggregate dari items kalau ada.
     socket.on('new_order', (payload: any) => {
-      // Map Socket.IO payload to Order model format
+      // Items dari payload baru, atau derive dari legacy single field
+      const items: OrderItem[] = Array.isArray(payload.items)
+        ? payload.items.map((it: any) => ({
+            id: it.id || it.categoryId,
+            orderId: payload.orderId,
+            categoryId: it.categoryId,
+            estimatedWeight: Number(it.estimatedWeight || it.estWeight || 0),
+            category: it.category,
+          }))
+        : payload.category
+          ? [
+              {
+                id: payload.category,
+                orderId: payload.orderId,
+                categoryId: payload.category,
+                estimatedWeight: Number(payload.estWeight || 0),
+              },
+            ]
+          : [];
+
+      const totalWeight = items.reduce((s, i) => s + i.estimatedWeight, 0);
+
       const mockOrder: Order = {
         id: payload.orderId,
         customerId: '',
-        categoryId: payload.category,
         method: payload.method,
-        estimatedWeight: payload.estWeight,
         status: 'PENDING',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        items,
+        // Legacy fallback untuk komponen yang masih baca categoryId/estimatedWeight
+        categoryId: items[0]?.categoryId,
+        estimatedWeight: totalWeight,
       };
-      
+
       addIncomingOrder(mockOrder);
-      toast.success(`Pesanan Baru Masuk! Estimasi: ${payload.estWeight} kg`, {
+      toast.success(`Pesanan Baru Masuk! ${totalWeight.toFixed(1)} kg`, {
         icon: '♻️',
         duration: 5000,
       });

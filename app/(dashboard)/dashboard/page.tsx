@@ -5,72 +5,56 @@ import { useState, useEffect } from "react";
 import { useMe } from "@/hooks/useAuth";
 import { useOrdersList } from "@/hooks/useOrders";
 import { useWasteCategories, useSearchCollectors } from "@/hooks/useDiscovery";
-import { DEFAULT_COORDS, formatRupiah, formatDistance, formatDate } from "@/lib/utils";
+import {
+  DEFAULT_COORDS,
+  formatRupiah,
+  formatDistance,
+  formatDate,
+  getOrderTotalEstWeight,
+  getOrderTotalActualWeight,
+  getOrderTotalPrice,
+  getOrderCategoryLabel,
+} from "@/lib/utils";
 import { useSocket } from "@/hooks/useSocket";
 import DesktopNav from "@/components/ui/DesktopNav";
 import BottomNav from "@/components/ui/BottomNav";
 import { Button } from "@/components/ui/Button";
 import {
   Archive,
-  Refresh,
-  Tools,
-  FileLines,
-  DesktopPc,
+  RefreshCw,
+  Wrench,
+  FileText,
+  Monitor,
   Star,
-  MapPinAlt,
+  MapPin,
   ArrowRight,
-  Dollar,
-  ScaleBalanced,
-  ArrowRightToBracket,
-  CheckCircle,
-  CloseCircle,
+  Scale,
+  LogOut,
+  CheckCircle2,
+  XCircle,
   Clock,
   ChevronRight,
   Bell,
   Plus,
-} from "flowbite-react-icons/outline";
+} from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { useRouter } from "next/navigation";
 
 const categoryIcons: Record<string, any> = {
   Kardus: Archive,
-  Plastik: Refresh,
-  Logam: Tools,
-  Kertas: FileLines,
-  Elektronik: DesktopPc,
+  Plastik: RefreshCw,
+  Logam: Wrench,
+  Kertas: FileText,
+  Elektronik: Monitor,
 };
 
-const STATUS_CONFIG: Record<string, { label: string; style: string; dot: string }> = {
-  PENDING: {
-    label: "Menunggu Pengepul",
-    style: "bg-amber-50 text-amber-700 border-amber-200",
-    dot: "bg-amber-400",
-  },
-  CONFIRMED: {
-    label: "Pengepul Ditemukan",
-    style: "bg-brand-50 text-brand-700 border-brand-200",
-    dot: "bg-brand-500",
-  },
-  IN_PROGRESS: {
-    label: "Sedang Diproses",
-    style: "bg-blue-50 text-blue-700 border-blue-200",
-    dot: "bg-blue-500",
-  },
-  AWAITING_CONFIRMATION: {
-    label: "Menunggu Konfirmasimu",
-    style: "bg-purple-50 text-purple-700 border-purple-200",
-    dot: "bg-purple-500",
-  },
-  COMPLETED: {
-    label: "Selesai",
-    style: "bg-green-50 text-green-700 border-green-200",
-    dot: "bg-green-500",
-  },
-  CANCELLED: {
-    label: "Dibatalkan",
-    style: "bg-red-50 text-red-600 border-red-200",
-    dot: "bg-red-400",
-  },
+const STATUS_CONFIG: Record<string, { label: string; style: string }> = {
+  PENDING: { label: "Menunggu Pengepul", style: "bg-[#fff4cc] text-[#4a3b1c]" },
+  CONFIRMED: { label: "Pengepul Ditemukan", style: "bg-brand-100 text-brand-800" },
+  IN_PROGRESS: { label: "Sedang Diproses", style: "bg-[#dbeeff] text-[#0b4a6b]" },
+  AWAITING_CONFIRMATION: { label: "Menunggu Konfirmasimu", style: "bg-[#ecdcff] text-[#3b1c5a]" },
+  COMPLETED: { label: "Selesai", style: "bg-brand-100 text-brand-800" },
+  CANCELLED: { label: "Dibatalkan", style: "bg-status-error/10 text-status-error" },
 };
 
 export default function CustomerDashboard() {
@@ -111,10 +95,7 @@ export default function CustomerDashboard() {
     if (typeof navigator !== "undefined" && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          setCoords({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          });
+          setCoords({ lat: position.coords.latitude, lng: position.coords.longitude });
         },
         () => {}
       );
@@ -133,13 +114,10 @@ export default function CustomerDashboard() {
 
   const completedOrders = orders?.filter((o) => o.status === "COMPLETED") || [];
   const totalWeight = completedOrders.reduce(
-    (sum, o) => sum + (o.actualWeight || o.estimatedWeight || 0),
+    (sum, o) => sum + (getOrderTotalActualWeight(o) || getOrderTotalEstWeight(o)),
     0
   );
-  const totalEarnings = completedOrders.reduce(
-    (sum, o) => sum + (o.totalPrice || o.agreedPrice || 0),
-    0
-  );
+  const totalEarnings = completedOrders.reduce((sum, o) => sum + getOrderTotalPrice(o), 0);
 
   const handleLogout = () => {
     logout();
@@ -154,8 +132,8 @@ export default function CustomerDashboard() {
         <DesktopNav />
         <div className="flex-1 flex items-center justify-center">
           <div className="flex flex-col items-center gap-3">
-            <Refresh className="w-10 h-10 text-brand-500 animate-spin" />
-            <span className="text-sm font-bold text-ink-muted">Memuat dashboardmu...</span>
+            <RefreshCw className="w-10 h-10 text-brand-700 animate-spin" />
+            <span className="text-sm font-bold text-ink-muted">Memuat dashboardmu…</span>
           </div>
         </div>
         <BottomNav />
@@ -168,100 +146,105 @@ export default function CustomerDashboard() {
       <DesktopNav />
 
       {/* MOBILE HEADER */}
-      <header className="sticky top-0 z-50 bg-white border-b border-ink-faint px-4 py-3 shadow-sm md:hidden flex justify-between items-center">
+      <header className="sticky top-0 z-50 bg-surface-raised border-b border-ink-faint px-4 py-3 md:hidden flex justify-between items-center">
         <div>
-          <p className="text-[10px] text-ink-muted font-bold uppercase tracking-wider">{greeting},</p>
+          <p className="text-[10px] text-mute font-bold uppercase tracking-wider">{greeting},</p>
           <h1 className="font-display font-extrabold text-base text-ink">{firstName} 👋</h1>
         </div>
         <div className="flex items-center gap-2">
-          <button className="w-9 h-9 rounded-full bg-surface-raised border border-ink-faint flex items-center justify-center text-ink-muted hover:text-ink transition-colors">
+          <button className="w-9 h-9 rounded-2xl bg-surface flex items-center justify-center text-ink-muted hover:text-ink transition-colors">
             <Bell size={18} />
           </button>
           <button
             onClick={handleLogout}
-            className="w-9 h-9 rounded-full bg-surface-raised border border-ink-faint flex items-center justify-center text-ink-muted hover:text-status-error transition-colors"
+            className="w-9 h-9 rounded-2xl bg-surface flex items-center justify-center text-ink-muted hover:text-status-error transition-colors"
           >
-            <ArrowRightToBracket size={18} />
+            <LogOut size={18} />
           </button>
         </div>
       </header>
 
-      <main className="max-w-6xl w-full mx-auto px-4 md:px-8 py-5 space-y-5">
+      <main className="max-w-6xl w-full mx-auto px-4 md:px-8 py-5 space-y-6">
+        <div className="hidden md:block">
+          <p className="text-sm text-mute font-semibold">{greeting},</p>
+          <h1 className="font-display text-3xl font-extrabold tracking-tight text-ink">
+            {firstName} 👋
+          </h1>
+        </div>
 
-        {/* ACTIVE ORDER ALERT — paling atas jika ada */}
+        {/* ACTIVE ORDER ALERT */}
         {activeOrder && (
-          <section>
-            <Link
-              href={`/orders/${activeOrder.id}`}
-              className="block bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0">
-                  <Clock size={20} className="text-amber-600" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-700 bg-amber-200 rounded px-1.5 py-0.5">
-                      Pesanan Aktif
-                    </span>
-                    <span
-                      className={`text-[9px] font-extrabold uppercase tracking-wider border rounded-full px-2 py-0.5 ${
-                        STATUS_CONFIG[activeOrder.status]?.style || "bg-surface-raised text-ink-muted border-ink-faint"
-                      }`}
-                    >
-                      {STATUS_CONFIG[activeOrder.status]?.label || activeOrder.status}
-                    </span>
-                  </div>
-                  <p className="text-sm font-bold text-ink truncate">
-                    Setor {activeOrder.category?.name || "Sampah"} ·{" "}
-                    {activeOrder.estimatedWeight} kg
-                  </p>
-                  <p className="text-[10px] text-ink-muted">
-                    {formatDate(activeOrder.createdAt)} · {activeOrder.method}
-                  </p>
-                </div>
-                <ChevronRight size={18} className="text-amber-500 shrink-0" />
+          <Link
+            href={`/orders/${activeOrder.id}`}
+            className="block bg-ink rounded-2xl p-5 hover:brightness-110 transition-all"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-brand-500 flex items-center justify-center shrink-0 text-ink">
+                <Clock size={20} />
               </div>
-              {activeOrder.status === "AWAITING_CONFIRMATION" && (
-                <div className="mt-3 pt-3 border-t border-amber-200">
-                  <p className="text-xs font-bold text-amber-800 flex items-center gap-2">
-                    <Bell size={12} /> Pengepul sudah menimbang — tap untuk konfirmasi harga!
-                  </p>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-ink bg-brand-500 rounded-full px-2 py-0.5">
+                    Pesanan Aktif
+                  </span>
+                  <span
+                    className={`text-[9px] font-extrabold uppercase tracking-wider rounded-full px-2 py-0.5 ${
+                      STATUS_CONFIG[activeOrder.status]?.style || "bg-surface text-ink-muted"
+                    }`}
+                  >
+                    {STATUS_CONFIG[activeOrder.status]?.label || activeOrder.status}
+                  </span>
                 </div>
-              )}
-            </Link>
-          </section>
+                <p className="text-sm font-bold text-forest-ink truncate">
+                  Setor {getOrderCategoryLabel(activeOrder)} ·{" "}
+                  {getOrderTotalEstWeight(activeOrder).toFixed(1)} kg
+                </p>
+                <p className="text-[10px] text-forest-muted">
+                  {formatDate(activeOrder.createdAt)} · {activeOrder.method}
+                </p>
+              </div>
+              <ChevronRight size={18} className="text-brand-500 shrink-0" />
+            </div>
+            {activeOrder.status === "AWAITING_CONFIRMATION" && (
+              <div className="mt-3 pt-3 border-t border-forest-3">
+                <p className="text-xs font-bold text-brand-500 flex items-center gap-2">
+                  <Bell size={12} /> Pengepul sudah menimbang — tap untuk konfirmasi harga!
+                </p>
+              </div>
+            )}
+          </Link>
         )}
 
         {/* QUICK ACTION + STATS */}
         <section className="grid grid-cols-3 gap-3">
-          {/* Jual Sekarang */}
           <Link
             href="/orders/new"
-            className="col-span-1 bg-brand-600 rounded-xl p-4 flex flex-col items-center justify-center gap-2 text-white shadow-md hover:bg-brand-700 transition-colors text-center"
+            className="col-span-1 bg-brand-500 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 text-ink hover:bg-brand-600 transition-colors text-center"
           >
-            <Plus size={24} />
-            <span className="text-xs font-extrabold leading-tight">Jual<br />Sekarang</span>
+            <Plus size={24} strokeWidth={2.5} />
+            <span className="text-xs font-extrabold leading-tight">
+              Jual
+              <br />
+              Sekarang
+            </span>
           </Link>
 
-          {/* Total Sampah */}
-          <div className="col-span-1 bg-white border border-ink-faint rounded-xl p-4 flex flex-col gap-1 shadow-sm">
-            <div className="w-8 h-8 rounded-lg bg-brand-50 flex items-center justify-center">
-              <ScaleBalanced size={16} className="text-brand-500" />
+          <div className="col-span-1 bg-surface-raised rounded-2xl p-4 flex flex-col gap-1">
+            <div className="w-8 h-8 rounded-2xl bg-surface flex items-center justify-center">
+              <Scale size={16} className="text-ink" />
             </div>
-            <div className="text-xs font-bold text-ink-muted">Total Sampah</div>
-            <div className="text-base font-display font-black text-ink font-mono">
+            <div className="text-xs font-semibold text-mute mt-1">Total Sampah</div>
+            <div className="text-base font-display font-extrabold text-ink font-mono">
               {totalWeight.toFixed(1)} kg
             </div>
           </div>
 
-          {/* Total Pendapatan */}
-          <div className="col-span-1 bg-white border border-ink-faint rounded-xl p-4 flex flex-col gap-1 shadow-sm">
-            <div className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center">
-              <Dollar size={16} className="text-status-success" />
+          <div className="col-span-1 bg-surface-raised rounded-2xl p-4 flex flex-col gap-1">
+            <div className="w-8 h-8 rounded-2xl bg-brand-100 flex items-center justify-center">
+              <ArrowRight size={16} className="text-brand-800 -rotate-45" />
             </div>
-            <div className="text-xs font-bold text-ink-muted">Pendapatan</div>
-            <div className="text-base font-display font-black text-ink font-mono">
+            <div className="text-xs font-semibold text-mute mt-1">Pendapatan</div>
+            <div className="text-base font-display font-extrabold text-ink font-mono">
               {formatRupiah(totalEarnings)}
             </div>
           </div>
@@ -269,83 +252,86 @@ export default function CustomerDashboard() {
 
         {/* JUAL PER KATEGORI */}
         <section className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-display font-extrabold text-ink uppercase tracking-wider">
-              Jual Cepat per Kategori
-            </h2>
-          </div>
+          <h2 className="text-base font-display font-extrabold text-ink tracking-tight">
+            Jual Cepat per Kategori
+          </h2>
           <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
-            {categories && categories.length > 0 ? (
-              categories.map((cat) => {
-                const Icon = categoryIcons[cat.name] || Archive;
-                return (
-                  <Link
-                    key={cat.id}
-                    href={`/orders/new?category=${cat.id}`}
-                    className="flex flex-col items-center gap-2 bg-white border border-ink-faint rounded-xl p-4 min-w-[88px] shadow-sm hover:border-brand-500 hover:shadow-md transition-all group shrink-0"
-                  >
-                    <div className="w-11 h-11 bg-surface-raised border border-ink-faint rounded-full flex items-center justify-center group-hover:bg-brand-50 group-hover:border-brand-200 transition-colors">
-                      <Icon size={22} className="text-ink-muted group-hover:text-brand-500 transition-colors" />
-                    </div>
-                    <span className="text-[10px] font-bold text-ink-muted group-hover:text-ink text-center">
-                      {cat.name}
-                    </span>
-                  </Link>
-                );
-              })
-            ) : (
-              [1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="w-20 h-24 bg-white border border-ink-faint rounded-xl animate-pulse shrink-0" />
-              ))
-            )}
+            {categories && categories.length > 0
+              ? categories.map((cat) => {
+                  const Icon = categoryIcons[cat.name] || Archive;
+                  return (
+                    <Link
+                      key={cat.id}
+                      href={`/orders/new?category=${cat.id}`}
+                      className="flex flex-col items-center gap-2 bg-surface-raised rounded-2xl p-4 min-w-[88px] hover:bg-brand-100 transition-colors group shrink-0"
+                    >
+                      <div className="w-11 h-11 bg-surface rounded-full flex items-center justify-center group-hover:bg-brand-500 transition-colors text-ink">
+                        <Icon size={22} />
+                      </div>
+                      <span className="text-[11px] font-bold text-ink text-center">
+                        {cat.name}
+                      </span>
+                    </Link>
+                  );
+                })
+              : [1, 2, 3, 4, 5].map((i) => (
+                  <div
+                    key={i}
+                    className="w-20 h-24 bg-surface-raised rounded-2xl animate-pulse shrink-0"
+                  />
+                ))}
           </div>
         </section>
 
         {/* PENGEPUL TERDEKAT */}
         <section className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-display font-extrabold text-ink uppercase tracking-wider">
+            <h2 className="text-base font-display font-extrabold text-ink tracking-tight">
               Pengepul Terdekat
             </h2>
-            <span className="text-xs font-bold text-ink-muted flex items-center gap-1">
-              <MapPinAlt size={12} className="text-brand-500" />
-              {coords === DEFAULT_COORDS ? "Yogyakarta (default)" : "Lokasimu"}
+            <span className="text-xs font-semibold text-mute flex items-center gap-1">
+              <MapPin size={12} className="text-brand-700" />
+              {coords === DEFAULT_COORDS ? "Yogyakarta" : "Lokasimu"}
             </span>
           </div>
 
           <div className="space-y-2">
             {isNearbyLoading ? (
               [1, 2].map((i) => (
-                <div key={i} className="bg-white border border-ink-faint rounded-xl p-4 h-20 animate-pulse" />
+                <div key={i} className="bg-surface-raised rounded-2xl p-4 h-20 animate-pulse" />
               ))
             ) : nearbyCollectors && nearbyCollectors.length > 0 ? (
               nearbyCollectors.slice(0, 3).map((collector) => (
                 <div
                   key={collector.id}
-                  className="bg-white border border-ink-faint rounded-xl p-4 flex items-center gap-3 shadow-sm hover:border-brand-400 transition-colors"
+                  className="bg-surface-raised rounded-2xl p-4 flex items-center gap-3"
                 >
-                  <div className="w-10 h-10 bg-brand-50 rounded-lg flex items-center justify-center shrink-0 border border-brand-100">
-                    <Archive size={20} className="text-brand-500" />
+                  <div className="w-11 h-11 bg-surface rounded-2xl flex items-center justify-center shrink-0 text-ink">
+                    <Archive size={20} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-sm text-ink truncate">{collector.shopName}</h3>
-                      <span className="text-[9px] font-bold text-status-success bg-green-50 border border-green-200 rounded-full px-1.5 py-0.5 shrink-0">
-                        🟢 Buka
+                      <h3 className="font-bold text-sm text-ink truncate">
+                        {collector.shopName}
+                      </h3>
+                      <span className="text-[9px] font-bold text-brand-800 bg-brand-100 rounded-full px-1.5 py-0.5 shrink-0">
+                        Buka
                       </span>
                     </div>
-                    <p className="text-[10px] text-ink-muted truncate">
+                    <p className="text-[11px] text-ink-muted truncate">
                       {collector.description || "Mitra Pengepul Rongsok.in"}
                     </p>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <div className="flex items-center gap-0.5 text-[10px]">
+                      <div className="flex items-center gap-0.5 text-[11px]">
                         <Star size={10} className="text-status-warning fill-status-warning" />
-                        <span className="font-bold text-ink">{collector.priorityScore || "4.9"}</span>
+                        <span className="font-bold text-ink font-mono">
+                          {collector.priorityScore || "4.9"}
+                        </span>
                       </div>
-                      {collector.distance && (
+                      {collector.distance != null && (
                         <>
                           <span className="text-ink-faint">·</span>
-                          <span className="text-[10px] font-bold text-brand-600">
+                          <span className="text-[11px] font-bold text-brand-700 font-mono">
                             {formatDistance(collector.distance)}
                           </span>
                         </>
@@ -353,17 +339,16 @@ export default function CustomerDashboard() {
                     </div>
                   </div>
                   <Link
-                    href={`/orders/new`}
-                    className="shrink-0 text-xs font-bold text-brand-600 bg-brand-50 border border-brand-200 rounded-lg px-3 py-1.5 hover:bg-brand-100 transition-colors"
+                    href="/orders/new"
+                    className="shrink-0 text-xs font-bold text-ink bg-brand-500 hover:bg-brand-600 rounded-2xl px-4 py-2 transition-colors"
                   >
                     Jual
                   </Link>
                 </div>
               ))
             ) : (
-              <div className="bg-white border border-ink-faint rounded-xl p-6 text-center text-xs text-ink-muted">
-                Belum ada pengepul terdaftar di sekitar lokasimu (radius 5km).<br />
-                Coba perluas pencarianmu atau tunggu pengepul baru bergabung.
+              <div className="bg-surface-raised rounded-2xl p-6 text-center text-xs text-ink-muted">
+                Belum ada pengepul di sekitarmu (radius 5km).
               </div>
             )}
           </div>
@@ -372,11 +357,14 @@ export default function CustomerDashboard() {
         {/* RIWAYAT SETORAN */}
         <section className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-display font-extrabold text-ink uppercase tracking-wider">
+            <h2 className="text-base font-display font-extrabold text-ink tracking-tight">
               Riwayat Setoranku
             </h2>
             {orders && orders.length > 3 && (
-              <Link href="/orders" className="text-brand-500 text-xs font-bold flex items-center gap-1">
+              <Link
+                href="/orders"
+                className="text-ink text-xs font-semibold flex items-center gap-1"
+              >
                 Lihat Semua <ArrowRight size={12} />
               </Link>
             )}
@@ -387,36 +375,38 @@ export default function CustomerDashboard() {
               orders.slice(0, 5).map((order) => {
                 const statusConf = STATUS_CONFIG[order.status] || {
                   label: order.status,
-                  style: "bg-surface-raised text-ink-muted border-ink-faint",
-                  dot: "bg-ink-muted",
+                  style: "bg-surface text-ink-muted",
                 };
                 return (
                   <Link
                     key={order.id}
                     href={`/orders/${order.id}`}
-                    className="bg-white border border-ink-faint rounded-xl p-4 flex items-center gap-3 shadow-sm hover:border-brand-400 hover:shadow-md transition-all"
+                    className="bg-surface-raised rounded-2xl p-4 flex items-center gap-3 hover:bg-brand-100 transition-colors"
                   >
-                    <div className="w-9 h-9 bg-surface-raised border border-ink-faint rounded-lg flex items-center justify-center shrink-0">
+                    <div className="w-9 h-9 bg-surface rounded-2xl flex items-center justify-center shrink-0">
                       {order.status === "COMPLETED" ? (
-                        <CheckCircle size={18} className="text-status-success" />
+                        <CheckCircle2 size={18} className="text-status-success" />
                       ) : order.status === "CANCELLED" ? (
-                        <CloseCircle size={18} className="text-red-500" />
+                        <XCircle size={18} className="text-status-error" />
                       ) : (
-                        <Clock size={18} className="text-amber-500" />
+                        <Clock size={18} className="text-ink-muted" />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="font-bold text-sm text-ink truncate">
-                        Setor {order.category?.name || "Sampah"}
+                        Setor {getOrderCategoryLabel(order)}
                       </h3>
-                      <p className="text-[10px] text-ink-muted">{formatDate(order.createdAt)}</p>
+                      <p className="text-[10px] text-mute">{formatDate(order.createdAt)}</p>
                     </div>
                     <div className="text-right shrink-0">
                       <div className="text-sm font-bold text-ink font-mono">
-                        {order.actualWeight || order.estimatedWeight} kg
+                        {(
+                          getOrderTotalActualWeight(order) || getOrderTotalEstWeight(order)
+                        ).toFixed(1)}{" "}
+                        kg
                       </div>
                       <span
-                        className={`inline-block text-[9px] font-extrabold px-2 py-0.5 rounded-full border tracking-wide uppercase mt-1 ${statusConf.style}`}
+                        className={`inline-block text-[9px] font-extrabold px-2 py-0.5 rounded-full tracking-wide uppercase mt-1 ${statusConf.style}`}
                       >
                         {statusConf.label}
                       </span>
@@ -425,23 +415,18 @@ export default function CustomerDashboard() {
                 );
               })
             ) : (
-              <div className="bg-white border border-ink-faint rounded-xl p-8 text-center space-y-3">
-                <div className="w-12 h-12 bg-surface-raised rounded-full flex items-center justify-center mx-auto">
+              <div className="bg-surface-raised rounded-2xl p-8 text-center space-y-3">
+                <div className="w-12 h-12 bg-surface rounded-full flex items-center justify-center mx-auto">
                   <Archive size={24} className="text-ink-faint" />
                 </div>
-                <p className="text-xs text-ink-muted">
-                  Belum ada riwayat setoran.
-                </p>
-                <Link href="/orders/new">
-                  <Button className="text-xs px-4 py-2 mx-auto">
-                    Jual Sampah Pertamamu →
-                  </Button>
+                <p className="text-xs text-ink-muted">Belum ada riwayat setoran.</p>
+                <Link href="/orders/new" className="inline-block">
+                  <Button className="text-xs px-4 py-2">Jual Sampah Pertamamu</Button>
                 </Link>
               </div>
             )}
           </div>
         </section>
-
       </main>
 
       <BottomNav />

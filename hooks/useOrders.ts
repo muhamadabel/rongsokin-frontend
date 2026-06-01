@@ -1,15 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
-import { Order, OrderStatus } from '@/types';
+import { Order } from '@/types';
 import { useAuthStore } from '@/store/authStore';
 
-export interface CreateOrderPayload {
+// ── Create Order ─────────────────────────────────────────────────────────
+export interface CreateOrderItemInput {
   categoryId: string;
-  category_id?: string; // mapping fallback
   estimatedWeight: number;
-  estimated_weight?: number; // mapping fallback
+}
+
+export interface CreateOrderPayload {
+  items: CreateOrderItemInput[];
   photoUrl?: string;
-  photo_url?: string; // mapping fallback
   lat: number;
   lng: number;
   method: 'PICKUP' | 'DROPOFF';
@@ -20,16 +22,23 @@ export const useCreateOrder = () => {
 
   return useMutation({
     mutationFn: async (payload: CreateOrderPayload) => {
-      // Map frontend keys to backend camelCase keys
-      const formatted = {
-        categoryId: payload.categoryId || payload.category_id,
-        estimatedWeight: payload.estimatedWeight || payload.estimated_weight,
-        photoUrl: payload.photoUrl || payload.photo_url,
+      // Backward-compat: kalau cuma 1 item dan BE belum support items[], BE legacy
+      // bisa parse top-level categoryId+estimatedWeight. Kita kirim KEDUANYA biar
+      // BE baru (pakai items) maupun BE lama (pakai single field) sama-sama jalan.
+      const body: Record<string, unknown> = {
+        items: payload.items,
+        photoUrl: payload.photoUrl,
         lat: payload.lat,
         lng: payload.lng,
         method: payload.method,
       };
-      const res = await api.post<{ status: string; data: Order }>('/orders', formatted);
+
+      if (payload.items.length === 1) {
+        body.categoryId = payload.items[0].categoryId;
+        body.estimatedWeight = payload.items[0].estimatedWeight;
+      }
+
+      const res = await api.post<{ status: string; data: Order }>('/orders', body);
       return res.data;
     },
     onSuccess: () => {
@@ -38,6 +47,7 @@ export const useCreateOrder = () => {
   });
 };
 
+// ── List & Detail ────────────────────────────────────────────────────────
 export const useOrdersList = (params: { status?: string; role?: string; limit?: number }) => {
   const token = useAuthStore((state) => state.token);
 
@@ -70,12 +80,21 @@ export const useOrderDetails = (id: string) => {
   });
 };
 
+// ── Update Status (accept / validate / confirm / reject / cancel) ────────
+export interface ValidateItemInput {
+  id?: string;           // OrderItem.id (kalau pakai schema baru)
+  categoryId?: string;   // alternatif kalau BE accept by categoryId
+  actualWeight: number;
+  agreedPrice: number;
+}
+
 export interface UpdateOrderPayload {
-  action: 'accept' | 'validate' | 'confirm' | 'cancel';
+  action: 'accept' | 'reject' | 'validate' | 'confirm' | 'cancel';
+  /** Multi-item validate (schema baru) */
+  items?: ValidateItemInput[];
+  /** Legacy single-item validate (schema lama) — auto-derived dari items kalau cuma 1 */
   actualWeight?: number;
-  actual_weight?: number; // fallback
   agreedPrice?: number;
-  final_price?: number; // fallback
 }
 
 export const useUpdateOrderStatus = (id: string) => {
@@ -83,12 +102,23 @@ export const useUpdateOrderStatus = (id: string) => {
 
   return useMutation({
     mutationFn: async (payload: UpdateOrderPayload) => {
-      const formatted = {
-        action: payload.action,
-        actualWeight: payload.actualWeight || payload.actual_weight,
-        agreedPrice: payload.agreedPrice || payload.final_price,
-      };
-      const res = await api.patch<{ status: string; data: any }>(`/orders/${id}`, formatted);
+      const body: Record<string, unknown> = { action: payload.action };
+
+      if (payload.action === 'validate') {
+        if (payload.items && payload.items.length > 0) {
+          body.items = payload.items;
+          // Legacy single-item fallback
+          if (payload.items.length === 1) {
+            body.actualWeight = payload.items[0].actualWeight;
+            body.agreedPrice = payload.items[0].agreedPrice;
+          }
+        } else {
+          body.actualWeight = payload.actualWeight;
+          body.agreedPrice = payload.agreedPrice;
+        }
+      }
+
+      const res = await api.patch<{ status: string; data: unknown }>(`/orders/${id}`, body);
       return res.data;
     },
     onSuccess: () => {

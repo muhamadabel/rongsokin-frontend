@@ -3,8 +3,20 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, Search, User, Archive } from "flowbite-react-icons/outline";
+import {
+  Bell,
+  User,
+  Home,
+  Search,
+  LayoutDashboard,
+  Clock,
+  Store,
+  Plus,
+  ShieldCheck,
+} from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
+
+type NavItem = { href: string; label: string; icon: React.ComponentType<{ size?: number }> };
 
 export default function DesktopNav() {
   const pathname = usePathname();
@@ -18,86 +30,110 @@ export default function DesktopNav() {
 
   const role = user?.role;
   const isCollector = role === "COLLECTOR";
-  const isCustomer = role === "CUSTOMER";
+  const isAdmin = role === "ADMIN";
 
-  const navItems = token
-    ? isCollector
-      ? [
-          { href: "/collector", label: "Dasbor Lapak" },
-          { href: "/orders", label: "Pesanan" },
-        ]
-      : [
-          // CUSTOMER atau tidak ada role tapi sudah login
-          { href: "/", label: "Beranda" },
-          { href: "/search", label: "Cari" },
-          { href: "/dashboard", label: "Dashboard" },
-          { href: "/orders", label: "Pesanan" },
-        ]
+  // Tujuan "home" sesuai peran — tanpa Beranda saat sudah login
+  const homeHref = !token
+    ? "/"
+    : isAdmin
+    ? "/admin"
+    : isCollector
+    ? "/collector"
+    : "/dashboard";
+
+  const navItems: NavItem[] = !token
+    ? [
+        { href: "/", label: "Beranda", icon: Home },
+        { href: "/search", label: "Cari", icon: Search },
+      ]
+    : isAdmin
+    ? [{ href: "/admin", label: "Console", icon: ShieldCheck }]
+    : isCollector
+    ? [
+        { href: "/collector", label: "Dasbor Lapak", icon: Store },
+        { href: "/orders", label: "Pesanan", icon: Clock },
+      ]
     : [
-        // Belum login
-        { href: "/", label: "Beranda" },
-        { href: "/search", label: "Cari" },
+        { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+        { href: "/search", label: "Cari", icon: Search },
+        { href: "/orders", label: "Pesanan", icon: Clock },
       ];
 
+  const showSellCta = !isCollector && !isAdmin;
+
   return (
-    <header className="hidden md:block sticky top-0 z-50 bg-white border-b border-ink-faint shadow-sm">
-      <div className="max-w-6xl mx-auto px-4 md:px-8 py-3 flex items-center justify-between gap-8">
-        
+    <header className="hidden md:block sticky top-0 z-50 bg-surface-raised border-b border-ink-faint">
+      <div className="max-w-6xl mx-auto px-4 md:px-8 py-3 flex items-center gap-6">
         {/* LOGO */}
-        <Link href={token ? (isCollector ? "/collector" : "/dashboard") : "/"} className="flex items-center gap-2 shrink-0">
-          <div className="w-8 h-8 bg-brand-500 text-white rounded-lg flex items-center justify-center font-black text-xl shadow-sm">R</div>
-          <h1 className="font-display font-extrabold text-xl tracking-tight text-ink">Rongsok.in</h1>
+        <Link href={homeHref} className="flex items-center gap-2 shrink-0">
+          <div className="w-9 h-9 bg-brand-500 text-ink rounded-2xl flex items-center justify-center font-display font-extrabold text-xl">
+            R
+          </div>
+          <h1 className="font-display font-extrabold text-xl tracking-tight text-ink">
+            Rongsok.in
+          </h1>
         </Link>
 
-        {/* SEARCH BAR — sembunyikan untuk collector */}
-        {!isCollector && (
-          <div className="flex-1 max-w-xl relative">
-            <input 
-              type="text" 
-              placeholder="Cari rongsok, lapak, daerah..." 
-              className="w-full pl-10 pr-4 py-2 bg-surface-raised border border-ink-faint rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all" 
-            />
-            <Search className="w-4 h-4 absolute left-4 top-3 text-ink-muted" />
-          </div>
-        )}
-
-        {/* NAV LINKS */}
-        <nav className="flex items-center gap-6">
-          {navItems.map(item => (
-            <Link 
-              key={item.href} 
-              href={item.href}
-              className={`text-sm font-bold transition-colors ${pathname === item.href ? 'text-brand-500' : 'text-ink-muted hover:text-ink'}`}
-            >
-              {item.label}
-            </Link>
-          ))}
-          {/* Jual Sekarang hanya untuk CUSTOMER atau belum login */}
-          {!isCollector && (
-            <Link href={token ? "/orders/new" : "/login"} className="bg-brand-500 text-white text-sm font-bold px-4 py-2 rounded-lg hover:bg-brand-600 transition-colors shadow-sm flex items-center gap-2">
-              <Archive size={16} /> Jual Sekarang
-            </Link>
-          )}
+        {/* NAV LINKS — pill aktif */}
+        <nav className="flex items-center gap-1.5 ml-2">
+          {navItems.map((item) => {
+            const isActive =
+              pathname === item.href ||
+              (item.href !== "/" && pathname.startsWith(item.href));
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-2 text-sm font-semibold px-3.5 py-2 rounded-full transition-colors ${
+                  isActive
+                    ? "bg-brand-100 text-ink"
+                    : "text-mute hover:text-ink hover:bg-surface"
+                }`}
+              >
+                <item.icon size={16} />
+                {item.label}
+              </Link>
+            );
+          })}
         </nav>
 
-        {/* PROFILE / ACTIONS */}
-        <div className="flex items-center gap-4 shrink-0 border-l border-ink-faint pl-6">
+        {/* RIGHT */}
+        <div className="flex items-center gap-3 shrink-0 ml-auto">
+          {showSellCta && (
+            <Link
+              href={token ? "/orders/new" : "/register"}
+              className="bg-brand-500 text-ink text-sm font-semibold px-5 py-2.5 rounded-2xl hover:bg-brand-600 transition-colors flex items-center gap-1.5"
+            >
+              <Plus size={16} /> Jual Sekarang
+            </Link>
+          )}
+
           {token && (
-            <button className="text-ink-muted hover:text-ink transition-colors relative p-2">
+            <button className="text-mute hover:text-ink transition-colors relative p-2">
               <Bell size={20} />
-              <span className="absolute top-1.5 right-2 w-2 h-2 bg-status-error rounded-full border border-white"></span>
+              <span className="absolute top-1.5 right-2 w-2 h-2 bg-status-error rounded-full border border-surface-raised"></span>
             </button>
           )}
-          <Link href={token ? "/profile" : "/login"} className="flex items-center gap-2 text-ink-muted hover:text-ink transition-colors bg-surface-raised px-3 py-1.5 rounded-full border border-ink-faint hover:border-brand-200">
-            <div className="w-6 h-6 bg-surface rounded-full flex items-center justify-center">
-              <User className="text-ink-muted" size={14} />
+
+          <Link
+            href={token ? "/profile" : "/login"}
+            className="flex items-center gap-2 text-ink hover:bg-surface transition-colors px-2.5 py-1.5 rounded-2xl border border-ink-faint"
+          >
+            <div className="w-7 h-7 bg-brand-100 rounded-full flex items-center justify-center text-ink font-bold text-xs overflow-hidden">
+              {token && user?.avatarUrl ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
+              ) : token && user ? (
+                user.name.charAt(0).toUpperCase()
+              ) : (
+                <User size={14} />
+              )}
             </div>
-            <span className="text-xs font-bold hidden lg:block">
+            <span className="text-xs font-bold hidden lg:block max-w-[110px] truncate">
               {token && user ? user.name : "Masuk"}
             </span>
           </Link>
         </div>
-
       </div>
     </header>
   );

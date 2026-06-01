@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { AxiosError } from 'axios';
 import api from '@/lib/axios';
 import { useAuthStore } from '@/store/authStore';
 import { User } from '@/types';
@@ -49,5 +50,58 @@ export const useMe = () => {
       return res.data.data;
     },
     enabled: !!token,
+  });
+};
+
+// ── Update profil user (customer) ────────────────────────────────────────
+/**
+ * Endpoint yang dibutuhkan BE: PATCH /auth/me
+ *   body: { name?, phone?, avatarUrl?, lat?, lng? }
+ *   response: { status, data: User }
+ *
+ * Selama BE belum siap (return 404/405/501), hook ini akan tetap update
+ * authStore lokal supaya UI optimistic; nanti BE jadi → otomatis sync.
+ */
+export interface UpdateMePayload {
+  name?: string;
+  phone?: string;
+  avatarUrl?: string;
+  lat?: number;
+  lng?: number;
+}
+
+const isMissingRoute = (err: unknown): boolean => {
+  const s = (err as AxiosError | undefined)?.response?.status;
+  return s === 404 || s === 405 || s === 501;
+};
+
+export const useUpdateMe = () => {
+  const qc = useQueryClient();
+  const user = useAuthStore((s) => s.user);
+  const token = useAuthStore((s) => s.token);
+  const setAuth = useAuthStore((s) => s.setAuth);
+
+  return useMutation({
+    mutationFn: async (payload: UpdateMePayload): Promise<User> => {
+      try {
+        const res = await api.patch<{ status: string; data: User }>('/auth/me', payload);
+        return res.data.data;
+      } catch (err) {
+        if (isMissingRoute(err)) {
+          // BE belum punya endpoint → simpan ke localStorage user saja
+          if (!user) throw err;
+          const merged: User = { ...user, ...payload } as User;
+          if (token) setAuth(merged, token);
+          return merged;
+        }
+        throw err;
+      }
+    },
+    onSuccess: (updated) => {
+      // Sync ke authStore + cache
+      if (token) setAuth(updated, token);
+      qc.setQueryData(['me'], updated);
+      qc.invalidateQueries({ queryKey: ['me'] });
+    },
   });
 };
