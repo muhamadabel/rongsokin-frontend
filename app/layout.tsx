@@ -1,18 +1,20 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, DM_Sans, JetBrains_Mono } from "next/font/google";
+import { Manrope, Inter, JetBrains_Mono } from "next/font/google";
 import { Toaster } from "react-hot-toast";
 import "./globals.css";
 
 import QueryProvider from "@/components/providers/QueryProvider";
 
-const fontDisplay = Plus_Jakarta_Sans({
-  variable: "--font-plus-jakarta-sans",
+const fontDisplay = Manrope({
+  variable: "--font-manrope",
   subsets: ["latin"],
+  weight: ["500", "600", "700", "800"],
 });
 
-const fontBody = DM_Sans({
-  variable: "--font-dm-sans",
+const fontBody = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
 const fontMono = JetBrains_Mono({
@@ -39,7 +41,20 @@ export default function RootLayout({
         <QueryProvider>
           {children}
         </QueryProvider>
-        <Toaster position="top-center" />
+        <Toaster
+          position="top-center"
+          toastOptions={{
+            style: {
+              borderRadius: "16px",
+              background: "#0e0f0c",
+              color: "#ffffff",
+              fontSize: "13px",
+              fontWeight: 600,
+              padding: "12px 16px",
+            },
+            success: { iconTheme: { primary: "#9fe870", secondary: "#0e0f0c" } },
+          }}
+        />
       </body>
     </html>
   );

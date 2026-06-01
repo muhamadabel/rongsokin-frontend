@@ -1,36 +1,146 @@
 @import "tailwindcss";
 
 @theme {
-  --color-brand-50: #F0F9FF;
-  --color-brand-100: #E0F2FE;
-  --color-brand-200: #BAE6FD;
-  --color-brand-300: #7DD3FC;
-  --color-brand-400: #38BDF8;
-  --color-brand-500: #0EA5E9;
-  --color-brand-600: #0284C7;
-  --color-brand-700: #0369A1;
-  --color-brand-800: #075985;
-  --color-brand-900: #0C4A6E;
+  /* ── Brand / Lime ramp (Wise green #9fe870) ───────────────────────────── */
+  --color-brand-50: #f0fbe8;
+  --color-brand-100: #e2f6d5; /* primary-pale */
+  --color-brand-200: #c5edab; /* primary-neutral */
+  --color-brand-300: #b3e892;
+  --color-brand-400: #9fe870; /* primary */
+  --color-brand-500: #9fe870; /* primary — CTA */
+  --color-brand-600: #7ac74f; /* lime hover */
+  --color-brand-700: #2e7d32; /* forest mid accent */
+  --color-brand-800: #163300; /* ink-deep forest (text on lime) */
+  --color-brand-900: #0d2200;
 
-  --color-ink: #0C1A27;
-  --color-ink-muted: #64748B;
-  --color-ink-faint: #CBD5E1;
+  /* ── Ink / Text ───────────────────────────────────────────────────────── */
+  --color-ink: #0e0f0c;
+  --color-ink-strong: #000000;
+  --color-ink-muted: #454745; /* body */
+  --color-ink-faint: #c4c9bf; /* hairline border */
 
-  --color-surface: #FFFFFF;
-  --color-surface-raised: #F8FAFC;
-  --color-surface-sunken: #F0F9FF;
+  /* Wise-named aliases */
+  --color-canvas: #ffffff;
+  --color-canvas-soft: #e8ebe6;
+  --color-body: #454745;
+  --color-mute: #868685;
+  --color-on-primary: #163300;
 
-  --color-status-success: #22C55E;
-  --color-status-warning: #F59E0B;
-  --color-status-error: #EF4444;
-  --color-status-info: #0EA5E9;
+  /* ── Surface (sage canvas + white cards) ──────────────────────────────── */
+  --color-surface: #e8ebe6;
+  --color-surface-raised: #ffffff;
+  --color-surface-sunken: #dfe3dc;
 
-  --font-display: var(--font-plus-jakarta-sans);
-  --font-body: var(--font-dm-sans);
+  /* ── Dark polarity panels (promo / footer) ────────────────────────────── */
+  --color-forest: #0e0f0c;
+  --color-forest-2: #16180f;
+  --color-forest-3: #1d2015;
+  --color-forest-ink: #e8ebe6;
+  --color-forest-muted: #868685;
+
+  /* ── Status / Semantic ────────────────────────────────────────────────── */
+  --color-status-success: #2ead4b;
+  --color-status-warning: #ffd11a;
+  --color-status-error: #d03238;
+  --color-status-info: #38c8ff;
+
+  /* ── Accent (illustrative) ────────────────────────────────────────────── */
+  --color-accent-orange: #ffc091;
+  --color-accent-cyan: #38c8ff;
+
+  /* ── Radius (Wise: 24px canonical) ────────────────────────────────────── */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-3xl: 28px;
+
+  /* ── Fonts ────────────────────────────────────────────────────────────── */
+  --font-display: var(--font-manrope);
+  --font-body: var(--font-inter);
   --font-mono: var(--font-jetbrains-mono);
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 body {
   background-color: var(--color-surface);
   color: var(--color-ink);
+  font-feature-settings: "calt";
+}
+
+/* ── Scroll reveal ─────────────────────────────────────────────────────── */
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(22px);
+  transition: opacity 0.7s cubic-bezier(0.2, 0.7, 0.2, 1),
+    transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+[data-reveal].revealed {
+  opacity: 1;
+  transform: none;
+}
+
+/* ── Hide scrollbar utility ────────────────────────────────────────────── */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ── Radius range input (Wise lime thumb) ──────────────────────────────── */
+.range-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  outline: none;
+  cursor: pointer;
+}
+.range-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--color-brand-500);
+  border: 3px solid var(--color-ink);
+  box-shadow: 0 2px 8px rgba(14, 15, 12, 0.18);
+  cursor: grab;
+}
+.range-slider::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--color-brand-500);
+  border: 3px solid var(--color-ink);
+  cursor: grab;
+}
+
+/* ── Live dot pulse ────────────────────────────────────────────────────── */
+@keyframes dotPulse {
+  0% { box-shadow: 0 0 0 0 rgba(159, 232, 112, 0.6); }
+  70% { box-shadow: 0 0 0 7px rgba(159, 232, 112, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(159, 232, 112, 0); }
+}
+.dot-live {
+  animation: dotPulse 2s infinite;
+}
+
+/* ── Receipt wavy bottom edge (digital nota) ───────────────────────────── */
+.receipt-edge {
+  -webkit-mask-image: radial-gradient(circle at 10px -4px, transparent 10px, #000 11px);
+  mask-image: radial-gradient(circle at 10px -4px, transparent 10px, #000 11px);
+  -webkit-mask-size: 20px 20px;
+  mask-size: 20px 20px;
+  -webkit-mask-repeat: repeat-x;
+  mask-repeat: repeat-x;
+  mask-position: bottom;
+  -webkit-mask-position: bottom;
 }

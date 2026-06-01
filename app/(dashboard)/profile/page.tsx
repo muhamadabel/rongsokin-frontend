@@ -3,13 +3,23 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { User, Cog, MapPinAlt, CreditCard, QuestionCircle, FileLines, ArrowRightToBracket, ChevronRight, Refresh } from "flowbite-react-icons/outline";
+import {
+  User,
+  Settings,
+  MapPin,
+  CreditCard,
+  HelpCircle,
+  FileText,
+  LogOut,
+  ChevronRight,
+  RefreshCw,
+} from "lucide-react";
 import BottomNav from "@/components/ui/BottomNav";
 import DesktopNav from "@/components/ui/DesktopNav";
 import { useMe } from "@/hooks/useAuth";
 import { useOrdersList } from "@/hooks/useOrders";
 import { useAuthStore } from "@/store/authStore";
-import { formatRupiah } from "@/lib/utils";
+import { formatRupiah, getOrderTotalPrice } from "@/lib/utils";
 import toast from "react-hot-toast";
 
 export default function ProfilePage() {
@@ -29,11 +39,7 @@ export default function ProfilePage() {
 
   const completedOrders = orders?.filter((o) => o.status === "COMPLETED") || [];
   const totalTransactions = completedOrders.length;
-  
-  const totalCuan = completedOrders.reduce(
-    (sum, o) => sum + (o.totalPrice || o.agreedPrice || 0),
-    0
-  );
+  const totalCuan = completedOrders.reduce((sum, o) => sum + getOrderTotalPrice(o), 0);
 
   const handleLogout = () => {
     logout();
@@ -49,8 +55,8 @@ export default function ProfilePage() {
         <DesktopNav />
         <div className="flex-1 flex items-center justify-center">
           <div className="flex flex-col items-center gap-3">
-            <Refresh className="w-10 h-10 text-brand-500 animate-spin" />
-            <span className="text-sm font-bold text-ink-muted">Memuat profil...</span>
+            <RefreshCw className="w-10 h-10 text-brand-700 animate-spin" />
+            <span className="text-sm font-bold text-ink-muted">Memuat profil…</span>
           </div>
         </div>
         <BottomNav />
@@ -58,110 +64,129 @@ export default function ProfilePage() {
     );
   }
 
+  interface MenuItem {
+    icon: any;
+    label: string;
+    href?: string;
+    toast?: string;
+  }
+
+  const menuGroups: MenuItem[][] = [
+    [
+      { icon: User, label: "Edit Profil", href: "/profile/edit" },
+      { icon: MapPin, label: "Alamat & Lokasi", href: "/profile/edit" },
+      { icon: CreditCard, label: "Rekening & E-Wallet", toast: "Fitur Rekening segera hadir!" },
+    ],
+    [
+      { icon: HelpCircle, label: "Pusat Bantuan", toast: "Fitur Pusat Bantuan segera hadir!" },
+      { icon: FileText, label: "Syarat & Ketentuan", toast: "Syarat & Ketentuan Rongsok.in" },
+    ],
+  ];
+
   return (
     <div className="min-h-screen bg-surface pb-24 md:pb-8 flex flex-col">
       <DesktopNav />
-      <main className="flex-1 max-w-3xl w-full mx-auto px-4 md:px-0 md:py-8 md:space-y-6">
-        
-        {/* HEADER / PROFILE SUMMARY */}
-        <header className="bg-white md:rounded-2xl md:shadow-sm md:border border-b border-ink-faint p-6 flex flex-col items-center">
-          <div className="w-24 h-24 rounded-full border-4 border-brand-50 p-1 mb-4 relative">
-            <div className="w-full h-full bg-surface-raised rounded-full flex items-center justify-center text-ink-muted">
-              <User size={40} />
-            </div>
-            <button className="absolute bottom-0 right-0 bg-brand-500 text-white p-2 rounded-full border-2 border-white shadow-md hover:bg-brand-600 transition-colors">
-              <Cog size={14} />
-            </button>
+      <main className="flex-1 max-w-2xl w-full mx-auto px-4 md:px-0 py-5 md:py-8 space-y-5">
+        {/* PROFILE SUMMARY */}
+        <header className="bg-surface-raised rounded-2xl p-6 flex flex-col items-center">
+          <div className="w-24 h-24 rounded-full bg-brand-100 mb-4 relative overflow-hidden">
+            {me?.avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={me.avatarUrl}
+                alt={me.name || "Avatar"}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-ink">
+                <User size={40} />
+              </div>
+            )}
+            <Link
+              href="/profile/edit"
+              className="absolute bottom-0 right-0 bg-brand-500 text-ink p-2 rounded-full border-2 border-surface-raised hover:bg-brand-600 transition-colors"
+              aria-label="Edit profil"
+            >
+              <Settings size={14} />
+            </Link>
           </div>
-          <h2 className="font-display font-extrabold text-lg text-ink">{me?.name || "User Rongsok.in"}</h2>
-          <p className="text-xs font-bold text-ink-muted uppercase tracking-widest mt-1">
-            {me?.phone || me?.email || "Tidak ada nomor WA"}
+          <h2 className="font-display font-extrabold text-lg text-ink">
+            {me?.name || "User Rongsok.in"}
+          </h2>
+          <p className="text-xs font-semibold text-mute uppercase tracking-widest mt-1">
+            {me?.phone || me?.email || "Tidak ada kontak"}
           </p>
-          
-          <div className="mt-6 w-full max-w-sm grid grid-cols-2 gap-4">
-            <div className="bg-surface-raised p-4 rounded-xl border border-ink-faint text-center shadow-sm">
-              <span className="block text-[10px] font-bold text-ink-muted uppercase tracking-widest mb-1">
+
+          <div className="mt-6 w-full max-w-sm grid grid-cols-2 gap-3">
+            <div className="bg-surface p-4 rounded-2xl text-center">
+              <span className="block text-[10px] font-bold text-mute uppercase tracking-widest mb-1">
                 {me?.role === "COLLECTOR" ? "Total Keluar" : "Total Cuan"}
               </span>
-              <span className="font-black text-brand-600 font-mono text-base">
+              <span className="font-extrabold text-ink font-mono text-base">
                 {formatRupiah(totalCuan)}
               </span>
             </div>
-            <div className="bg-surface-raised p-4 rounded-xl border border-ink-faint text-center shadow-sm">
-              <span className="block text-[10px] font-bold text-ink-muted uppercase tracking-widest mb-1">Transaksi</span>
-              <span className="font-black text-ink font-mono text-base">{totalTransactions} Kali</span>
+            <div className="bg-surface p-4 rounded-2xl text-center">
+              <span className="block text-[10px] font-bold text-mute uppercase tracking-widest mb-1">
+                Transaksi
+              </span>
+              <span className="font-extrabold text-ink font-mono text-base">
+                {totalTransactions} Kali
+              </span>
             </div>
           </div>
         </header>
 
         {/* MENU GROUPS */}
-        <section className="mt-6 space-y-4">
-          <div className="bg-white border border-ink-faint rounded-2xl overflow-hidden shadow-sm">
-            <div 
-              onClick={() => toast.success("Fitur Edit Profil segera hadir!")}
-              className="bg-white border-b border-ink-faint p-4 flex items-center justify-between cursor-pointer hover:bg-brand-50 group transition-colors"
-            >
-              <div className="flex items-center gap-4">
-                <User size={20} className="text-ink-muted group-hover:text-brand-500 transition-colors" />
-                <span className="text-sm font-bold text-ink group-hover:text-brand-600 transition-colors">Edit Profil</span>
-              </div>
-              <ChevronRight size={18} className="text-ink-faint group-hover:text-brand-500 transition-colors" />
+        <section className="space-y-4">
+          {menuGroups.map((group, gi) => (
+            <div key={gi} className="bg-surface-raised rounded-2xl overflow-hidden">
+              {group.map((item, ii) => {
+                const baseCls = `w-full p-4 flex items-center justify-between cursor-pointer hover:bg-brand-100 group transition-colors text-left ${
+                  ii < group.length - 1 ? "border-b border-ink-faint" : ""
+                }`;
+                const inner = (
+                  <>
+                    <div className="flex items-center gap-4">
+                      <item.icon
+                        size={20}
+                        className="text-ink-muted group-hover:text-ink transition-colors"
+                      />
+                      <span className="text-sm font-bold text-ink">{item.label}</span>
+                    </div>
+                    <ChevronRight
+                      size={18}
+                      className="text-ink-faint group-hover:text-ink transition-colors"
+                    />
+                  </>
+                );
+                if (item.href) {
+                  return (
+                    <Link key={item.label} href={item.href} className={baseCls}>
+                      {inner}
+                    </Link>
+                  );
+                }
+                return (
+                  <button
+                    key={item.label}
+                    onClick={() => item.toast && toast.success(item.toast)}
+                    className={baseCls}
+                  >
+                    {inner}
+                  </button>
+                );
+              })}
             </div>
-            <div 
-              onClick={() => toast.success("Fitur Daftar Alamat segera hadir!")}
-              className="bg-white border-b border-ink-faint p-4 flex items-center justify-between cursor-pointer hover:bg-brand-50 group transition-colors"
-            >
-              <div className="flex items-center gap-4">
-                <MapPinAlt size={20} className="text-ink-muted group-hover:text-brand-500 transition-colors" />
-                <span className="text-sm font-bold text-ink group-hover:text-brand-600 transition-colors">Daftar Alamat</span>
-              </div>
-              <ChevronRight size={18} className="text-ink-faint group-hover:text-brand-500 transition-colors" />
-            </div>
-            <div 
-              onClick={() => toast.success("Fitur Rekening & E-Wallet segera hadir!")}
-              className="bg-white p-4 flex items-center justify-between cursor-pointer hover:bg-brand-50 group transition-colors"
-            >
-              <div className="flex items-center gap-4">
-                <CreditCard size={20} className="text-ink-muted group-hover:text-brand-500 transition-colors" />
-                <span className="text-sm font-bold text-ink group-hover:text-brand-600 transition-colors">Rekening & E-Wallet</span>
-              </div>
-              <ChevronRight size={18} className="text-ink-faint group-hover:text-brand-500 transition-colors" />
-            </div>
-          </div>
+          ))}
 
-          <div className="bg-white border border-ink-faint rounded-2xl overflow-hidden shadow-sm">
-            <div 
-              onClick={() => toast.success("Fitur Pusat Bantuan segera hadir!")}
-              className="bg-white border-b border-ink-faint p-4 flex items-center justify-between cursor-pointer hover:bg-brand-50 group transition-colors"
-            >
-              <div className="flex items-center gap-4">
-                <QuestionCircle size={20} className="text-ink-muted group-hover:text-brand-500 transition-colors" />
-                <span className="text-sm font-bold text-ink group-hover:text-brand-600 transition-colors">Pusat Bantuan</span>
-              </div>
-              <ChevronRight size={18} className="text-ink-faint group-hover:text-brand-500 transition-colors" />
-            </div>
-            <div 
-              onClick={() => toast.success("Syarat & Ketentuan Rongsok.in")}
-              className="bg-white p-4 flex items-center justify-between cursor-pointer hover:bg-brand-50 group transition-colors"
-            >
-              <div className="flex items-center gap-4">
-                <FileLines size={20} className="text-ink-muted group-hover:text-brand-500 transition-colors" />
-                <span className="text-sm font-bold text-ink group-hover:text-brand-600 transition-colors">Syarat & Ketentuan</span>
-              </div>
-              <ChevronRight size={18} className="text-ink-faint group-hover:text-brand-500 transition-colors" />
-            </div>
-          </div>
-
-          <div className="pt-4">
-            <button 
-              onClick={handleLogout} 
-              className="w-full py-4 text-sm font-black text-status-error bg-white border border-status-error/20 rounded-xl shadow-sm hover:bg-red-50 flex items-center justify-center gap-2 transition-colors cursor-pointer animate-pulse-subtle"
-            >
-              <ArrowRightToBracket size={18} /> Keluar Akun
-            </button>
-          </div>
+          <button
+            onClick={handleLogout}
+            className="w-full py-4 text-sm font-bold text-status-error bg-surface-raised rounded-2xl hover:bg-status-error/5 flex items-center justify-center gap-2 transition-colors cursor-pointer"
+          >
+            <LogOut size={18} /> Keluar Akun
+          </button>
         </section>
-        
       </main>
       <BottomNav />
     </div>

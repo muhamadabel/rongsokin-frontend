@@ -15,9 +15,13 @@ export interface User {
   name: string;
   email: string;
   phone?: string;
+  avatarUrl?: string;
   role: UserRole;
   avgRating: number;
   createdAt: string;
+  /** Lokasi tersimpan: lat & lng dari PostGIS Point. Diharapkan BE return ini di /auth/me. */
+  lat?: number;
+  lng?: number;
   collectorProfile?: CollectorProfile;
 }
 
@@ -50,23 +54,41 @@ export interface CollectorCatalog {
   category?: WasteCategory;
 }
 
+export interface OrderItem {
+  id: string;
+  orderId: string;
+  categoryId: string;
+  estimatedWeight: number;
+  actualWeight?: number;
+  agreedPrice?: number;
+  subtotal?: number;
+  category?: WasteCategory;
+}
+
 export interface Order {
   id: string;
   customerId: string;
   collectorId?: string;
-  categoryId: string;
   method: OrderMethod;
   photoUrl?: string;
-  estimatedWeight: number;
-  actualWeight?: number;
-  agreedPrice?: number;
+  transactionProofUrl?: string;
   totalPrice?: number;
   status: OrderStatus;
   createdAt: string;
   updatedAt: string;
+
+  /** Multi-category items (new schema) */
+  items?: OrderItem[];
+
+  /** Legacy single-category fields — present sampai BE migrate ke OrderItem */
+  categoryId?: string;
+  category?: WasteCategory;
+  estimatedWeight?: number;
+  actualWeight?: number;
+  agreedPrice?: number;
+
   customer?: User;
   collector?: User;
-  category?: WasteCategory;
   receipt?: Receipt;
 }
 
@@ -103,4 +125,29 @@ export interface Receipt {
 export interface PaginatedResponse<T> {
   data: T[];
   status: string;
+}
+
+// ── Admin ───────────────────────────────────────────────────────────────
+export interface AdminWeeklyPoint {
+  day: string;       // 'Senin', 'Selasa', ...
+  date: string;      // ISO date
+  weight: number;    // kg (sum actualWeight COMPLETED)
+  amount: number;    // Rp  (sum totalPrice COMPLETED)
+  count: number;     // jumlah order
+}
+
+export interface AdminStats {
+  totalWeightKg: number;
+  totalPayout: number;
+  activeOrders: number;
+  totalCustomers: number;
+  totalCollectors: number;
+  weeklyTransactions: AdminWeeklyPoint[];
+}
+
+export interface AdminOrdersResponse {
+  data: Order[];
+  total: number;
+  page: number;
+  limit: number;
 }

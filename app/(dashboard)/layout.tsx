@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
-import { Refresh } from "flowbite-react-icons/outline";
+import { RefreshCw } from "lucide-react";
 
 export default function DashboardLayout({
   children,
@@ -56,7 +56,7 @@ export default function DashboardLayout({
     return (
       <div className="min-h-screen bg-surface flex flex-col items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <Refresh className="w-10 h-10 text-brand-500 animate-spin" />
+          <RefreshCw className="w-10 h-10 text-brand-700 animate-spin" />
           <span className="text-sm font-bold text-ink-muted">Memverifikasi sesi Anda...</span>
         </div>
       </div>

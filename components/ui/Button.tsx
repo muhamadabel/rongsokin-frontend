@@ -7,26 +7,28 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className = '', variant = 'primary', ...props }, ref) => {
     let variantStyles = '';
-    
+
     switch (variant) {
       case 'primary':
-        variantStyles = 'bg-brand-500 hover:bg-brand-600 text-white border border-transparent';
+        // Wise signature: ink-on-lime pill
+        variantStyles = 'bg-brand-500 hover:bg-brand-600 text-ink border border-transparent';
         break;
       case 'outline':
-        variantStyles = 'border border-brand-500 text-brand-700 hover:bg-brand-50 bg-transparent';
+        // White tertiary with 1px ink hairline
+        variantStyles = 'bg-surface-raised text-ink border border-ink hover:bg-surface-sunken';
         break;
       case 'ghost':
-        variantStyles = 'text-brand-600 hover:bg-brand-50 border border-transparent bg-transparent';
+        variantStyles = 'text-ink hover:bg-surface-sunken border border-transparent bg-transparent';
         break;
       case 'danger':
-        variantStyles = 'bg-status-error hover:bg-red-600 text-white border border-transparent';
+        variantStyles = 'bg-status-error hover:brightness-95 text-white border border-transparent';
         break;
     }
 
     return (
       <button
         ref={ref}
-        className={`rounded-md px-4 py-2.5 text-sm font-medium font-body transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2 ${variantStyles} ${className}`}
+        className={`rounded-2xl px-6 py-3 text-sm font-semibold font-body transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2 ${variantStyles} ${className}`}
         {...props}
       />
     )
