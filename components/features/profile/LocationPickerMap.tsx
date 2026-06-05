@@ -42,7 +42,7 @@ function CenterReporter({ onChange }: { onChange: (ll: LatLng) => void }) {
 export default function LocationPickerMap({ value, onChange, height = 300 }: Props) {
   return (
     <div
-      className="relative rounded-2xl overflow-hidden border border-ink-faint"
+      className="relative isolate rounded-2xl overflow-hidden border border-ink-faint"
       style={{ height }}
     >
       <MapContainer
