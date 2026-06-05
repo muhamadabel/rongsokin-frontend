@@ -12,10 +12,10 @@ import {
   FileText,
   LogOut,
   ChevronRight,
-  RefreshCw,
 } from "lucide-react";
 import BottomNav from "@/components/ui/BottomNav";
 import DesktopNav from "@/components/ui/DesktopNav";
+import { ProfileSkeleton } from "@/components/ui/Skeleton";
 import { useMe } from "@/hooks/useAuth";
 import { useOrdersList } from "@/hooks/useOrders";
 import { useAuthStore } from "@/store/authStore";
@@ -50,18 +50,7 @@ export default function ProfilePage() {
   const isPageLoading = isMeLoading || isOrdersLoading;
 
   if (isPageLoading) {
-    return (
-      <div className="min-h-screen bg-surface flex flex-col justify-between pb-24 md:pb-0">
-        <DesktopNav />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="flex flex-col items-center gap-3">
-            <RefreshCw className="w-10 h-10 text-brand-700 animate-spin" />
-            <span className="text-sm font-bold text-ink-muted">Memuat profil…</span>
-          </div>
-        </div>
-        <BottomNav />
-      </div>
-    );
+    return <ProfileSkeleton />;
   }
 
   interface MenuItem {

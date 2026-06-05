@@ -31,6 +31,7 @@ const categoryIcons: Record<string, React.ComponentType<{ size?: number; classNa
 };
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { OrderDetailSkeleton } from "@/components/ui/Skeleton";
 import { useAuthStore } from "@/store/authStore";
 import { useOrderDetails, useUpdateOrderStatus } from "@/hooks/useOrders";
 import { getSocket } from "@/lib/socket";
@@ -102,15 +103,7 @@ export default function OrderTrackingPage() {
   }, [order?.status, ratingSubmitted]);
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-surface flex flex-col justify-between pb-20 md:pb-0">
-        <DesktopNav />
-        <div className="flex-1 flex items-center justify-center">
-          <RefreshCw className="w-10 h-10 text-brand-700 animate-spin" />
-        </div>
-        <BottomNav />
-      </div>
-    );
+    return <OrderDetailSkeleton />;
   }
 
   if (!order) {

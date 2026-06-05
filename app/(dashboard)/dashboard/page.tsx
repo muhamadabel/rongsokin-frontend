@@ -19,6 +19,7 @@ import { useSocket } from "@/hooks/useSocket";
 import DesktopNav from "@/components/ui/DesktopNav";
 import BottomNav from "@/components/ui/BottomNav";
 import { Button } from "@/components/ui/Button";
+import { DashboardSkeleton } from "@/components/ui/Skeleton";
 import {
   Archive,
   RefreshCw,
@@ -127,18 +128,7 @@ export default function CustomerDashboard() {
   const firstName = me?.name?.split(" ")[0] || "Kamu";
 
   if (isMeLoading || isOrdersLoading) {
-    return (
-      <div className="min-h-screen bg-surface flex flex-col justify-between pb-20 md:pb-0">
-        <DesktopNav />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="flex flex-col items-center gap-3">
-            <RefreshCw className="w-10 h-10 text-brand-700 animate-spin" />
-            <span className="text-sm font-bold text-ink-muted">Memuat dashboardmu…</span>
-          </div>
-        </div>
-        <BottomNav />
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   return (
