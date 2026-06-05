@@ -48,19 +48,32 @@ export default function LocationPicker({
       return;
     }
     setIsLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        onChange({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        setIsLocating(false);
-        if (!silent) toast.success("Lokasi GPS terkunci.");
-      },
-      () => {
-        setIsLocating(false);
-        // Saat auto (silent): jangan ganggu user kalau izin ditolak — biarkan default
-        if (!silent) toast.error("Gagal akses GPS. Cek izin lokasi browser.");
-      },
-      { timeout: 10000, enableHighAccuracy: true }
-    );
+
+    const onSuccess = (pos: GeolocationPosition) => {
+      onChange({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      setIsLocating(false);
+      if (!silent) toast.success("Lokasi terkunci.");
+    };
+
+    const onFail = (err: GeolocationPositionError) => {
+      setIsLocating(false);
+      if (silent) return; // auto-locate: jangan ganggu
+      let msg = "Gagal mendeteksi lokasi. Coba lagi.";
+      if (err.code === 1) msg = "Izin lokasi ditolak. Aktifkan di Safari/pengaturan sistem.";
+      else if (err.code === 2)
+        msg = "Lokasi tidak tersedia. Pastikan Location Services aktif (Pengaturan › Privasi).";
+      else if (err.code === 3) msg = "Deteksi lokasi timeout. Coba lagi atau geser titik manual.";
+      toast.error(msg);
+    };
+
+    // Tahap 1: akurasi tinggi (GPS). Kalau gagal/timeout → tahap 2: cepat (wifi/seluler).
+    navigator.geolocation.getCurrentPosition(onSuccess, () => {
+      navigator.geolocation.getCurrentPosition(onSuccess, onFail, {
+        enableHighAccuracy: false,
+        timeout: 15000,
+        maximumAge: 120000,
+      });
+    }, { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 });
   };
 
   // Auto minta GPS sekali saat muncul (kalau diminta)
