@@ -409,7 +409,7 @@ export default function EditProfilePage() {
           </section>
 
           {/* ACTIONS */}
-          <div className="flex gap-3 sticky bottom-20 md:static z-30">
+          <div className="flex gap-3 sticky bottom-20 md:static z-40">
             <Link href="/profile" className="flex-1">
               <Button variant="outline" className="w-full" type="button">
                 Batal
