@@ -53,9 +53,9 @@ export default function LocationPickerMap({ value, onChange, height = 300 }: Pro
         zoomControl={false}
         attributionControl={false}
       >
-        {/* Tile gelap minimalis — jalan saja, tanpa satelit/rumah (CARTO Dark Matter) */}
+        {/* Tile terang minimalis — jalan saja, tanpa satelit/rumah (CARTO Positron) */}
         <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
           subdomains={["a", "b", "c", "d"]}
         />
         <RecenterOnValue value={value} />

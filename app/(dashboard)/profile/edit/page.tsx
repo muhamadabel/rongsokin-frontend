@@ -399,6 +399,7 @@ export default function EditProfilePage() {
               value={coords}
               onChange={setCoords}
               label="Pilih Titik Lokasi"
+              autoLocate={me?.lat == null || me?.lng == null}
               helperText={
                 isCollector
                   ? "Customer akan melihat lokasi ini saat mencari pengepul terdekat."
