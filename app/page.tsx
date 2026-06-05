@@ -7,8 +7,10 @@ import {
   Archive,
   RefreshCw,
   Wrench,
-  FileText,
-  Monitor,
+  Box,
+  Wine,
+  Tv,
+  Droplets,
   Star,
   CheckCircle2,
   Truck,
@@ -30,12 +32,14 @@ import { DEFAULT_COORDS, formatDistance } from "@/lib/utils";
 import { useAuthStore } from "@/store/authStore";
 import { useRouter } from "next/navigation";
 
+// Statik — 6 kategori utama (showcase landing, tidak fetch BE)
 const CATEGORIES = [
-  { name: "Kardus", icon: Archive },
   { name: "Plastik", icon: RefreshCw },
-  { name: "Logam", icon: Wrench },
-  { name: "Kertas", icon: FileText },
-  { name: "Elektronik", icon: Monitor },
+  { name: "Kertas & Kardus", icon: Box },
+  { name: "Logam & Besi", icon: Wrench },
+  { name: "Kaca & Botol", icon: Wine },
+  { name: "Elektronik", icon: Tv },
+  { name: "Lain-lain", icon: Droplets },
 ];
 
 const HOW_IT_WORKS = [
@@ -272,21 +276,19 @@ export default function LandingPage() {
             Jual Sekarang <ArrowRight size={14} />
           </Link>
         </div>
-        <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
           {CATEGORIES.map((cat) => (
             <Link
-              href={
-                token
-                  ? `/orders/new?category=${cat.name.toLowerCase()}`
-                  : `/search?category=${cat.name.toLowerCase()}`
-              }
+              href={`/search?category=${encodeURIComponent(cat.name)}`}
               key={cat.name}
               className="flex flex-col items-center gap-3 bg-surface-raised rounded-2xl p-5 hover:bg-brand-100 transition-colors group"
             >
               <div className="w-12 h-12 rounded-full bg-surface flex items-center justify-center text-ink group-hover:bg-brand-500 transition-colors">
                 <cat.icon size={22} />
               </div>
-              <span className="text-xs font-bold text-ink text-center">{cat.name}</span>
+              <span className="text-[11px] font-bold text-ink text-center leading-tight">
+                {cat.name}
+              </span>
             </Link>
           ))}
         </div>

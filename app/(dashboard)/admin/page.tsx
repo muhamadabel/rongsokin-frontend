@@ -27,7 +27,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useAuthStore } from "@/store/authStore";
-import { useWasteCategories } from "@/hooks/useDiscovery";
+import { useCategoryTree } from "@/hooks/useDiscovery";
 import {
   useAdminStats,
   useAdminOrders,
@@ -250,39 +250,61 @@ function WeeklyBarChart({
   );
 }
 
-// ── CATEGORY MANAGER ─────────────────────────────────────────────────────
+// ── CATEGORY MANAGER (hierarkis: induk → item) ───────────────────────────
 function CategoryManager() {
-  const { data: categories, isLoading } = useWasteCategories();
+  const { mains, childrenOf, isLoading } = useCategoryTree();
   const createCat = useCreateCategory();
   const updateCat = useUpdateCategory();
   const deleteCat = useDeleteCategory();
 
-  const [newName, setNewName] = useState("");
+  const [newMainName, setNewMainName] = useState("");
+  const [addingToMain, setAddingToMain] = useState<string | null>(null);
+  const [subName, setSubName] = useState("");
+  const [subUnit, setSubUnit] = useState<"kg" | "liter" | "pcs">("kg");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<WasteCategory | null>(null);
 
-  const handleAdd = (e: React.FormEvent) => {
+  const handleAddMain = (e: React.FormEvent) => {
     e.preventDefault();
-    const name = newName.trim();
+    const name = newMainName.trim();
     if (name.length < 2) {
       toast.error("Nama kategori minimal 2 karakter.");
       return;
     }
-    if (categories?.some((c) => c.name.toLowerCase() === name.toLowerCase())) {
-      toast.error("Kategori sudah ada.");
-      return;
-    }
     createCat.mutate(
-      { name },
+      { name, parentId: null, sortOrder: mains.length },
       {
         onSuccess: () => {
-          toast.success(`Kategori "${name}" ditambahkan.`);
-          setNewName("");
+          toast.success(`Kategori utama "${name}" ditambahkan.`);
+          setNewMainName("");
         },
         onError: (err: unknown) => {
           const e = err as { response?: { data?: { message?: string } } };
           toast.error(e?.response?.data?.message || "Gagal menambah kategori.");
+        },
+      }
+    );
+  };
+
+  const handleAddSub = (mainId: string) => {
+    const name = subName.trim();
+    if (name.length < 2) {
+      toast.error("Nama item minimal 2 karakter.");
+      return;
+    }
+    createCat.mutate(
+      { name, parentId: mainId, unit: subUnit, sortOrder: (childrenOf[mainId]?.length ?? 0) },
+      {
+        onSuccess: () => {
+          toast.success(`Item "${name}" ditambahkan.`);
+          setSubName("");
+          setSubUnit("kg");
+          setAddingToMain(null);
+        },
+        onError: (err: unknown) => {
+          const e = err as { response?: { data?: { message?: string } } };
+          toast.error(e?.response?.data?.message || "Gagal menambah item.");
         },
       }
     );
@@ -327,96 +349,173 @@ function CategoryManager() {
     });
   };
 
+  const editRow = (cat: WasteCategory) =>
+    editingId === cat.id ? (
+      <div className="flex gap-1.5 items-center">
+        <Input
+          type="text"
+          value={editName}
+          onChange={(e) => setEditName(e.target.value)}
+          autoFocus
+          className="text-xs h-8 py-1 flex-1"
+        />
+        <button
+          onClick={() => saveEdit(cat.id)}
+          disabled={updateCat.isPending}
+          className="h-8 px-2.5 bg-brand-500 hover:bg-brand-600 disabled:opacity-50 rounded-2xl text-ink text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
+        >
+          <Check size={12} />
+        </button>
+        <button
+          onClick={() => setEditingId(null)}
+          className="h-8 px-2 border border-ink-faint hover:bg-surface rounded-2xl text-ink-muted shrink-0"
+        >
+          <X size={12} />
+        </button>
+      </div>
+    ) : null;
+
   return (
-    <section className="bg-surface-raised p-6 rounded-2xl space-y-6">
+    <section className="bg-surface-raised p-6 rounded-2xl space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h3 className="font-display font-extrabold text-base text-ink tracking-tight flex items-center gap-2">
           <Archive className="text-brand-700" size={18} />
           Kategori Sampah
         </h3>
 
-        <form onSubmit={handleAdd} className="flex gap-2 shrink-0">
+        <form onSubmit={handleAddMain} className="flex gap-2 shrink-0">
           <Input
             type="text"
-            placeholder="Kategori baru…"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            className="h-11 w-44 py-2"
+            placeholder="Kategori utama baru…"
+            value={newMainName}
+            onChange={(e) => setNewMainName(e.target.value)}
+            className="h-11 w-48 py-2"
           />
           <Button type="submit" disabled={createCat.isPending} className="px-4 py-2 flex items-center gap-1">
-            <Plus size={16} /> {createCat.isPending ? "…" : "Tambah"}
+            <Plus size={16} /> {createCat.isPending ? "…" : "Induk"}
           </Button>
         </form>
       </div>
 
       {isLoading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="bg-surface rounded-2xl h-28 animate-pulse" />
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-surface rounded-2xl h-20 animate-pulse" />
           ))}
         </div>
-      ) : categories && categories.length > 0 ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-          {categories.map((cat) => {
-            const isEditing = editingId === cat.id;
+      ) : mains.length > 0 ? (
+        <div className="space-y-3">
+          {mains.map((main) => {
+            const subs = childrenOf[main.id] || [];
             return (
-              <div key={cat.id} className="bg-surface rounded-2xl p-4 flex flex-col justify-between gap-3">
-                <div className="flex items-start justify-between gap-2">
-                  {isEditing ? (
-                    <Input
-                      type="text"
-                      value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
-                      autoFocus
-                      className="text-xs h-9 py-1.5"
-                    />
+              <div key={main.id} className="bg-surface rounded-2xl p-4 space-y-3">
+                {/* Header induk */}
+                <div className="flex items-center justify-between gap-2">
+                  {editingId === main.id ? (
+                    <div className="flex-1">{editRow(main)}</div>
                   ) : (
-                    <div className="min-w-0">
-                      <h4 className="font-bold text-sm text-ink leading-tight truncate">{cat.name}</h4>
-                      <span className="text-[10px] text-mute mt-0.5 block font-mono truncate">
-                        ID {cat.id.slice(0, 8)}
-                      </span>
-                    </div>
-                  )}
-                  {!isEditing && (
-                    <div className="w-8 h-8 bg-surface-raised rounded-2xl flex items-center justify-center text-brand-800 shrink-0">
-                      <Archive size={14} />
-                    </div>
+                    <>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <h4 className="font-display font-extrabold text-sm text-ink truncate">
+                          {main.name}
+                        </h4>
+                        <span className="text-[10px] text-mute font-mono shrink-0">
+                          {subs.length} item
+                        </span>
+                      </div>
+                      <div className="flex gap-1.5 shrink-0">
+                        <button
+                          onClick={() => startEdit(main)}
+                          className="h-7 px-2 border border-ink-faint hover:border-ink rounded-2xl text-ink-muted hover:text-ink text-[10px] font-bold flex items-center gap-1 cursor-pointer"
+                        >
+                          <Pencil size={11} />
+                        </button>
+                        <button
+                          onClick={() => setConfirmDelete(main)}
+                          className="h-7 px-2 border border-ink-faint hover:border-status-error rounded-2xl text-ink-muted hover:text-status-error cursor-pointer"
+                        >
+                          <Trash2 size={11} />
+                        </button>
+                      </div>
+                    </>
                   )}
                 </div>
 
-                {isEditing ? (
-                  <div className="flex gap-1.5">
+                {/* Sub-item chips */}
+                <div className="flex flex-wrap gap-2">
+                  {subs.map((sub) =>
+                    editingId === sub.id ? (
+                      <div key={sub.id} className="w-full">{editRow(sub)}</div>
+                    ) : (
+                      <span
+                        key={sub.id}
+                        className="bg-surface-raised rounded-2xl pl-3 pr-1.5 py-1.5 flex items-center gap-1.5 text-xs"
+                      >
+                        <span className="font-bold text-ink">{sub.name}</span>
+                        <span className="text-[9px] text-mute font-mono uppercase">{sub.unit || "kg"}</span>
+                        <button
+                          onClick={() => startEdit(sub)}
+                          className="text-ink-faint hover:text-ink ml-1"
+                        >
+                          <Pencil size={11} />
+                        </button>
+                        <button
+                          onClick={() => setConfirmDelete(sub)}
+                          className="text-ink-faint hover:text-status-error"
+                        >
+                          <Trash2 size={11} />
+                        </button>
+                      </span>
+                    )
+                  )}
+
+                  {/* Tambah item */}
+                  {addingToMain === main.id ? (
+                    <div className="w-full flex gap-1.5 items-center mt-1">
+                      <Input
+                        type="text"
+                        placeholder="Nama item…"
+                        value={subName}
+                        onChange={(e) => setSubName(e.target.value)}
+                        autoFocus
+                        className="text-xs h-8 py-1 flex-1"
+                      />
+                      <select
+                        value={subUnit}
+                        onChange={(e) => setSubUnit(e.target.value as "kg" | "liter" | "pcs")}
+                        className="h-8 rounded-md border border-ink bg-surface-raised text-xs font-bold px-2"
+                      >
+                        <option value="kg">kg</option>
+                        <option value="liter">liter</option>
+                        <option value="pcs">pcs</option>
+                      </select>
+                      <button
+                        onClick={() => handleAddSub(main.id)}
+                        disabled={createCat.isPending}
+                        className="h-8 px-2.5 bg-brand-500 hover:bg-brand-600 disabled:opacity-50 rounded-2xl text-ink text-[11px] font-bold cursor-pointer shrink-0"
+                      >
+                        <Check size={12} />
+                      </button>
+                      <button
+                        onClick={() => setAddingToMain(null)}
+                        className="h-8 px-2 border border-ink-faint hover:bg-surface rounded-2xl text-ink-muted shrink-0"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ) : (
                     <button
-                      onClick={() => saveEdit(cat.id)}
-                      disabled={updateCat.isPending}
-                      className="flex-1 h-8 bg-brand-500 hover:bg-brand-600 disabled:opacity-50 rounded-2xl text-ink text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer"
+                      onClick={() => {
+                        setAddingToMain(main.id);
+                        setSubName("");
+                        setSubUnit("kg");
+                      }}
+                      className="rounded-2xl border border-dashed border-ink-faint hover:border-ink px-3 py-1.5 text-xs font-bold text-ink-muted hover:text-ink flex items-center gap-1 transition-colors cursor-pointer"
                     >
-                      <Check size={12} /> Simpan
+                      <Plus size={12} /> Item
                     </button>
-                    <button
-                      onClick={() => setEditingId(null)}
-                      className="h-8 px-2 border border-ink-faint hover:bg-surface-raised rounded-2xl text-ink-muted text-[11px] font-bold flex items-center cursor-pointer"
-                    >
-                      <X size={12} />
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex gap-1.5">
-                    <button
-                      onClick={() => startEdit(cat)}
-                      className="flex-1 h-8 border border-ink-faint hover:border-ink rounded-2xl text-ink-muted hover:text-ink text-[11px] font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
-                    >
-                      <Pencil size={11} /> Ubah
-                    </button>
-                    <button
-                      onClick={() => setConfirmDelete(cat)}
-                      className="h-8 px-2 border border-ink-faint hover:border-status-error rounded-2xl text-ink-muted hover:text-status-error transition-colors cursor-pointer"
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             );
           })}
@@ -426,8 +525,7 @@ function CategoryManager() {
           <Archive size={28} className="text-ink-faint mb-2" />
           <p className="text-xs font-bold text-ink">Belum ada kategori</p>
           <p className="text-[11px] text-mute mt-1 max-w-xs">
-            Tambahkan kategori pertama di form atas — pengepul butuh data master ini sebelum bisa
-            membuat katalog harga.
+            Tambahkan kategori utama dulu, lalu isi item di dalamnya.
           </p>
         </div>
       )}

@@ -41,11 +41,19 @@ export interface CollectorProfile {
   user?: User;
 }
 
+export type CategoryUnit = 'kg' | 'liter' | 'pcs';
+
 export interface WasteCategory {
   id: string;
   name: string;
   description?: string;
   iconUrl?: string;
+  /** null/undefined = kategori utama (induk); terisi = sub-item (anak) */
+  parentId?: string | null;
+  unit?: CategoryUnit;
+  sortOrder?: number;
+  /** Diisi FE saat membangun tree dari list flat */
+  children?: WasteCategory[];
 }
 
 export interface CollectorCatalog {

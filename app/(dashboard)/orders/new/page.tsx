@@ -4,11 +4,12 @@ import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
-  Archive,
   RefreshCw,
   Wrench,
-  FileText,
-  Monitor,
+  Box,
+  Wine,
+  Tv,
+  Droplets,
   ArrowLeft,
   Camera,
   MapPin,
@@ -17,6 +18,7 @@ import {
   Sparkles,
   X,
   ChevronRight,
+  ChevronDown,
   Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -24,18 +26,21 @@ import { Input } from "@/components/ui/Input";
 import DesktopNav from "@/components/ui/DesktopNav";
 import BottomNav from "@/components/ui/BottomNav";
 import { PageSkeleton } from "@/components/ui/Skeleton";
-import { DEFAULT_COORDS } from "@/lib/utils";
-import { useWasteCategories } from "@/hooks/useDiscovery";
+import { DEFAULT_COORDS, unitLabel } from "@/lib/utils";
+import { useCategoryTree } from "@/hooks/useDiscovery";
 import { useCreateOrder } from "@/hooks/useOrders";
 import { useAuthStore } from "@/store/authStore";
+import { WasteCategory } from "@/types";
 import toast from "react-hot-toast";
 
-const categoryIcons: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
-  Kardus: Archive,
-  Plastik: RefreshCw,
-  Logam: Wrench,
-  Kertas: FileText,
-  Elektronik: Monitor,
+// Ikon per kategori UTAMA (by name)
+const mainIcon = (name: string): React.ComponentType<{ size?: number; className?: string }> => {
+  if (name.includes("Plastik")) return RefreshCw;
+  if (name.includes("Kertas") || name.includes("Kardus")) return Box;
+  if (name.includes("Logam") || name.includes("Besi")) return Wrench;
+  if (name.includes("Kaca") || name.includes("Botol")) return Wine;
+  if (name.includes("Elektronik")) return Tv;
+  return Droplets;
 };
 
 const STEPS = [
@@ -72,13 +77,15 @@ function OrderForm() {
     }
   }, [token, user, router]);
 
-  const { data: dbCategories, isLoading: isCategoriesLoading } = useWasteCategories();
+  const { mains, byId, childrenOf, isLoading: isCategoriesLoading } = useCategoryTree();
   const createOrder = useCreateOrder();
 
   const [step, setStep] = useState(1);
 
-  /** Items yang dipilih customer (1..N kategori) */
+  /** Items yang dipilih customer (1..N item leaf) */
   const [items, setItems] = useState<ItemDraft[]>([]);
+  /** Induk yang sedang di-expand di Step 1 */
+  const [expandedMain, setExpandedMain] = useState<string | null>(null);
   const [photoUrl, setPhotoUrl] = useState("");
   const [method, setMethod] = useState<"PICKUP" | "DROPOFF" | "">("");
   const [lat, setLat] = useState<number | null>(null);
@@ -87,17 +94,32 @@ function OrderForm() {
   const [isUploading, setIsUploading] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
 
-  // Pre-select kategori dari URL (?category=<id>)
+  /** Item (leaf) yang bisa dipilih di bawah sebuah induk. Kalau induk tak punya anak (BE lama), induk itu sendiri. */
+  const leavesOf = (main: WasteCategory): WasteCategory[] => {
+    const ch = childrenOf[main.id];
+    return ch && ch.length > 0 ? ch : [main];
+  };
+
+  // Pre-select dari URL (?category=) — bisa id induk, id item, atau nama induk
   useEffect(() => {
-    if (initCat && dbCategories && items.length === 0) {
-      const cat = dbCategories.find((c) => c.id === initCat || c.name.toLowerCase() === initCat.toLowerCase());
-      if (cat) {
-        setItems([{ categoryId: cat.id, weight: "", notes: "" }]);
-        setStep(2);
-      }
+    if (!initCat || mains.length === 0 || items.length > 0) return;
+    // cocokkan ke induk by id atau nama
+    const main =
+      mains.find((m) => m.id === initCat) ||
+      mains.find((m) => m.name.toLowerCase() === initCat.toLowerCase());
+    if (main) {
+      setExpandedMain(main.id);
+      return;
+    }
+    // cocokkan ke item (leaf) by id
+    const leaf = byId[initCat];
+    if (leaf) {
+      setItems([{ categoryId: leaf.id, weight: "", notes: "" }]);
+      if (leaf.parentId) setExpandedMain(leaf.parentId);
+      setStep(2);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initCat, dbCategories]);
+  }, [initCat, mains, byId]);
 
   // ── Toggle kategori (multi-select) ───────────────────────────────────────
   const toggleCategory = (catId: string) => {
@@ -225,7 +247,6 @@ function OrderForm() {
   };
 
   // ── Derived ──────────────────────────────────────────────────────────────
-  const totalWeight = items.reduce((s, it) => s + (Number(it.weight) || 0), 0);
   const canGoStep2 = items.length > 0;
   const canGoStep3 = items.length > 0 && items.every((it) => Number(it.weight) > 0);
   const canGoStep4 = !!method && !!lat && !!lng;
@@ -308,86 +329,120 @@ function OrderForm() {
         </div>
 
         <main className="p-6 md:p-8">
-          {/* STEP 1: PILIH KATEGORI (MULTI) */}
+          {/* STEP 1: PILIH KATEGORI → ITEM (2 tingkat) */}
           {step === 1 && (
-            <div className="space-y-6">
+            <div className="space-y-5">
               <h2 className="font-display text-2xl font-extrabold text-ink tracking-tight">
                 Apa yang ingin kamu jual?
               </h2>
               <p className="text-sm text-ink-muted -mt-3">
-                Bisa pilih lebih dari satu kategori sekaligus.
+                Pilih kategori, lalu centang item yang sesuai. Bisa lebih dari satu.
               </p>
 
               {isCategoriesLoading ? (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
                   {[1, 2, 3, 4].map((i) => (
-                    <div key={i} className="rounded-2xl p-6 animate-pulse bg-surface h-28" />
+                    <div key={i} className="rounded-2xl animate-pulse bg-surface h-14" />
                   ))}
                 </div>
-              ) : dbCategories && dbCategories.length > 0 ? (
-                <div className="grid grid-cols-2 gap-3">
-                  {dbCategories.map((cat) => {
-                    const Icon = categoryIcons[cat.name] || Sparkles;
-                    const isSelected = items.some((it) => it.categoryId === cat.id);
+              ) : mains.length > 0 ? (
+                <div className="space-y-2">
+                  {mains.map((main) => {
+                    const Icon = mainIcon(main.name);
+                    const leaves = leavesOf(main);
+                    const selectedInMain = leaves.filter((l) =>
+                      items.some((it) => it.categoryId === l.id)
+                    ).length;
+                    const isExpanded = expandedMain === main.id;
                     return (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        onClick={() => toggleCategory(cat.id)}
-                        className={`relative border rounded-2xl p-5 flex flex-col items-center gap-3 cursor-pointer transition-all ${
-                          isSelected
-                            ? "border-ink bg-brand-100"
-                            : "border-ink-faint hover:border-ink bg-surface-raised"
+                      <div
+                        key={main.id}
+                        className={`rounded-2xl border transition-colors ${
+                          isExpanded ? "border-ink bg-surface-raised" : "border-ink-faint bg-surface-raised"
                         }`}
                       >
-                        {/* Checkmark indikator multi-select */}
-                        <div
-                          className={`absolute top-3 right-3 w-5 h-5 rounded-md flex items-center justify-center border-2 transition-colors ${
-                            isSelected ? "bg-brand-500 border-ink" : "border-ink-faint bg-surface-raised"
-                          }`}
+                        <button
+                          type="button"
+                          onClick={() => setExpandedMain(isExpanded ? null : main.id)}
+                          className="w-full p-3.5 flex items-center gap-3 text-left"
                         >
-                          {isSelected && <Check size={12} strokeWidth={3} className="text-ink" />}
-                        </div>
-                        <div
-                          className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                            isSelected ? "bg-brand-500 text-ink" : "bg-surface text-ink-muted"
-                          }`}
-                        >
-                          <Icon size={24} />
-                        </div>
-                        <span className="text-sm font-bold text-ink">{cat.name}</span>
-                      </button>
+                          <div
+                            className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${
+                              selectedInMain > 0 ? "bg-brand-500 text-ink" : "bg-surface text-ink-muted"
+                            }`}
+                          >
+                            <Icon size={20} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <span className="font-bold text-sm text-ink block">{main.name}</span>
+                            <span className="text-[11px] text-mute">
+                              {selectedInMain > 0
+                                ? `${selectedInMain} item dipilih`
+                                : `${leaves.length} item`}
+                            </span>
+                          </div>
+                          <ChevronDown
+                            size={18}
+                            className={`text-ink-muted transition-transform ${
+                              isExpanded ? "rotate-180" : ""
+                            }`}
+                          />
+                        </button>
+
+                        {isExpanded && (
+                          <div className="px-3.5 pb-3.5 flex flex-wrap gap-2">
+                            {leaves.map((leaf) => {
+                              const isSel = items.some((it) => it.categoryId === leaf.id);
+                              return (
+                                <button
+                                  key={leaf.id}
+                                  type="button"
+                                  onClick={() => toggleCategory(leaf.id)}
+                                  className={`px-3 py-2 rounded-2xl text-xs font-bold border transition-colors flex items-center gap-1.5 ${
+                                    isSel
+                                      ? "bg-brand-500 text-ink border-brand-500"
+                                      : "bg-surface text-ink-muted border-ink-faint hover:border-ink"
+                                  }`}
+                                >
+                                  {isSel && <Check size={12} strokeWidth={3} />}
+                                  {leaf.name}
+                                  {leaf.unit && leaf.unit !== "kg" && (
+                                    <span className="text-[9px] opacity-70">/{leaf.unit}</span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
                     );
                   })}
                 </div>
               ) : (
                 <div className="rounded-2xl p-8 text-center text-sm text-ink-muted bg-surface">
-                  Tidak bisa memuat kategori. Pastikan backend berjalan.
+                  Belum ada kategori. Pastikan backend berjalan.
                 </div>
               )}
 
-              {/* Summary bar saat ada pilihan */}
+              {/* Summary chips */}
               {items.length > 0 && (
                 <div className="bg-surface rounded-2xl p-3 flex items-center justify-between gap-3 flex-wrap">
                   <div className="flex items-center gap-2 flex-wrap">
-                    {items.map((it) => {
-                      const cat = dbCategories?.find((c) => c.id === it.categoryId);
-                      return (
-                        <span
-                          key={it.categoryId}
-                          className="bg-brand-500 text-ink text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5"
+                    {items.map((it) => (
+                      <span
+                        key={it.categoryId}
+                        className="bg-brand-500 text-ink text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5"
+                      >
+                        {byId[it.categoryId]?.name || "?"}
+                        <button
+                          onClick={() => toggleCategory(it.categoryId)}
+                          className="hover:opacity-70"
+                          aria-label="Hapus item"
                         >
-                          {cat?.name || "?"}
-                          <button
-                            onClick={() => toggleCategory(it.categoryId)}
-                            className="hover:opacity-70"
-                            aria-label="Hapus kategori"
-                          >
-                            <X size={12} strokeWidth={3} />
-                          </button>
-                        </span>
-                      );
-                    })}
+                          <X size={12} strokeWidth={3} />
+                        </button>
+                      </span>
+                    ))}
                   </div>
                   <span className="text-[11px] font-bold text-mute font-mono">
                     {items.length} dipilih
@@ -412,19 +467,18 @@ function OrderForm() {
                 Detail Barang
               </h2>
 
-              {/* Weight per kategori */}
+              {/* Estimasi per item */}
               <div className="space-y-3">
                 <label className="text-[10px] font-bold text-mute uppercase tracking-widest block">
-                  Estimasi Berat per Kategori <span className="text-status-error">*</span>
+                  Estimasi per Item <span className="text-status-error">*</span>
                 </label>
                 {items.map((it) => {
-                  const cat = dbCategories?.find((c) => c.id === it.categoryId);
-                  const Icon = (cat && categoryIcons[cat.name]) || Sparkles;
+                  const leaf = byId[it.categoryId];
+                  const parent = leaf?.parentId ? byId[leaf.parentId] : leaf;
+                  const Icon = parent ? mainIcon(parent.name) : Sparkles;
+                  const unit = unitLabel(leaf?.unit);
                   return (
-                    <div
-                      key={it.categoryId}
-                      className="bg-surface rounded-2xl p-3 space-y-2.5"
-                    >
+                    <div key={it.categoryId} className="bg-surface rounded-2xl p-3 space-y-2.5">
                       <div className="flex items-center gap-3">
                         <div className="w-11 h-11 bg-brand-500 rounded-2xl flex items-center justify-center text-ink shrink-0">
                           <Icon size={18} />
@@ -432,7 +486,7 @@ function OrderForm() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-2">
                             <span className="font-bold text-sm text-ink truncate">
-                              {cat?.name || "?"}
+                              {leaf?.name || "?"}
                             </span>
                             <button
                               onClick={() => toggleCategory(it.categoryId)}
@@ -449,17 +503,17 @@ function OrderForm() {
                               onChange={(e) => setItemWeight(it.categoryId, e.target.value)}
                               className="flex-1 font-bold font-mono py-2 text-center"
                               min="0.1"
-                              step="0.1"
+                              step={unit === "pcs" ? "1" : "0.1"}
                             />
-                            <div className="bg-surface-raised flex items-center justify-center px-3 rounded-md font-bold text-ink-muted text-xs">
-                              KG
+                            <div className="bg-surface-raised flex items-center justify-center px-3 rounded-md font-bold text-ink-muted text-xs uppercase">
+                              {unit}
                             </div>
                           </div>
                         </div>
                       </div>
                       <Input
                         type="text"
-                        placeholder={`Catatan ${cat?.name || ""} (opsional) — mis. "sudah dilipat"`}
+                        placeholder={`Catatan (opsional) — mis. "sudah dilipat"`}
                         value={it.notes}
                         onChange={(e) => setItemNotes(it.categoryId, e.target.value)}
                         maxLength={120}
@@ -473,17 +527,8 @@ function OrderForm() {
                   onClick={() => setStep(1)}
                   className="w-full text-[11px] font-bold text-ink-muted hover:text-ink underline py-1 transition-colors"
                 >
-                  + Tambah / hapus kategori
+                  + Tambah / hapus item
                 </button>
-
-                {totalWeight > 0 && (
-                  <div className="bg-brand-100 rounded-2xl px-4 py-2.5 flex items-center justify-between">
-                    <span className="text-xs font-bold text-brand-800">Total berat estimasi</span>
-                    <span className="font-mono font-extrabold text-ink">
-                      {totalWeight.toFixed(1)} kg
-                    </span>
-                  </div>
-                )}
               </div>
 
               {/* Foto */}
@@ -690,21 +735,22 @@ function OrderForm() {
                       Item Setoran
                     </span>
                     {items.map((it) => {
-                      const cat = dbCategories?.find((c) => c.id === it.categoryId);
-                      const Icon = (cat && categoryIcons[cat.name]) || Sparkles;
+                      const leaf = byId[it.categoryId];
+                      const parent = leaf?.parentId ? byId[leaf.parentId] : leaf;
+                      const Icon = parent ? mainIcon(parent.name) : Sparkles;
                       return (
                         <div key={it.categoryId} className="space-y-0.5">
                           <div className="flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-2">
-                              <div className="w-6 h-6 bg-brand-500 rounded-lg flex items-center justify-center text-ink">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div className="w-6 h-6 bg-brand-500 rounded-lg flex items-center justify-center text-ink shrink-0">
                                 <Icon size={14} />
                               </div>
-                              <span className="text-sm font-bold text-ink">
-                                {cat?.name || "?"}
+                              <span className="text-sm font-bold text-ink truncate">
+                                {leaf?.name || "?"}
                               </span>
                             </div>
-                            <span className="text-sm font-bold text-ink font-mono">
-                              {it.weight} kg
+                            <span className="text-sm font-bold text-ink font-mono shrink-0">
+                              {it.weight} {unitLabel(leaf?.unit)}
                             </span>
                           </div>
                           {it.notes?.trim() && (
@@ -717,10 +763,10 @@ function OrderForm() {
                     })}
                     <div className="flex justify-between items-center pt-2 mt-2 border-t border-dashed border-ink-faint">
                       <span className="text-xs font-bold text-mute uppercase tracking-wider">
-                        Total Berat
+                        Jumlah Item
                       </span>
                       <span className="text-sm font-extrabold text-ink font-mono">
-                        {totalWeight.toFixed(1)} kg
+                        {items.length} item
                       </span>
                     </div>
                   </div>

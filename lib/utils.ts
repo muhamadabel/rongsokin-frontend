@@ -13,6 +13,15 @@ export const formatDate = (iso: string): string =>
 // Koordinat default Yogyakarta (fallback jika GPS tidak tersedia)
 export const DEFAULT_COORDS = { lat: -7.7956, lng: 110.3695 }
 
+// Label satuan kategori
+export const unitLabel = (unit?: string): string => {
+  switch (unit) {
+    case 'liter': return 'liter'
+    case 'pcs': return 'pcs'
+    default: return 'kg'
+  }
+}
+
 // ── Order normalization helpers ─────────────────────────────────────────
 // Mendukung schema baru (Order.items[]) DAN schema legacy (Order.categoryId tunggal)
 // supaya FE tidak break selama BE belum migrasi ke OrderItem.

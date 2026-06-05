@@ -111,6 +111,10 @@ export const useAdminOrders = (params: AdminOrdersParams = {}) => {
 export interface CategoryPayload {
   name: string;
   iconUrl?: string;
+  description?: string;
+  parentId?: string | null;
+  unit?: 'kg' | 'liter' | 'pcs';
+  sortOrder?: number;
 }
 
 export const useCreateCategory = () => {
