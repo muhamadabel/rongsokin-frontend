@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { Logo } from "@/components/ui/Logo";
 import { useAuthStore } from "@/store/authStore";
 import { useCategoryTree } from "@/hooks/useDiscovery";
 import {
@@ -98,9 +99,7 @@ export default function AdminDashboard() {
       {/* HEADER */}
       <header className="sticky top-0 z-40 bg-surface-raised border-b border-ink-faint px-5 md:px-8 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-brand-500 rounded-2xl flex items-center justify-center text-ink font-display font-extrabold text-xl">
-            R
-          </div>
+          <Logo size={36} />
           <div>
             <h1 className="font-display font-extrabold text-base md:text-lg tracking-tight text-ink flex items-center gap-2">
               Rongsok.in Admin
