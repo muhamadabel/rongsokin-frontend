@@ -91,7 +91,7 @@ export default function LocationPicker({
           </span>
         </div>
         <span className="text-mute">
-          {helperText || "Klik peta atau seret pin untuk pindahkan lokasi."}
+          {helperText || "Geser peta untuk menempatkan titik di lokasimu."}
         </span>
       </div>
     </div>

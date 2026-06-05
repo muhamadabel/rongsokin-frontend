@@ -314,9 +314,11 @@ export default function EditProfilePage() {
               </label>
               <Input
                 type="tel"
+                inputMode="numeric"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
                 placeholder="08123456789"
+                maxLength={15}
               />
             </div>
           </section>
