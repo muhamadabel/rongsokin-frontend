@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -55,9 +55,14 @@ export default function EditProfilePage() {
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Hydrate dari /auth/me + /collector/profile
+  // Hydrate SEKALI saja — biar refetch /auth/me (mis. pindah tab) tidak menimpa
+  // perubahan yang sedang diketik/digeser user.
+  const hydratedMe = useRef(false);
+  const hydratedProfile = useRef(false);
+
   useEffect(() => {
-    if (me) {
+    if (me && !hydratedMe.current) {
+      hydratedMe.current = true;
       setName(me.name || "");
       setPhone(me.phone || "");
       setAvatarUrl(me.avatarUrl || "");
@@ -68,7 +73,8 @@ export default function EditProfilePage() {
   }, [me]);
 
   useEffect(() => {
-    if (profile) {
+    if (profile && !hydratedProfile.current) {
+      hydratedProfile.current = true;
       setShopName(profile.shopName || "");
       setDescription(profile.description || "");
       setRadiusKm(profile.radiusKm || 5);
