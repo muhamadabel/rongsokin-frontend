@@ -21,7 +21,11 @@ import {
 import { Button } from "@/components/ui/Button";
 import BottomNav from "@/components/ui/BottomNav";
 import DesktopNav from "@/components/ui/DesktopNav";
-import { useSearchCollectors, useWasteCategories } from "@/hooks/useDiscovery";
+import {
+  useSearchCollectors,
+  useWasteCategories,
+  useDiscoveryStats,
+} from "@/hooks/useDiscovery";
 import { DEFAULT_COORDS, formatDistance } from "@/lib/utils";
 import { useAuthStore } from "@/store/authStore";
 import { useRouter } from "next/navigation";
@@ -80,7 +84,8 @@ export default function LandingPage() {
     }
   }, [token, user, router]);
 
-  useWasteCategories();
+  const { data: categories } = useWasteCategories();
+  const { data: stats } = useDiscoveryStats();
 
   const { data: collectors, isLoading: isCollectorsLoading } = useSearchCollectors({
     lat: DEFAULT_COORDS.lat,
@@ -229,9 +234,15 @@ export default function LandingPage() {
       <section className="px-4 md:px-8 mb-10 max-w-6xl mx-auto">
         <div className="grid grid-cols-3 gap-3 md:gap-4">
           {[
-            { value: "500+", label: "Transaksi" },
-            { value: `${featuredCollectors.length || "10"}+`, label: "Pengepul Aktif" },
-            { value: "5", label: "Kategori Sampah" },
+            { value: `${stats?.totalTransactions ?? 0}`, label: "Transaksi" },
+            {
+              value: `${stats?.totalCollectors ?? featuredCollectors.length}`,
+              label: "Pengepul",
+            },
+            {
+              value: `${stats?.totalCategories ?? categories?.length ?? 0}`,
+              label: "Kategori",
+            },
           ].map((stat) => (
             <div
               key={stat.label}
@@ -347,7 +358,7 @@ export default function LandingPage() {
                 <div className="flex items-center justify-center gap-1 text-[11px] text-ink-muted">
                   <Star size={11} className="text-status-warning fill-status-warning" />
                   <span className="font-bold text-ink font-mono">
-                    {collector.priorityScore || "4.9"}
+                    {collector.avgRating > 0 ? collector.avgRating.toFixed(1) : "Baru"}
                   </span>
                 </div>
                 {collector.distance != null && (

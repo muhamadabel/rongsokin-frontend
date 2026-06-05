@@ -164,7 +164,9 @@ export default function SearchPage() {
                       <div className="flex items-center gap-2 mt-3 text-[11px] font-bold text-ink-muted border-t border-dashed border-ink-faint pt-2.5">
                         <span className="flex items-center gap-0.5">
                           <Star size={12} className="fill-status-warning text-status-warning" />
-                          <span className="font-mono">{collector.priorityScore || "4.8"}</span>
+                          <span className="font-mono">
+                            {collector.avgRating > 0 ? collector.avgRating.toFixed(1) : "Baru"}
+                          </span>
                         </span>
                         <span className="text-ink-faint">•</span>
                         <span className="text-status-success font-bold">Terima Jemput</span>

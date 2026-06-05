@@ -57,6 +57,7 @@ export const useSearchCollectors = (params: SearchQueryParams) => {
           shopName: c.shopName,
           description: c.description,
           priorityScore: c.priorityScore,
+          avgRating: c.avgRating != null ? Number(c.avgRating) : 0,
           ownerName: c.ownerName,
           distance: c.distance, // in meters
           isOpen: true,
@@ -82,6 +83,33 @@ export const useCollectorDetails = (id: string) => {
       return res.data.data;
     },
     enabled: !!id,
+  });
+};
+
+export interface DiscoveryStats {
+  totalTransactions: number;
+  totalCollectors: number;
+  totalCustomers: number;
+  totalCategories: number;
+  totalWeightKg: number;
+}
+
+// Statistik publik untuk landing. Null kalau endpoint belum tersedia (BE belum deploy).
+export const useDiscoveryStats = () => {
+  return useQuery({
+    queryKey: ['discoveryStats'],
+    queryFn: async (): Promise<DiscoveryStats | null> => {
+      try {
+        const res = await api.get<{ status: string; data: DiscoveryStats }>('/discovery/stats');
+        return res.data.data;
+      } catch (err) {
+        const status = (err as { response?: { status?: number } })?.response?.status;
+        if (status === 404 || status === 405 || status === 501) return null;
+        throw err;
+      }
+    },
+    retry: false,
+    staleTime: 60_000,
   });
 };
 
