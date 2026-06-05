@@ -6,6 +6,7 @@ import { useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { Logo } from "@/components/ui/Logo";
 import { useLogin } from "@/hooks/useAuth";
 import toast from "react-hot-toast";
 
@@ -42,9 +43,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-surface">
       <Link href="/" className="flex items-center gap-2 mb-8">
-        <div className="w-10 h-10 bg-brand-500 rounded-2xl flex items-center justify-center text-ink font-display font-extrabold text-2xl">
-          R
-        </div>
+        <Logo size={40} />
         <span className="font-display font-extrabold text-xl tracking-tight text-ink">
           Rongsok.in
         </span>

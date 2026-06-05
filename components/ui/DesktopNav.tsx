@@ -14,6 +14,7 @@ import {
   Plus,
   ShieldCheck,
 } from "lucide-react";
+import { Logo } from "@/components/ui/Logo";
 import { useAuthStore } from "@/store/authStore";
 
 type NavItem = { href: string; label: string; icon: React.ComponentType<{ size?: number }> };
@@ -66,9 +67,7 @@ export default function DesktopNav() {
       <div className="max-w-6xl mx-auto px-4 md:px-8 py-3 flex items-center gap-6">
         {/* LOGO */}
         <Link href={homeHref} className="flex items-center gap-2 shrink-0">
-          <div className="w-9 h-9 bg-brand-500 text-ink rounded-2xl flex items-center justify-center font-display font-extrabold text-xl">
-            R
-          </div>
+          <Logo size={36} />
           <h1 className="font-display font-extrabold text-xl tracking-tight text-ink">
             Rongsok.in
           </h1>

@@ -21,6 +21,7 @@ import {
   Building2,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { Logo } from "@/components/ui/Logo";
 import BottomNav from "@/components/ui/BottomNav";
 import DesktopNav from "@/components/ui/DesktopNav";
 import {
@@ -120,9 +121,7 @@ export default function LandingPage() {
       {/* MOBILE HEADER */}
       <header className="sticky top-0 z-50 bg-surface-raised border-b border-ink-faint px-4 py-3 md:hidden">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-brand-500 rounded-2xl flex items-center justify-center text-ink font-display font-extrabold text-xl">
-            R
-          </div>
+          <Logo size={36} />
           <span className="font-display font-extrabold text-lg tracking-tight text-ink">
             Rongsok.in
           </span>
@@ -150,7 +149,7 @@ export default function LandingPage() {
             <div className="inline-flex items-center gap-2 bg-brand-100 rounded-full px-3 py-1.5">
               <span className="w-2 h-2 rounded-full bg-brand-500 dot-live" />
               <span className="text-xs font-bold text-brand-800">
-                Marketplace Daur Ulang #1 Yogyakarta
+                Marketplace Daur Ulang Yogyakarta
               </span>
             </div>
             <h1 className="font-display text-4xl md:text-6xl font-extrabold text-ink leading-[1.05] tracking-tight">
