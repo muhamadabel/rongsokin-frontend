@@ -325,7 +325,7 @@ export default function CustomerDashboard() {
                       <div className="flex items-center gap-0.5 text-[11px]">
                         <Star size={10} className="text-status-warning fill-status-warning" />
                         <span className="font-bold text-ink font-mono">
-                          {collector.priorityScore || "4.9"}
+                          {collector.avgRating > 0 ? collector.avgRating.toFixed(1) : "Baru"}
                         </span>
                       </div>
                       {collector.distance != null && (
