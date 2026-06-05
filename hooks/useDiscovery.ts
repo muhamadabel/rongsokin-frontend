@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/axios';
 import { WasteCategory, CollectorProfile } from '@/types';
@@ -18,6 +19,43 @@ export const useWasteCategories = () => {
       return res.data.data;
     },
   });
+};
+
+/**
+ * Bangun tree kategori dari list flat: induk (parentId null) + children.
+ * Mengembalikan { mains, byId, childrenOf, isLoading }.
+ * Backward-compat: kalau BE lama (kategori flat tanpa parentId), semua dianggap induk.
+ */
+export const useCategoryTree = () => {
+  const { data: flat, isLoading, error } = useWasteCategories();
+
+  const tree = useMemo(() => {
+    const list = flat || [];
+    const byId: Record<string, WasteCategory> = {};
+    list.forEach((c) => (byId[c.id] = c));
+
+    const mains = list
+      .filter((c) => !c.parentId)
+      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+
+    const childrenOf: Record<string, WasteCategory[]> = {};
+    list.forEach((c) => {
+      if (c.parentId) {
+        (childrenOf[c.parentId] ||= []).push(c);
+      }
+    });
+    Object.values(childrenOf).forEach((arr) =>
+      arr.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+    );
+
+    // Semua "leaf" (item yang bisa dipesan): kalau punya children, leaf = children;
+    // kalau induk tanpa children (BE lama), induk itu sendiri jadi leaf.
+    const leaves = list.filter((c) => c.parentId || !childrenOf[c.id]);
+
+    return { mains, byId, childrenOf, leaves };
+  }, [flat]);
+
+  return { ...tree, isLoading, error };
 };
 
 export const useSearchCollectors = (params: SearchQueryParams) => {

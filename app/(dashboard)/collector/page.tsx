@@ -14,8 +14,11 @@ import {
   ChevronUp,
   Wrench,
   RefreshCw,
+  Box,
+  Wine,
+  Tv,
+  Droplets,
   FileText,
-  Monitor,
   LogOut,
   CreditCard,
   ArrowDownRight,
@@ -31,10 +34,11 @@ import {
   useUpdateCollectorProfile,
   useUpdateCatalogs,
 } from "@/hooks/useCollector";
-import { useWasteCategories } from "@/hooks/useDiscovery";
+import { useCategoryTree } from "@/hooks/useDiscovery";
 import {
   formatRupiah,
   formatDate,
+  unitLabel,
   getOrderTotalEstWeight,
   getOrderTotalActualWeight,
   getOrderTotalPrice,
@@ -44,12 +48,13 @@ import {
 import { Order } from "@/types";
 import toast from "react-hot-toast";
 
-const categoryIcons: Record<string, any> = {
-  Kardus: Archive,
-  Plastik: RefreshCw,
-  Logam: Wrench,
-  Kertas: FileText,
-  Elektronik: Monitor,
+const mainIcon = (name: string): any => {
+  if (name.includes("Plastik")) return RefreshCw;
+  if (name.includes("Kertas") || name.includes("Kardus")) return Box;
+  if (name.includes("Logam") || name.includes("Besi")) return Wrench;
+  if (name.includes("Kaca") || name.includes("Botol")) return Wine;
+  if (name.includes("Elektronik")) return Tv;
+  return Droplets;
 };
 
 // ── Incoming order card (real-time socket queue) ─────────────────────────
@@ -251,7 +256,7 @@ export default function CollectorDashboard() {
   const removeIncomingOrder = useOrderStore((state) => state.removeIncomingOrder);
 
   const { data: profile, isLoading: isProfileLoading } = useCollectorProfile();
-  const { data: categories } = useWasteCategories();
+  const { mains, childrenOf, leaves } = useCategoryTree();
   const { data: orders, isLoading: isOrdersLoading } = useOrdersList({
     role: "collector",
     limit: 100,
@@ -261,14 +266,16 @@ export default function CollectorDashboard() {
   const updateCatalogs = useUpdateCatalogs();
 
   const [isCatalogExpanded, setIsCatalogExpanded] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const [editedCatalogs, setEditedCatalogs] = useState<
     Record<string, { minPrice: number; maxPrice: number; isActive: boolean }>
   >({});
 
+  // Init harga per ITEM (leaf)
   useEffect(() => {
-    if (categories) {
+    if (leaves.length > 0) {
       const initial: typeof editedCatalogs = {};
-      categories.forEach((cat) => {
+      leaves.forEach((cat) => {
         const existing = profile?.catalogs?.find((c) => c.categoryId === cat.id);
         initial[cat.id] = {
           minPrice: existing?.minPrice ?? 1000,
@@ -278,7 +285,13 @@ export default function CollectorDashboard() {
       });
       setEditedCatalogs(initial);
     }
-  }, [profile, categories]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile, leaves.length]);
+
+  const leavesOfMain = (mainId: string): typeof leaves => {
+    const ch = childrenOf[mainId];
+    return ch && ch.length > 0 ? ch : leaves.filter((l) => l.id === mainId);
+  };
 
   const today = new Date().toDateString();
   const completedToday =
@@ -605,84 +618,122 @@ export default function CollectorDashboard() {
 
           {isCatalogExpanded && (
             <div className="border-t border-ink-faint p-5">
+              <p className="text-xs text-ink-muted mb-4">
+                Aktifkan item yang kamu terima & atur rentang harganya. Dikelompokkan per
+                kategori utama.
+              </p>
+
               <div className="space-y-3">
-                {categories?.map((cat) => {
-                  const IconComponent = categoryIcons[cat.name] || Archive;
-                  const data =
-                    editedCatalogs[cat.id] || { minPrice: 1000, maxPrice: 2000, isActive: false };
+                {mains.map((main) => {
+                  const Icon = mainIcon(main.name);
+                  const groupLeaves = leavesOfMain(main.id);
+                  const activeCount = groupLeaves.filter(
+                    (l) => editedCatalogs[l.id]?.isActive
+                  ).length;
+                  const isOpen = expandedGroups[main.id] ?? false;
 
                   return (
-                    <div
-                      key={cat.id}
-                      className={`flex flex-col md:flex-row md:items-center gap-4 p-4 rounded-2xl transition-colors ${
-                        data.isActive ? "bg-brand-100" : "bg-surface"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3 md:w-1/3">
+                    <div key={main.id} className="rounded-2xl border border-ink-faint overflow-hidden">
+                      <button
+                        onClick={() =>
+                          setExpandedGroups((p) => ({ ...p, [main.id]: !isOpen }))
+                        }
+                        className="w-full p-3 flex items-center gap-3 text-left hover:bg-surface transition-colors"
+                      >
                         <div
-                          className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${
-                            data.isActive
-                              ? "bg-brand-500 text-ink"
-                              : "bg-surface-raised text-ink-muted"
+                          className={`w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 ${
+                            activeCount > 0 ? "bg-brand-500 text-ink" : "bg-surface text-ink-muted"
                           }`}
                         >
-                          <IconComponent size={20} />
+                          <Icon size={18} />
                         </div>
-                        <span className="font-bold text-sm text-ink">{cat.name}</span>
-                      </div>
+                        <div className="flex-1 min-w-0">
+                          <span className="font-bold text-sm text-ink block">{main.name}</span>
+                          <span className="text-[11px] text-mute">
+                            {activeCount > 0
+                              ? `${activeCount} item aktif`
+                              : `${groupLeaves.length} item`}
+                          </span>
+                        </div>
+                        <ChevronDown
+                          size={18}
+                          className={`text-ink-muted transition-transform ${isOpen ? "rotate-180" : ""}`}
+                        />
+                      </button>
 
-                      <div className="flex-1 grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="text-[10px] font-bold text-mute uppercase tracking-widest mb-1 block">
-                            Min (Rp/kg)
-                          </label>
-                          <input
-                            type="number"
-                            value={data.minPrice}
-                            onChange={(e) =>
-                              handleValChange(cat.id, "minPrice", Number(e.target.value))
-                            }
-                            disabled={!data.isActive}
-                            className="w-full bg-surface-raised border border-ink rounded-md p-2 text-sm font-mono font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-50"
-                          />
+                      {isOpen && (
+                        <div className="px-3 pb-3 space-y-2 bg-surface/40">
+                          {groupLeaves.map((leaf) => {
+                            const data =
+                              editedCatalogs[leaf.id] || {
+                                minPrice: 1000,
+                                maxPrice: 2000,
+                                isActive: false,
+                              };
+                            const unit = unitLabel(leaf.unit);
+                            return (
+                              <div
+                                key={leaf.id}
+                                className={`p-3 rounded-2xl transition-colors ${
+                                  data.isActive ? "bg-brand-100" : "bg-surface-raised"
+                                }`}
+                              >
+                                <div className="flex items-center justify-between gap-2 mb-2">
+                                  <span className="font-bold text-sm text-ink">{leaf.name}</span>
+                                  <button
+                                    onClick={() => handleToggleCatalogActive(leaf.id)}
+                                    className={`w-10 h-6 rounded-full p-1 cursor-pointer transition-colors shrink-0 ${
+                                      data.isActive ? "bg-brand-500" : "bg-surface-sunken"
+                                    }`}
+                                  >
+                                    <div
+                                      className={`w-4 h-4 rounded-full bg-surface-raised transform transition-transform ${
+                                        data.isActive ? "translate-x-4" : "translate-x-0"
+                                      }`}
+                                    />
+                                  </button>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                  <div>
+                                    <label className="text-[9px] font-bold text-mute uppercase tracking-widest mb-1 block">
+                                      Min (Rp/{unit})
+                                    </label>
+                                    <input
+                                      type="number"
+                                      value={data.minPrice}
+                                      onChange={(e) =>
+                                        handleValChange(leaf.id, "minPrice", Number(e.target.value))
+                                      }
+                                      disabled={!data.isActive}
+                                      className="w-full bg-surface-raised border border-ink rounded-md p-2 text-sm font-mono font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-50"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="text-[9px] font-bold text-mute uppercase tracking-widest mb-1 block">
+                                      Max (Rp/{unit})
+                                    </label>
+                                    <input
+                                      type="number"
+                                      value={data.maxPrice}
+                                      onChange={(e) =>
+                                        handleValChange(leaf.id, "maxPrice", Number(e.target.value))
+                                      }
+                                      disabled={!data.isActive}
+                                      className="w-full bg-surface-raised border border-ink rounded-md p-2 text-sm font-mono font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-50"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                        <div>
-                          <label className="text-[10px] font-bold text-mute uppercase tracking-widest mb-1 block">
-                            Max (Rp/kg)
-                          </label>
-                          <input
-                            type="number"
-                            value={data.maxPrice}
-                            onChange={(e) =>
-                              handleValChange(cat.id, "maxPrice", Number(e.target.value))
-                            }
-                            disabled={!data.isActive}
-                            className="w-full bg-surface-raised border border-ink rounded-md p-2 text-sm font-mono font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-50"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between md:justify-end md:w-32 pt-3 md:pt-0 border-t border-ink-faint md:border-none">
-                        <span className="text-xs font-bold text-mute md:hidden">Status Aktif</span>
-                        <button
-                          onClick={() => handleToggleCatalogActive(cat.id)}
-                          className={`w-10 h-6 rounded-full p-1 cursor-pointer transition-colors ${
-                            data.isActive ? "bg-brand-500" : "bg-surface-sunken"
-                          }`}
-                        >
-                          <div
-                            className={`w-4 h-4 rounded-full bg-surface-raised transform transition-transform ${
-                              data.isActive ? "translate-x-4" : "translate-x-0"
-                            }`}
-                          />
-                        </button>
-                      </div>
+                      )}
                     </div>
                   );
                 })}
               </div>
 
-              <div className="mt-4 flex justify-end">
+              <div className="mt-4 flex justify-end sticky bottom-2">
                 <Button onClick={handleSaveCatalogs} disabled={updateCatalogs.isPending}>
                   {updateCatalogs.isPending ? "Menyimpan…" : "Simpan Perubahan"}
                 </Button>

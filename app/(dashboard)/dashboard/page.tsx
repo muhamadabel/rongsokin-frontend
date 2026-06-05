@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useMe } from "@/hooks/useAuth";
 import { useOrdersList } from "@/hooks/useOrders";
-import { useWasteCategories, useSearchCollectors } from "@/hooks/useDiscovery";
+import { useCategoryTree, useSearchCollectors } from "@/hooks/useDiscovery";
 import {
   DEFAULT_COORDS,
   formatRupiah,
@@ -24,8 +24,10 @@ import {
   Archive,
   RefreshCw,
   Wrench,
-  FileText,
-  Monitor,
+  Box,
+  Wine,
+  Tv,
+  Droplets,
   Star,
   MapPin,
   ArrowRight,
@@ -41,12 +43,13 @@ import {
 import { useAuthStore } from "@/store/authStore";
 import { useRouter } from "next/navigation";
 
-const categoryIcons: Record<string, any> = {
-  Kardus: Archive,
-  Plastik: RefreshCw,
-  Logam: Wrench,
-  Kertas: FileText,
-  Elektronik: Monitor,
+const mainIcon = (name: string): any => {
+  if (name.includes("Plastik")) return RefreshCw;
+  if (name.includes("Kertas") || name.includes("Kardus")) return Box;
+  if (name.includes("Logam") || name.includes("Besi")) return Wrench;
+  if (name.includes("Kaca") || name.includes("Botol")) return Wine;
+  if (name.includes("Elektronik")) return Tv;
+  return Droplets;
 };
 
 const STATUS_CONFIG: Record<string, { label: string; style: string }> = {
@@ -79,7 +82,7 @@ export default function CustomerDashboard() {
 
   const { data: me, isLoading: isMeLoading } = useMe();
   const { data: orders, isLoading: isOrdersLoading } = useOrdersList({ limit: 50 });
-  const { data: categories } = useWasteCategories();
+  const { mains } = useCategoryTree();
 
   const [coords, setCoords] = useState(DEFAULT_COORDS);
   const [greeting, setGreeting] = useState("Halo");
@@ -246,19 +249,19 @@ export default function CustomerDashboard() {
             Jual Cepat per Kategori
           </h2>
           <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
-            {categories && categories.length > 0
-              ? categories.map((cat) => {
-                  const Icon = categoryIcons[cat.name] || Archive;
+            {mains && mains.length > 0
+              ? mains.map((cat) => {
+                  const Icon = mainIcon(cat.name);
                   return (
                     <Link
                       key={cat.id}
                       href={`/orders/new?category=${cat.id}`}
-                      className="flex flex-col items-center gap-2 bg-surface-raised rounded-2xl p-4 min-w-[88px] hover:bg-brand-100 transition-colors group shrink-0"
+                      className="flex flex-col items-center gap-2 bg-surface-raised rounded-2xl p-4 min-w-[96px] hover:bg-brand-100 transition-colors group shrink-0"
                     >
                       <div className="w-11 h-11 bg-surface rounded-full flex items-center justify-center group-hover:bg-brand-500 transition-colors text-ink">
                         <Icon size={22} />
                       </div>
-                      <span className="text-[11px] font-bold text-ink text-center">
+                      <span className="text-[11px] font-bold text-ink text-center leading-tight">
                         {cat.name}
                       </span>
                     </Link>

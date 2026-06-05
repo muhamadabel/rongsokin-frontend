@@ -1,18 +1,28 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { Search, MapPin, Archive, Star } from "lucide-react";
 import BottomNav from "@/components/ui/BottomNav";
 import DesktopNav from "@/components/ui/DesktopNav";
 import { Input } from "@/components/ui/Input";
 import Link from "next/link";
-import { useSearchCollectors, useWasteCategories } from "@/hooks/useDiscovery";
+import { useSearchCollectors, useCategoryTree } from "@/hooks/useDiscovery";
 import { useAuthStore } from "@/store/authStore";
 import { DEFAULT_COORDS, formatDistance } from "@/lib/utils";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { PageSkeleton } from "@/components/ui/Skeleton";
 
 export default function SearchPage() {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <SearchInner />
+    </Suspense>
+  );
+}
+
+function SearchInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const token = useAuthStore((state) => state.token);
   const user = useAuthStore((state) => state.user);
   const initFromStorage = useAuthStore((state) => state.initFromStorage);
@@ -28,8 +38,20 @@ export default function SearchPage() {
   }, [token, user, router]);
 
   const [coords, setCoords] = useState(DEFAULT_COORDS);
-  const [selectedCategoryName, setSelectedCategoryName] = useState("Kardus");
+  const [selectedMainId, setSelectedMainId] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
+
+  const { mains } = useCategoryTree();
+
+  // Default ke induk pertama; atau dari ?category= (nama induk dari landing)
+  useEffect(() => {
+    if (mains.length === 0) return;
+    const param = searchParams.get("category");
+    const byName = param
+      ? mains.find((m) => m.name.toLowerCase() === param.toLowerCase())
+      : null;
+    setSelectedMainId((prev) => prev || byName?.id || mains[0].id);
+  }, [mains, searchParams]);
 
   useEffect(() => {
     if (typeof navigator !== "undefined" && navigator.geolocation) {
@@ -42,11 +64,11 @@ export default function SearchPage() {
     }
   }, []);
 
-  const { data: categories } = useWasteCategories();
+  const selectedMain = mains.find((m) => m.id === selectedMainId);
   const { data: collectors, isLoading } = useSearchCollectors({
     lat: coords.lat,
     lng: coords.lng,
-    category: selectedCategoryName,
+    categoryId: selectedMainId || undefined,
     radius: 50,
   });
 
@@ -100,12 +122,12 @@ export default function SearchPage() {
             Pilih Kategori Sampah
           </h4>
           <div className="flex overflow-x-auto no-scrollbar gap-2.5 py-1">
-            {categories?.map((cat) => {
-              const isActive = selectedCategoryName.toLowerCase() === cat.name.toLowerCase();
+            {mains.map((cat) => {
+              const isActive = selectedMainId === cat.id;
               return (
                 <button
                   key={cat.id}
-                  onClick={() => setSelectedCategoryName(cat.name)}
+                  onClick={() => setSelectedMainId(cat.id)}
                   className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap border ${
                     isActive
                       ? "bg-brand-500 text-ink border-brand-500"
@@ -122,7 +144,7 @@ export default function SearchPage() {
         {/* COLLECTORS LIST */}
         <section className="space-y-4">
           <h3 className="font-display font-extrabold text-base text-ink tracking-tight">
-            Mitra Pengepul ({selectedCategoryName})
+            Mitra Pengepul{selectedMain ? ` (${selectedMain.name})` : ""}
           </h3>
 
           {isLoading ? (
@@ -183,8 +205,8 @@ export default function SearchPage() {
               </div>
               <h4 className="font-bold text-ink">Tidak ada pengepul ditemukan</h4>
               <p className="text-xs text-ink-muted mt-1.5 max-w-xs leading-relaxed">
-                Mitra terdaftar untuk kategori &quot;{selectedCategoryName}&quot; saat ini kosong
-                dalam radius pencarianmu.
+                Mitra untuk kategori{selectedMain ? ` "${selectedMain.name}"` : ""} kosong dalam
+                radius pencarianmu.
               </p>
             </div>
           )}
