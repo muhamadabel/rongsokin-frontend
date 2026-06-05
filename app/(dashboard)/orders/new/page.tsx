@@ -47,6 +47,7 @@ const STEPS = [
 interface ItemDraft {
   categoryId: string;
   weight: string; // string biar input controlled
+  notes: string;
 }
 
 export default function NewOrderPage() {
@@ -96,7 +97,7 @@ function OrderForm() {
     if (initCat && dbCategories && items.length === 0) {
       const cat = dbCategories.find((c) => c.id === initCat || c.name.toLowerCase() === initCat.toLowerCase());
       if (cat) {
-        setItems([{ categoryId: cat.id, weight: "" }]);
+        setItems([{ categoryId: cat.id, weight: "", notes: "" }]);
         setStep(2);
       }
     }
@@ -108,12 +109,16 @@ function OrderForm() {
     setItems((prev) => {
       const found = prev.find((it) => it.categoryId === catId);
       if (found) return prev.filter((it) => it.categoryId !== catId);
-      return [...prev, { categoryId: catId, weight: "" }];
+      return [...prev, { categoryId: catId, weight: "", notes: "" }];
     });
   };
 
   const setItemWeight = (catId: string, weight: string) => {
     setItems((prev) => prev.map((it) => (it.categoryId === catId ? { ...it, weight } : it)));
+  };
+
+  const setItemNotes = (catId: string, notes: string) => {
+    setItems((prev) => prev.map((it) => (it.categoryId === catId ? { ...it, notes } : it)));
   };
 
   // ── Upload foto ──────────────────────────────────────────────────────────
@@ -204,6 +209,7 @@ function OrderForm() {
         items: items.map((it) => ({
           categoryId: it.categoryId,
           estimatedWeight: Number(it.weight),
+          notes: it.notes?.trim() || undefined,
         })),
         photoUrl: photoUrl || undefined,
         lat,
@@ -422,38 +428,48 @@ function OrderForm() {
                   return (
                     <div
                       key={it.categoryId}
-                      className="bg-surface rounded-2xl p-3 flex items-center gap-3"
+                      className="bg-surface rounded-2xl p-3 space-y-2.5"
                     >
-                      <div className="w-11 h-11 bg-brand-500 rounded-2xl flex items-center justify-center text-ink shrink-0">
-                        <Icon size={18} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="font-bold text-sm text-ink truncate">
-                            {cat?.name || "?"}
-                          </span>
-                          <button
-                            onClick={() => toggleCategory(it.categoryId)}
-                            className="text-mute hover:text-status-error transition-colors text-[10px] font-bold"
-                          >
-                            Hapus
-                          </button>
+                      <div className="flex items-center gap-3">
+                        <div className="w-11 h-11 bg-brand-500 rounded-2xl flex items-center justify-center text-ink shrink-0">
+                          <Icon size={18} />
                         </div>
-                        <div className="flex gap-2 mt-1.5">
-                          <Input
-                            type="number"
-                            placeholder="0"
-                            value={it.weight}
-                            onChange={(e) => setItemWeight(it.categoryId, e.target.value)}
-                            className="flex-1 font-bold font-mono py-2 text-center"
-                            min="0.1"
-                            step="0.1"
-                          />
-                          <div className="bg-surface-raised flex items-center justify-center px-3 rounded-md font-bold text-ink-muted text-xs">
-                            KG
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-bold text-sm text-ink truncate">
+                              {cat?.name || "?"}
+                            </span>
+                            <button
+                              onClick={() => toggleCategory(it.categoryId)}
+                              className="text-mute hover:text-status-error transition-colors text-[10px] font-bold"
+                            >
+                              Hapus
+                            </button>
+                          </div>
+                          <div className="flex gap-2 mt-1.5">
+                            <Input
+                              type="number"
+                              placeholder="0"
+                              value={it.weight}
+                              onChange={(e) => setItemWeight(it.categoryId, e.target.value)}
+                              className="flex-1 font-bold font-mono py-2 text-center"
+                              min="0.1"
+                              step="0.1"
+                            />
+                            <div className="bg-surface-raised flex items-center justify-center px-3 rounded-md font-bold text-ink-muted text-xs">
+                              KG
+                            </div>
                           </div>
                         </div>
                       </div>
+                      <Input
+                        type="text"
+                        placeholder={`Catatan ${cat?.name || ""} (opsional) — mis. "sudah dilipat"`}
+                        value={it.notes}
+                        onChange={(e) => setItemNotes(it.categoryId, e.target.value)}
+                        maxLength={120}
+                        className="text-xs py-2"
+                      />
                     </div>
                   );
                 })}
@@ -682,21 +698,25 @@ function OrderForm() {
                       const cat = dbCategories?.find((c) => c.id === it.categoryId);
                       const Icon = (cat && categoryIcons[cat.name]) || Sparkles;
                       return (
-                        <div
-                          key={it.categoryId}
-                          className="flex items-center justify-between gap-3"
-                        >
-                          <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 bg-brand-500 rounded-lg flex items-center justify-center text-ink">
-                              <Icon size={14} />
+                        <div key={it.categoryId} className="space-y-0.5">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2">
+                              <div className="w-6 h-6 bg-brand-500 rounded-lg flex items-center justify-center text-ink">
+                                <Icon size={14} />
+                              </div>
+                              <span className="text-sm font-bold text-ink">
+                                {cat?.name || "?"}
+                              </span>
                             </div>
-                            <span className="text-sm font-bold text-ink">
-                              {cat?.name || "?"}
+                            <span className="text-sm font-bold text-ink font-mono">
+                              {it.weight} kg
                             </span>
                           </div>
-                          <span className="text-sm font-bold text-ink font-mono">
-                            {it.weight} kg
-                          </span>
+                          {it.notes?.trim() && (
+                            <p className="text-[11px] text-ink-muted italic pl-8 leading-snug">
+                              “{it.notes.trim()}”
+                            </p>
+                          )}
                         </div>
                       );
                     })}

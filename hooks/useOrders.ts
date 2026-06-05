@@ -1,12 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { AxiosError } from 'axios';
 import api from '@/lib/axios';
 import { Order } from '@/types';
 import { useAuthStore } from '@/store/authStore';
+
+// Endpoint yang belum di-deploy → jangan bikin UI error, anggap data kosong dulu
+const isMissingRoute = (err: unknown): boolean => {
+  const s = (err as AxiosError | undefined)?.response?.status;
+  return s === 404 || s === 405 || s === 501;
+};
 
 // ── Create Order ─────────────────────────────────────────────────────────
 export interface CreateOrderItemInput {
   categoryId: string;
   estimatedWeight: number;
+  /** Catatan opsional per kategori — didukung BE */
+  notes?: string;
 }
 
 export interface CreateOrderPayload {
@@ -15,6 +24,8 @@ export interface CreateOrderPayload {
   lat: number;
   lng: number;
   method: 'PICKUP' | 'DROPOFF';
+  /** Khusus DROPOFF: bisa pilih lapak langsung — BE akan langsung notify hanya collector ini */
+  collectorId?: string;
 }
 
 export const useCreateOrder = () => {
@@ -22,9 +33,6 @@ export const useCreateOrder = () => {
 
   return useMutation({
     mutationFn: async (payload: CreateOrderPayload) => {
-      // Backward-compat: kalau cuma 1 item dan BE belum support items[], BE legacy
-      // bisa parse top-level categoryId+estimatedWeight. Kita kirim KEDUANYA biar
-      // BE baru (pakai items) maupun BE lama (pakai single field) sama-sama jalan.
       const body: Record<string, unknown> = {
         items: payload.items,
         photoUrl: payload.photoUrl,
@@ -33,9 +41,8 @@ export const useCreateOrder = () => {
         method: payload.method,
       };
 
-      if (payload.items.length === 1) {
-        body.categoryId = payload.items[0].categoryId;
-        body.estimatedWeight = payload.items[0].estimatedWeight;
+      if (payload.collectorId) {
+        body.collectorId = payload.collectorId;
       }
 
       const res = await api.post<{ status: string; data: Order }>('/orders', body);
@@ -53,17 +60,24 @@ export const useOrdersList = (params: { status?: string; role?: string; limit?: 
 
   return useQuery({
     queryKey: ['orders', params],
-    queryFn: async () => {
-      const res = await api.get<{ status: string; data: Order[] }>('/orders', {
-        params: {
-          status: params.status,
-          role: params.role,
-          limit: params.limit || 10,
-        },
-      });
-      return res.data.data;
+    queryFn: async (): Promise<Order[]> => {
+      try {
+        const res = await api.get<{ status: string; data: Order[] }>('/orders', {
+          params: {
+            status: params.status,
+            role: params.role,
+            limit: params.limit || 10,
+          },
+        });
+        return res.data.data;
+      } catch (err) {
+        // BE belum deploy GET /orders → tampilkan empty state, bukan error
+        if (isMissingRoute(err)) return [];
+        throw err;
+      }
     },
     enabled: !!token,
+    retry: (count, err) => !isMissingRoute(err) && count < 2,
   });
 };
 
@@ -82,19 +96,18 @@ export const useOrderDetails = (id: string) => {
 
 // ── Update Status (accept / validate / confirm / reject / cancel) ────────
 export interface ValidateItemInput {
-  id?: string;           // OrderItem.id (kalau pakai schema baru)
-  categoryId?: string;   // alternatif kalau BE accept by categoryId
+  /** OrderItem.id — wajib di BE baru */
+  id: string;
   actualWeight: number;
   agreedPrice: number;
 }
 
 export interface UpdateOrderPayload {
   action: 'accept' | 'reject' | 'validate' | 'confirm' | 'cancel';
-  /** Multi-item validate (schema baru) */
+  /** Items wajib untuk validate */
   items?: ValidateItemInput[];
-  /** Legacy single-item validate (schema lama) — auto-derived dari items kalau cuma 1 */
-  actualWeight?: number;
-  agreedPrice?: number;
+  /** Bukti timbangan opsional (URL Cloudinary) */
+  transactionProofUrl?: string;
 }
 
 export const useUpdateOrderStatus = (id: string) => {
@@ -105,16 +118,9 @@ export const useUpdateOrderStatus = (id: string) => {
       const body: Record<string, unknown> = { action: payload.action };
 
       if (payload.action === 'validate') {
-        if (payload.items && payload.items.length > 0) {
-          body.items = payload.items;
-          // Legacy single-item fallback
-          if (payload.items.length === 1) {
-            body.actualWeight = payload.items[0].actualWeight;
-            body.agreedPrice = payload.items[0].agreedPrice;
-          }
-        } else {
-          body.actualWeight = payload.actualWeight;
-          body.agreedPrice = payload.agreedPrice;
+        body.items = payload.items;
+        if (payload.transactionProofUrl) {
+          body.transactionProofUrl = payload.transactionProofUrl;
         }
       }
 

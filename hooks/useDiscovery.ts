@@ -46,22 +46,31 @@ export const useSearchCollectors = (params: SearchQueryParams) => {
         queryParams.categoryId = activeCategoryId;
       }
 
-      const res = await api.get<{ status: string; data: any[] }>('/discovery/search', {
-        params: queryParams,
-      });
+      try {
+        const res = await api.get<{ status: string; data: any[] }>('/discovery/search', {
+          params: queryParams,
+        });
 
-      // Map result database fields into front-end models
-      return res.data.data.map((c) => ({
-        id: c.id,
-        shopName: c.shopName,
-        description: c.description,
-        priorityScore: c.priorityScore,
-        ownerName: c.ownerName,
-        distance: c.distance, // in meters
-        isOpen: true,
-      }));
+        // Map result database fields into front-end models
+        return res.data.data.map((c) => ({
+          id: c.id,
+          shopName: c.shopName,
+          description: c.description,
+          priorityScore: c.priorityScore,
+          ownerName: c.ownerName,
+          distance: c.distance, // in meters
+          isOpen: true,
+        }));
+      } catch (err) {
+        // BE lama: search butuh auth + categoryId → kalau gagal, anggap kosong
+        // (begitu BE baru deploy: publik + opsional categoryId, otomatis jalan)
+        const status = (err as { response?: { status?: number } })?.response?.status;
+        if (status === 400 || status === 401 || status === 404) return [];
+        throw err;
+      }
     },
     enabled: !params.category || !!categories,
+    retry: false,
   });
 };
 

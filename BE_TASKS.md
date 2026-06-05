@@ -4,40 +4,62 @@
 > Berisi **semua** perubahan yang dibutuhkan FE: critical fix, schema, endpoint baru, security.
 >
 > **Host BE**: `https://be-rongsokin.hallojanu.xyz`
+> **Repo BE**: `github.com/januarsyah901/be-rongsok.in`
 > **Stack BE**: Express + Prisma + Supabase PostgreSQL + PostGIS + Socket.IO + JWT
 >
 > **FE sudah siap auto-switch**: tiap endpoint baru yang BE buat akan otomatis dipakai FE — tidak perlu deploy FE ulang. Selama BE belum jadi, FE pakai mock/local fallback.
 
 ---
 
+## ✅ Update Terbaru (commit `2887595` — implement multi-category)
+
+**Yang sudah diimplement BE:**
+- ✅ **Multi-category schema** (`OrderItem` table) + endpoint `POST /orders` terima `items[]`
+- ✅ **`PATCH /orders/:id` action `validate`** sudah terima `items[]` per kategori
+- ✅ **Receipt `detailsJson`** sudah include items breakdown
+- ✅ **Concurrent limit accept** — `CollectorProfile.maxConcurrentOrders` default 5
+- ✅ **`OrderItem.notes`** — catatan per kategori (mis. "Karton bersih, sudah dilipat")
+- ✅ **DROPOFF direct select** — `POST /orders` terima `collectorId` opsional, BE langsung notify collector tersebut saja
+- ✅ Spatial query pakai `ANY(${categoryIds})` (sip)
+- ✅ Socket emit `new_order` include `categories[]` array
+
+**FE sudah ikut update** untuk manfaatkan fitur baru:
+- Wizard `/orders/new` Step 2 → field **Catatan** per kategori
+- Tracking `/orders/[id]` → notes ditampilkan di detail card, validate form collector, struk digital
+- Hooks `useOrders` payload sudah include `notes` & `collectorId`
+- Types `OrderItem.notes`, `CollectorProfile.maxConcurrentOrders`, `WasteCategory.description` ditambahkan
+
+---
+
 ## 📋 Master Checklist
 
 ### 🔴 P0 — Critical Fix (FE patah parsial tanpa ini)
-- [ ] **A1** Buat `GET /api/v1/orders` (list dengan filter)
-- [ ] **A2** Buat `GET /api/v1/discovery/collectors/:id` (detail lapak)
-- [ ] **A3** Tambah action `reject` & `cancel` di `PATCH /api/v1/orders/:id`
-- [ ] **A4** Lepas `protect` dari `/discovery/search` + buat `categoryId` opsional
+- [ ] **A1** Buat `GET /api/v1/orders` (list dengan filter) ← masih missing, FE dashboard/riwayat masih kosong
+- [ ] **A2** Buat `GET /api/v1/discovery/collectors/:id` (detail lapak) ← masih missing, `/pengepul/[id]` 404
+- [ ] **A3** Tambah action `reject` & `cancel` di `PATCH /api/v1/orders/:id` ← masih missing
+- [ ] **A4** Lepas `protect` dari `/discovery/search` + buat `categoryId` opsional ← masih wajib auth & categoryId
 
 ### 🟠 P1 — Schema & Security Prerequisites
-- [ ] **B1** Tambah kolom `User.phone` (sekarang FE kirim tapi di-drop diam-diam)
-- [ ] **B2** JWT include `role` di payload + aktifkan middleware `authorize`
-- [ ] **B3** Buat tabel `OrderItem` + migrasi data Order lama
-- [ ] **B4** Drop kolom legacy di `Order`: `categoryId`, `estimatedWeight`, `actualWeight`, `agreedPrice`
+- [ ] **B1** Tambah kolom `User.phone` (sekarang FE kirim tapi di-drop diam-diam) ← belum
+- [ ] **B2** JWT include `role` di payload + aktifkan middleware `authorize` ← `generateToken(userId)` masih hanya `id`, `authorize` masih placeholder
+- [x] **B3** Buat tabel `OrderItem` + migrasi data Order lama ✅ **done (commit 2887595)**
+- [ ] **B4** Drop kolom legacy di `Order`: `categoryId`, `estimatedWeight`, `actualWeight`, `agreedPrice` ← masih ada (boleh dipertahankan untuk backward compat, tapi kalau mau bersih bisa di-drop)
 
-### 🟢 P2 — New Endpoints (urutkan sesuai prioritas tim)
+### 🟢 P2 — New Endpoints
 
-**Edit Profil**
+**Edit Profil** ← belum ada
 - [ ] **C1** `PATCH /api/v1/auth/me` (update profil + lokasi)
 - [ ] **C2** Update `GET /api/v1/auth/me` — sertakan `phone`, `lat`, `lng`
 
-**Multi-Category Orders** (1 order bisa banyak kategori sampah)
-- [ ] **D1** `POST /api/v1/orders` terima `items[]` di body
-- [ ] **D2** `PATCH /api/v1/orders/:id` action `validate` terima `items[]`
-- [ ] **D3** Update spatial matching query: pengepul harus accept SEMUA kategori
-- [ ] **D4** Update socket emit `new_order` include `items[]`
-- [ ] **D5** Update Receipt `detailsJson` include items breakdown
+**Multi-Category Orders** ✅ **DONE**
+- [x] **D1** `POST /api/v1/orders` terima `items[]` di body
+- [x] **D2** `PATCH /api/v1/orders/:id` action `validate` terima `items[]`
+- [x] **D3** Spatial matching query update (sekarang pakai `categoryId = ANY(categoryIds)`)
+- [x] **D4** Socket emit `new_order` include `categories[]` array
+- [x] **D5** Receipt `detailsJson` include items breakdown
+- [x] **D6** BONUS: `OrderItem.notes` (catatan per kategori) — FE sudah ikut implement
 
-**Admin Console** (sesuai BAB III §3.3.a)
+**Admin Console** ← belum ada satupun
 - [ ] **E1** `GET /api/v1/admin/stats` (KPI + weekly transactions)
 - [ ] **E2** `GET /api/v1/admin/orders?status=&page=&limit=` (monitoring)
 - [ ] **E3** `POST /api/v1/admin/categories`
@@ -507,9 +529,12 @@ const me = async (req, res, next) => {
 
 ---
 
-## D. Multi-Category Orders
+## D. Multi-Category Orders ✅ DONE (commit 2887595)
 
-Order bisa berisi beberapa kategori sekaligus (Kardus + Plastik). Pengepul yang menerima **SEMUA** kategori akan dapat notifikasi.
+> Bagian ini sudah diimplement BE. Tetap dipertahankan di doc sebagai referensi.
+> Order bisa berisi beberapa kategori sekaligus (Kardus + Plastik). Pengepul yang menerima minimal salah satu kategori akan dapat notifikasi.
+>
+> **Catatan kecil:** matching query sekarang pakai `ANY(${categoryIds})` (OR logic — pengepul accept salah satu kategori sudah bisa dapat notif). Kalau mau lebih ketat (hanya pengepul yang accept SEMUA), bisa ganti ke `HAVING COUNT(DISTINCT categoryId) = ${n}`. Tapi yang sekarang juga masuk akal — kasih kesempatan pengepul yang accept sebagian besar untuk bisa ambil order.
 
 ### D1. `POST /orders` — terima `items[]`
 
@@ -948,14 +973,19 @@ curl https://be-rongsokin.hallojanu.xyz/api/v1/admin/stats -H "Authorization: Be
 | POST | `/collector/profile` | ✅ | ✅ jalan |
 | PATCH | `/collector/profile` | ✅ | ✅ jalan |
 | PATCH | `/collector/catalogs` | ✅ | ✅ jalan |
-| POST | `/orders` | ✅ | ✅ jalan (perlu update body — lihat D1) |
-| GET | `/orders/:id` | ✅ | ✅ jalan (perlu update include — lihat D) |
-| PATCH | `/orders/:id` | ✅ | ✅ jalan (perlu tambah case + update validate — lihat A3 & D2) |
+| POST | `/orders` | ✅ | ✅ jalan (multi-category siap — body terima `items[]`) |
+| GET | `/orders/:id` | ✅ | ✅ jalan (sudah include `items` dengan kategori) |
+| PATCH | `/orders/:id` | ✅ | ✅ jalan untuk `accept/validate/confirm` — **TODO**: tambah case `reject` & `cancel` (lihat A3) |
 | POST | `/ratings` | ✅ | ✅ jalan |
 | GET | `/ratings/user/:userId` | ✅ | ✅ jalan |
 
 ---
 
-**Estimasi effort:** P0 (~1 hari) · P1 schema (~0.5 hari) · Edit Profil (~0.5 hari) · Multi-Category (~1-2 hari) · Admin Console (~1 hari). **Total ~4-5 hari kerja.**
+**Sisa pekerjaan (Multi-Category sudah ✅):**
+- P0 fix (4 endpoint) ~1 hari
+- P1 schema (User.phone) ~0.5 hari
+- P1 security (JWT role + authorize) ~0.5 hari
+- Edit Profil (1 endpoint baru + update GET /auth/me) ~0.5 hari
+- Admin Console (5 endpoint + setup) ~1 hari
 
-Setiap section di atas mandiri — bisa dikerjakan parallel kalau ada > 1 dev BE.
+**Total sisa ~3.5 hari kerja.** Bisa parallel kalau ada > 1 dev BE.
