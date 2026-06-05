@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   Search,
   Archive,
@@ -28,7 +28,7 @@ import {
   useWasteCategories,
   useDiscoveryStats,
 } from "@/hooks/useDiscovery";
-import { DEFAULT_COORDS, formatDistance } from "@/lib/utils";
+import { DEFAULT_COORDS, formatDistance, formatRupiah } from "@/lib/utils";
 import { useAuthStore } from "@/store/authStore";
 import { useRouter } from "next/navigation";
 
@@ -40,6 +40,14 @@ const CATEGORIES = [
   { name: "Kaca & Botol", icon: Wine },
   { name: "Elektronik", icon: Tv },
   { name: "Lain-lain", icon: Droplets },
+];
+
+// Harga perkiraan pasar (Rp/kg) untuk widget estimasi cuan di hero — bukan harga final
+const ESTIMATOR = [
+  { name: "Plastik", price: 2500, icon: RefreshCw },
+  { name: "Kardus", price: 2000, icon: Box },
+  { name: "Logam", price: 5000, icon: Wrench },
+  { name: "Kaca", price: 800, icon: Wine },
 ];
 
 const HOW_IT_WORKS = [
@@ -90,6 +98,12 @@ export default function LandingPage() {
 
   const { data: categories } = useWasteCategories();
   const { data: stats } = useDiscoveryStats();
+
+  // Widget estimasi cuan
+  const [estIdx, setEstIdx] = useState(0);
+  const [estWeight, setEstWeight] = useState(10);
+  const est = ESTIMATOR[estIdx];
+  const estTotal = Math.round(estWeight * est.price);
 
   const { data: collectors, isLoading: isCollectorsLoading } = useSearchCollectors({
     lat: DEFAULT_COORDS.lat,
@@ -186,7 +200,7 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* RIGHT — signature white "converter" card */}
+          {/* RIGHT — estimator interaktif */}
           <div className="w-full md:w-96 shrink-0">
             <div className="bg-surface-raised border border-ink rounded-2xl p-6 space-y-4">
               <div className="flex items-center justify-between">
@@ -194,38 +208,80 @@ export default function LandingPage() {
                   Estimasi Cuan
                 </span>
                 <span className="text-[10px] font-bold text-brand-800 bg-brand-100 rounded-full px-2 py-0.5">
-                  LIVE
+                  COBA HITUNG
                 </span>
               </div>
-              <div className="bg-surface rounded-xl p-4 flex items-center justify-between">
-                <div>
-                  <div className="text-[11px] font-semibold text-mute">Kamu setor</div>
-                  <div className="font-display text-2xl font-extrabold text-ink font-mono">
-                    10 kg
+
+              {/* Pilih kategori */}
+              <div className="grid grid-cols-4 gap-2">
+                {ESTIMATOR.map((c, i) => {
+                  const active = i === estIdx;
+                  return (
+                    <button
+                      key={c.name}
+                      onClick={() => setEstIdx(i)}
+                      className={`flex flex-col items-center gap-1.5 rounded-xl py-2.5 border transition-colors ${
+                        active
+                          ? "bg-brand-500 border-brand-500 text-ink"
+                          : "bg-surface border-ink-faint text-ink-muted hover:border-ink"
+                      }`}
+                    >
+                      <c.icon size={18} />
+                      <span className="text-[10px] font-bold">{c.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Berat — stepper */}
+              <div className="bg-surface rounded-xl p-4">
+                <div className="text-[11px] font-semibold text-mute mb-2">Kamu setor</div>
+                <div className="flex items-center justify-between gap-3">
+                  <button
+                    onClick={() => setEstWeight((w) => Math.max(1, w - 1))}
+                    className="w-9 h-9 rounded-full bg-surface-raised border border-ink-faint flex items-center justify-center text-ink hover:bg-brand-100 transition-colors shrink-0 font-bold text-lg"
+                    aria-label="Kurangi"
+                  >
+                    −
+                  </button>
+                  <div className="font-display text-2xl font-extrabold text-ink font-mono text-center flex-1">
+                    {estWeight} kg
                   </div>
-                </div>
-                <div className="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center text-brand-800">
-                  <Archive size={20} />
+                  <button
+                    onClick={() => setEstWeight((w) => Math.min(999, w + 1))}
+                    className="w-9 h-9 rounded-full bg-surface-raised border border-ink-faint flex items-center justify-center text-ink hover:bg-brand-100 transition-colors shrink-0 font-bold text-lg"
+                    aria-label="Tambah"
+                  >
+                    +
+                  </button>
                 </div>
               </div>
+
               <div className="flex items-center justify-center">
                 <div className="w-9 h-9 rounded-full bg-ink flex items-center justify-center text-brand-500">
                   <ArrowRight size={16} className="rotate-90" />
                 </div>
               </div>
+
+              {/* Hasil */}
               <div className="bg-brand-100 rounded-xl p-4 flex items-center justify-between">
                 <div>
-                  <div className="text-[11px] font-semibold text-brand-800">Kamu terima</div>
+                  <div className="text-[11px] font-semibold text-brand-800">Perkiraan diterima</div>
                   <div className="font-display text-2xl font-extrabold text-ink font-mono">
-                    Rp 45.000
+                    {formatRupiah(estTotal)}
                   </div>
                 </div>
                 <div className="text-[10px] font-mono text-brand-800 text-right leading-tight">
-                  Rp 4.500
+                  {formatRupiah(est.price)}
                   <br />
                   per kg
                 </div>
               </div>
+
+              <p className="text-[10px] text-mute leading-relaxed">
+                *Perkiraan harga pasar. Harga final ditentukan pengepul saat penimbangan.
+              </p>
+
               <Link href={token ? "/orders/new" : "/register"}>
                 <Button className="w-full">Mulai Transaksi</Button>
               </Link>
