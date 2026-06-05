@@ -335,7 +335,7 @@ export default function OrderTrackingPage() {
                       return (
                         <div
                           key={it.id || it.categoryId}
-                          className="flex items-center gap-3 py-1.5"
+                          className="flex items-start gap-3 py-1.5"
                         >
                           <div className="w-9 h-9 bg-brand-500 rounded-2xl flex items-center justify-center text-ink shrink-0">
                             <Icon size={16} />
@@ -348,6 +348,11 @@ export default function OrderTrackingPage() {
                               est. {it.estimatedWeight} kg
                               {it.actualWeight != null && ` · aktual ${it.actualWeight} kg`}
                             </span>
+                            {it.notes && (
+                              <p className="text-[11px] text-ink-muted italic leading-snug mt-0.5">
+                                “{it.notes}”
+                              </p>
+                            )}
                           </div>
                           {it.subtotal != null && (
                             <span className="text-xs font-bold text-ink font-mono shrink-0">
@@ -435,6 +440,11 @@ export default function OrderTrackingPage() {
                             est. {it.estimatedWeight} kg
                           </span>
                         </div>
+                        {it.notes && (
+                          <p className="text-[11px] text-ink-muted italic leading-snug -mt-1">
+                            “{it.notes}”
+                          </p>
+                        )}
                         <div className="grid grid-cols-2 gap-2">
                           <div>
                             <label className="text-[9px] font-bold text-mute uppercase tracking-wider mb-1 block">
@@ -644,6 +654,11 @@ export default function OrderTrackingPage() {
                               {aw} kg × {formatRupiah(ap)}
                             </span>
                           </div>
+                          {it.notes && (
+                            <div className="text-mute text-[10px] italic pl-1 mt-0.5">
+                              · {it.notes}
+                            </div>
+                          )}
                         </div>
                       );
                     })}

@@ -30,10 +30,13 @@ export interface CollectorProfile {
   userId: string;
   shopName: string;
   description?: string;
+  shopImageUrl?: string;
   radiusKm: number;
   isOpen: boolean;
   isPremium: boolean;
   priorityScore: number;
+  /** Batas maks pesanan aktif yang bisa di-accept (default 5 di BE) */
+  maxConcurrentOrders?: number;
   catalogs?: CollectorCatalog[];
   user?: User;
 }
@@ -41,6 +44,7 @@ export interface CollectorProfile {
 export interface WasteCategory {
   id: string;
   name: string;
+  description?: string;
   iconUrl?: string;
 }
 
@@ -61,6 +65,9 @@ export interface OrderItem {
   estimatedWeight: number;
   actualWeight?: number;
   agreedPrice?: number;
+  /** Catatan opsional per kategori (mis. "Karton bersih, sudah dilipat") */
+  notes?: string;
+  /** Bisa di-compute FE: actualWeight × agreedPrice (BE tidak punya kolom ini di schema, tapi FE pakai) */
   subtotal?: number;
   category?: WasteCategory;
 }

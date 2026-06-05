@@ -82,7 +82,7 @@ export default function LandingPage() {
 
   useWasteCategories();
 
-  const { data: collectors } = useSearchCollectors({
+  const { data: collectors, isLoading: isCollectorsLoading } = useSearchCollectors({
     lat: DEFAULT_COORDS.lat,
     lng: DEFAULT_COORDS.lng,
     radius: 50,
@@ -320,41 +320,55 @@ export default function LandingPage() {
             Lihat Semua <ArrowRight size={14} />
           </Link>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          {featuredCollectors.length > 0
-            ? featuredCollectors.map((collector) => (
-                <Link
-                  key={collector.id}
-                  href={`/pengepul/${collector.id}`}
-                  className="bg-surface-raised rounded-2xl p-5 text-center hover:bg-brand-100 transition-colors block"
-                >
-                  <div className="w-12 h-12 bg-surface rounded-full flex items-center justify-center mx-auto mb-3 text-ink">
-                    <Archive size={22} />
-                  </div>
-                  <div className="text-xs font-bold text-ink line-clamp-2 leading-tight mb-1.5">
-                    {collector.shopName}
-                  </div>
-                  <div className="flex items-center justify-center gap-1 text-[11px] text-ink-muted">
-                    <Star size={11} className="text-status-warning fill-status-warning" />
-                    <span className="font-bold text-ink font-mono">
-                      {collector.priorityScore || "4.9"}
-                    </span>
-                  </div>
-                  {collector.distance != null && (
-                    <div className="mt-1 text-[10px] text-brand-700 font-bold font-mono">
-                      {formatDistance(collector.distance)}
-                    </div>
-                  )}
-                </Link>
-              ))
-            : [1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="bg-surface-raised rounded-2xl p-5 text-center">
-                  <div className="w-12 h-12 bg-surface rounded-full mx-auto mb-3 animate-pulse" />
-                  <div className="h-3 bg-surface rounded w-3/4 mx-auto mb-2 animate-pulse" />
-                  <div className="h-2 bg-surface rounded w-1/2 mx-auto animate-pulse" />
+        {isCollectorsLoading ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="bg-surface-raised rounded-2xl p-5 text-center">
+                <div className="w-12 h-12 bg-surface rounded-full mx-auto mb-3 animate-pulse" />
+                <div className="h-3 bg-surface rounded w-3/4 mx-auto mb-2 animate-pulse" />
+                <div className="h-2 bg-surface rounded w-1/2 mx-auto animate-pulse" />
+              </div>
+            ))}
+          </div>
+        ) : featuredCollectors.length > 0 ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            {featuredCollectors.map((collector) => (
+              <Link
+                key={collector.id}
+                href={`/pengepul/${collector.id}`}
+                className="bg-surface-raised rounded-2xl p-5 text-center hover:bg-brand-100 transition-colors block"
+              >
+                <div className="w-12 h-12 bg-surface rounded-full flex items-center justify-center mx-auto mb-3 text-ink">
+                  <Archive size={22} />
                 </div>
-              ))}
-        </div>
+                <div className="text-xs font-bold text-ink line-clamp-2 leading-tight mb-1.5">
+                  {collector.shopName}
+                </div>
+                <div className="flex items-center justify-center gap-1 text-[11px] text-ink-muted">
+                  <Star size={11} className="text-status-warning fill-status-warning" />
+                  <span className="font-bold text-ink font-mono">
+                    {collector.priorityScore || "4.9"}
+                  </span>
+                </div>
+                {collector.distance != null && (
+                  <div className="mt-1 text-[10px] text-brand-700 font-bold font-mono">
+                    {formatDistance(collector.distance)}
+                  </div>
+                )}
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className="bg-surface-raised rounded-2xl p-8 text-center">
+            <div className="w-12 h-12 bg-surface rounded-full flex items-center justify-center mx-auto mb-3 text-ink-faint">
+              <Archive size={22} />
+            </div>
+            <p className="text-sm font-bold text-ink">Pengepul baru segera bergabung</p>
+            <p className="text-xs text-ink-muted mt-1">
+              Daftar jadi pengepul pertama di daerahmu.
+            </p>
+          </div>
+        )}
       </section>
 
       {/* CTA BOTTOM — dark polarity band */}
