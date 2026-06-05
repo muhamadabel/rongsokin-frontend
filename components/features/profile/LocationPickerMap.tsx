@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
-import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
-import L from "leaflet";
+import { useEffect } from "react";
+import { MapContainer, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 
 interface LatLng {
@@ -16,75 +15,64 @@ interface Props {
   height?: number;
 }
 
-/** Marker hijau lime (Wise palette) lewat divIcon — tidak butuh asset image. */
-const lapakIcon = L.divIcon({
-  className: "rongsok-marker",
-  html: `<div style="
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    background: #9fe870;
-    border: 3px solid #0e0f0c;
-    box-shadow: 0 4px 10px rgba(14,15,12,.25);
-    display:flex; align-items:center; justify-content:center;
-    font-family: sans-serif; font-weight: 900; color: #0e0f0c; font-size: 13px;
-  ">📍</div>`,
-  iconSize: [28, 28],
-  iconAnchor: [14, 14],
-});
+/** Pindahkan view kalau value berubah dari luar (mis. tombol GPS). */
+function RecenterOnValue({ value }: { value: LatLng }) {
+  const map = useMap();
+  useEffect(() => {
+    const c = map.getCenter();
+    if (Math.abs(c.lat - value.lat) > 1e-5 || Math.abs(c.lng - value.lng) > 1e-5) {
+      map.setView([value.lat, value.lng], map.getZoom(), { animate: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value.lat, value.lng]);
+  return null;
+}
 
-/** Subkomponen pendengar klik peta. */
-function ClickHandler({ onPick }: { onPick: (ll: LatLng) => void }) {
+/** Titik = TENGAH peta. Saat user selesai geser peta, lapor center baru. */
+function CenterReporter({ onChange }: { onChange: (ll: LatLng) => void }) {
   useMapEvents({
-    click(e) {
-      onPick({ lat: e.latlng.lat, lng: e.latlng.lng });
+    moveend(e) {
+      const c = e.target.getCenter();
+      onChange({ lat: c.lat, lng: c.lng });
     },
   });
   return null;
 }
 
 export default function LocationPickerMap({ value, onChange, height = 300 }: Props) {
-  const center = useMemo<[number, number]>(() => [value.lat, value.lng], [value.lat, value.lng]);
-  const markerRef = useRef<L.Marker | null>(null);
-
-  // Saat lat/lng eksternal berubah (mis. GPS button), pan map ke sana
-  // (akan otomatis lewat key prop di MapContainer)
-  useEffect(() => {
-    if (markerRef.current) {
-      markerRef.current.setLatLng([value.lat, value.lng]);
-    }
-  }, [value.lat, value.lng]);
-
   return (
-    <div className="rounded-2xl overflow-hidden border border-ink-faint" style={{ height }}>
+    <div
+      className="relative rounded-2xl overflow-hidden border border-ink-faint"
+      style={{ height }}
+    >
       <MapContainer
-        center={center}
-        zoom={15}
+        center={[value.lat, value.lng]}
+        zoom={16}
         style={{ height: "100%", width: "100%" }}
         scrollWheelZoom={true}
-        key={`${value.lat}-${value.lng}-init`}
+        zoomControl={false}
+        attributionControl={false}
       >
+        {/* Tile gelap minimalis — jalan saja, tanpa satelit/rumah (CARTO Dark Matter) */}
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+          subdomains={["a", "b", "c", "d"]}
         />
-        <ClickHandler onPick={onChange} />
-        <Marker
-          position={center}
-          icon={lapakIcon}
-          draggable={true}
-          ref={(m) => {
-            markerRef.current = m;
-          }}
-          eventHandlers={{
-            dragend(e) {
-              const target = e.target as L.Marker;
-              const ll = target.getLatLng();
-              onChange({ lat: ll.lat, lng: ll.lng });
-            },
-          }}
-        />
+        <RecenterOnValue value={value} />
+        <CenterReporter onChange={onChange} />
       </MapContainer>
+
+      {/* Pin tetap di tengah — geser peta di bawahnya */}
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center z-[500]">
+        <div className="flex flex-col items-center -translate-y-3">
+          <div className="w-7 h-7 rounded-full bg-brand-500 border-[3px] border-ink shadow-lg flex items-center justify-center text-ink text-sm font-black">
+            📍
+          </div>
+          {/* tangkai + bayangan titik pusat */}
+          <div className="w-0.5 h-3 bg-ink/70 -mt-0.5" />
+          <div className="w-2.5 h-1 rounded-full bg-ink/30 blur-[1px]" />
+        </div>
+      </div>
     </div>
   );
 }

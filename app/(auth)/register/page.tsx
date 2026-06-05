@@ -261,9 +261,11 @@ function RegisterForm() {
                 </label>
                 <Input
                   type="tel"
+                  inputMode="numeric"
                   placeholder="08123456789"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
+                  maxLength={15}
                   required
                 />
               </div>
