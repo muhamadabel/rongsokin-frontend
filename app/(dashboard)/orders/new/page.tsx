@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import DesktopNav from "@/components/ui/DesktopNav";
 import BottomNav from "@/components/ui/BottomNav";
+import { PageSkeleton } from "@/components/ui/Skeleton";
 import { DEFAULT_COORDS } from "@/lib/utils";
 import { useWasteCategories } from "@/hooks/useDiscovery";
 import { useCreateOrder } from "@/hooks/useOrders";
@@ -52,13 +53,7 @@ interface ItemDraft {
 
 export default function NewOrderPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-surface flex items-center justify-center">
-          <RefreshCw className="w-10 h-10 text-brand-700 animate-spin" />
-        </div>
-      }
-    >
+    <Suspense fallback={<PageSkeleton />}>
       <OrderForm />
     </Suspense>
   );

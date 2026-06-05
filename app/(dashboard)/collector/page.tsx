@@ -21,6 +21,7 @@ import {
   ArrowDownRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { CollectorSkeleton } from "@/components/ui/Skeleton";
 import { useAuthStore } from "@/store/authStore";
 import { useSocket } from "@/hooks/useSocket";
 import { useOrderStore } from "@/store/orderStore";
@@ -347,18 +348,7 @@ export default function CollectorDashboard() {
   const isPageLoading = isProfileLoading || isOrdersLoading;
 
   if (isPageLoading) {
-    return (
-      <div className="min-h-screen bg-surface flex flex-col justify-between pb-24 md:pb-0">
-        <DesktopNav />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="flex flex-col items-center gap-3">
-            <RefreshCw className="w-10 h-10 text-brand-700 animate-spin" />
-            <span className="text-sm font-bold text-ink-muted">Memuat Dasbor Lapak…</span>
-          </div>
-        </div>
-        <BottomNav />
-      </div>
-    );
+    return <CollectorSkeleton />;
   }
 
   return (

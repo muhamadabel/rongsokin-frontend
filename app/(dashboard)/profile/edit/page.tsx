@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/Input";
 import DesktopNav from "@/components/ui/DesktopNav";
 import BottomNav from "@/components/ui/BottomNav";
 import LocationPicker from "@/components/features/profile/LocationPicker";
+import { ProfileEditSkeleton } from "@/components/ui/Skeleton";
 import { useMe, useUpdateMe } from "@/hooks/useAuth";
 import {
   useCollectorProfile,
@@ -200,15 +201,7 @@ export default function EditProfilePage() {
   const isPageLoading = isMeLoading || (isCollector && isProfileLoading);
 
   if (isPageLoading) {
-    return (
-      <div className="min-h-screen bg-surface flex flex-col">
-        <DesktopNav />
-        <div className="flex-1 flex items-center justify-center">
-          <RefreshCw className="w-10 h-10 text-brand-700 animate-spin" />
-        </div>
-        <BottomNav />
-      </div>
-    );
+    return <ProfileEditSkeleton />;
   }
 
   return (

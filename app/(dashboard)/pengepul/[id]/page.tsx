@@ -22,6 +22,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import DesktopNav from "@/components/ui/DesktopNav";
 import BottomNav from "@/components/ui/BottomNav";
+import { PengepulDetailSkeleton } from "@/components/ui/Skeleton";
 import { useCollectorDetails, useWasteCategories } from "@/hooks/useDiscovery";
 import { useUserRatings } from "@/hooks/useRatings";
 import { formatRupiah, formatDate } from "@/lib/utils";
@@ -47,18 +48,7 @@ export default function PengepulDetailPage() {
   const { data: ratings, isLoading: isRatingsLoading } = useUserRatings(collectorUserId);
 
   if (isCollectorLoading || isCategoriesLoading) {
-    return (
-      <div className="min-h-screen bg-surface flex flex-col justify-between pb-24 md:pb-0">
-        <DesktopNav />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="flex flex-col items-center gap-3">
-            <RefreshCw className="w-10 h-10 text-brand-700 animate-spin" />
-            <span className="text-sm font-bold text-ink-muted">Memuat detail lapak…</span>
-          </div>
-        </div>
-        <BottomNav />
-      </div>
-    );
+    return <PengepulDetailSkeleton />;
   }
 
   if (error || !collector) {
