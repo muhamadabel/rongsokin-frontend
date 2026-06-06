@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
-import { MapPin, Crosshair, RefreshCw } from "lucide-react";
+import { MapPin, Crosshair, RefreshCw, Loader2 } from "lucide-react";
 import { DEFAULT_COORDS } from "@/lib/utils";
+import { reverseGeocode } from "@/lib/geocode";
 import toast from "react-hot-toast";
 
 // Map butuh window → dynamic import dengan ssr:false
@@ -40,6 +41,8 @@ export default function LocationPicker({
   autoLocate = false,
 }: Props) {
   const [isLocating, setIsLocating] = useState(false);
+  const [areaName, setAreaName] = useState<string>("");
+  const [areaLoading, setAreaLoading] = useState(false);
   const didAutoLocate = useRef(false);
 
   const handleUseGPS = (silent = false) => {
@@ -87,6 +90,23 @@ export default function LocationPicker({
 
   const current = value || DEFAULT_COORDS;
 
+  // Reverse-geocode (debounce) → nama daerah s.d. kecamatan tiap kali titik berubah
+  const geocodeReq = useRef(0);
+  useEffect(() => {
+    const lat = current.lat;
+    const lng = current.lng;
+    setAreaLoading(true);
+    const reqId = ++geocodeReq.current;
+    const t = setTimeout(async () => {
+      const info = await reverseGeocode(lat, lng);
+      if (reqId !== geocodeReq.current) return; // hasil basi → abaikan
+      setAreaName(info?.label || "");
+      setAreaLoading(false);
+    }, 700);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current.lat, current.lng]);
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -110,17 +130,29 @@ export default function LocationPicker({
 
       <LocationPickerMap value={current} onChange={onChange} height={height} />
 
-      <div className="flex items-center justify-between gap-2 text-[11px] flex-wrap">
-        <div className="flex items-center gap-1.5 text-ink">
-          <MapPin size={13} className="text-brand-700" />
-          <span className="font-mono font-bold">
+      {/* Nama daerah hasil reverse-geocode (s.d. kecamatan) */}
+      <div className="rounded-2xl bg-surface px-3.5 py-2.5 flex items-start gap-2.5">
+        <MapPin size={16} className="text-brand-700 shrink-0 mt-0.5" />
+        <div className="min-w-0 flex-1">
+          {areaLoading ? (
+            <span className="text-xs text-ink-muted flex items-center gap-1.5">
+              <Loader2 size={12} className="animate-spin" />
+              Mencari nama daerah…
+            </span>
+          ) : areaName ? (
+            <span className="text-sm font-bold text-ink leading-snug block">{areaName}</span>
+          ) : (
+            <span className="text-xs text-ink-muted">Nama daerah tidak ditemukan.</span>
+          )}
+          <span className="text-[10px] font-mono text-mute block mt-0.5">
             {current.lat.toFixed(5)}, {current.lng.toFixed(5)}
           </span>
         </div>
-        <span className="text-mute">
-          {helperText || "Geser peta untuk menempatkan titik di lokasimu."}
-        </span>
       </div>
+
+      <p className="text-[11px] text-mute">
+        {helperText || "Geser peta untuk menempatkan titik di lokasimu."}
+      </p>
     </div>
   );
 }
