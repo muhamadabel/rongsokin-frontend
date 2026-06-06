@@ -19,6 +19,8 @@ import {
   AlertTriangle,
   Pencil,
   ScanLine,
+  Lock,
+  Camera,
 } from "lucide-react";
 import { useRegister } from "@/hooks/useAuth";
 import { useUpdateCollectorProfile } from "@/hooks/useCollector";
@@ -102,14 +104,13 @@ function RegisterForm() {
       .catch(() => toast.error("Gagal mengunggah foto KTP. Ulangi foto."))
       .finally(() => setUploadingKtp(false));
 
-    // OCR NIK + Nama
+    // OCR NIK + Nama. NIK = kunci utama → status sukses kalau NIK terbaca.
     try {
       const res = await recognizeKtp(blob);
       setNik(res.nik || "");
       setKtpName(res.name || "");
-      const ok = !!res.nik && !!res.name;
-      setOcrStatus(ok ? "done" : "failed");
-      setFieldsLocked(ok);
+      setOcrStatus(res.nik ? "done" : "failed");
+      setFieldsLocked(!!res.name); // nama dikunci kalau terbaca, bisa dikoreksi manual
     } catch {
       setOcrStatus("failed");
       setFieldsLocked(false);
@@ -428,35 +429,50 @@ function RegisterForm() {
                   {ocrStatus === "done" && (
                     <div className="flex items-center gap-2 text-sm text-brand-800 bg-brand-100 border border-brand-200 rounded-xl px-3 py-2">
                       <CheckCircle2 size={16} className="text-brand-700 shrink-0" />
-                      Data terbaca otomatis. Periksa sebelum lanjut.
+                      NIK terbaca otomatis. Periksa nama, lalu lanjut.
                     </div>
                   )}
                   {ocrStatus === "failed" && (
-                    <div className="flex items-start gap-2 text-sm text-status-error bg-status-error/10 border border-status-error/30 rounded-xl px-3 py-2">
-                      <AlertTriangle size={16} className="shrink-0 mt-0.5" />
-                      Sebagian data tidak terbaca jelas. Isi NIK & Nama secara manual sesuai KTP.
+                    <div className="text-sm text-status-error bg-status-error/10 border border-status-error/30 rounded-xl px-3 py-2.5 space-y-2">
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+                        <span>
+                          NIK belum terbaca. Foto ulang KTP — pastikan terang, tidak buram, dan
+                          memenuhi bingkai.
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={retakeKtp}
+                        className="flex items-center gap-1.5 text-xs font-bold text-ink bg-surface-raised border border-ink-faint rounded-full px-3 py-1.5"
+                      >
+                        <Camera size={13} /> Foto Ulang KTP
+                      </button>
                     </div>
                   )}
 
-                  {/* NIK */}
+                  {/* NIK — hanya diisi sistem (OCR), tidak bisa diketik manual */}
                   <div>
-                    <label className="text-xs font-bold text-ink uppercase tracking-wider mb-2 block">
-                      NIK
+                    <label className="text-xs font-bold text-ink uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                      NIK <Lock size={11} className="text-ink-muted" />
                     </label>
                     <Input
                       type="text"
                       inputMode="numeric"
-                      placeholder="16 digit sesuai KTP"
+                      placeholder="Otomatis dari KTP…"
                       value={nik}
-                      onChange={(e) => setNik(e.target.value.replace(/\D/g, "").slice(0, 16))}
-                      readOnly={fieldsLocked}
+                      readOnly
+                      tabIndex={-1}
                       maxLength={16}
-                      className={fieldsLocked ? "bg-surface cursor-not-allowed" : ""}
+                      className="bg-surface cursor-not-allowed font-mono tracking-wide"
                       required
                     />
+                    <p className="text-[11px] text-ink-muted mt-1">
+                      NIK diisi otomatis hasil pindai KTP & tidak bisa diketik manual.
+                    </p>
                   </div>
 
-                  {/* Nama */}
+                  {/* Nama — boleh dikoreksi manual kalau OCR keliru */}
                   <div>
                     <label className="text-xs font-bold text-ink uppercase tracking-wider mb-2 block">
                       Nama Lengkap (sesuai KTP)
@@ -470,29 +486,36 @@ function RegisterForm() {
                       className={fieldsLocked ? "bg-surface cursor-not-allowed" : ""}
                       required
                     />
+                    {fieldsLocked && (
+                      <button
+                        type="button"
+                        onClick={() => setFieldsLocked(false)}
+                        className="flex items-center gap-1.5 text-xs font-semibold text-ink-muted hover:text-ink mt-1.5"
+                      >
+                        <Pencil size={13} /> Nama tidak sesuai? Koreksi manual
+                      </button>
+                    )}
                   </div>
-
-                  {/* Unlock manual */}
-                  {fieldsLocked && (
-                    <button
-                      type="button"
-                      onClick={() => setFieldsLocked(false)}
-                      className="flex items-center gap-1.5 text-xs font-semibold text-ink-muted hover:text-ink"
-                    >
-                      <Pencil size={13} /> Data tidak sesuai? Koreksi manual
-                    </button>
-                  )}
 
                   <div className="pt-2">
                     <Button
                       type="submit"
                       className="w-full"
-                      disabled={isRegistering || uploadingKtp || ocrStatus === "scanning"}
+                      disabled={
+                        isRegistering ||
+                        uploadingKtp ||
+                        ocrStatus === "scanning" ||
+                        !/^\d{16}$/.test(nik)
+                      }
                     >
                       {isRegistering
                         ? "Memproses…"
                         : uploadingKtp
                         ? "Mengunggah foto…"
+                        : ocrStatus === "scanning"
+                        ? "Membaca KTP…"
+                        : !/^\d{16}$/.test(nik)
+                        ? "NIK belum terbaca"
                         : role === "COLLECTOR"
                         ? "Verifikasi & Lanjut"
                         : "Verifikasi & Selesai"}
