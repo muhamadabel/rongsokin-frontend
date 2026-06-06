@@ -20,6 +20,9 @@ import {
   Star,
   Info,
   ArrowLeft,
+  Truck,
+  Loader2,
+  XCircle,
 } from "lucide-react";
 
 const categoryIcons: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
@@ -127,10 +130,74 @@ export default function OrderTrackingPage() {
   const isCollector = user?.role === "COLLECTOR";
 
   const partner = isCustomer ? order.collector : order.customer;
+  const partnerName =
+    partner?.name ||
+    partner?.collectorProfile?.shopName ||
+    (isCustomer ? "Pengepul" : "Customer");
   const waNumber = partner?.phone ? partner.phone.replace(/[^0-9]/g, "") : "";
   const waLink = waNumber
     ? `https://wa.me/${waNumber.startsWith("0") ? "62" + waNumber.slice(1) : waNumber}`
     : "";
+
+  // Kontak aktif: ada partner & order sedang berjalan (penjemputan/otw/timbang)
+  const activeStatuses = ["CONFIRMED", "IN_PROGRESS", "AWAITING_CONFIRMATION"];
+  const showContact = !!partner && activeStatuses.includes(order.status);
+
+  // Pesan hero per status
+  const partnerLabel = isCustomer ? "Pengepul" : "Customer";
+  const statusMeta: { title: string; desc: string; tone: "wait" | "active" | "done" | "cancel"; Icon: React.ComponentType<{ size?: number; className?: string }> } =
+    order.status === "PENDING"
+      ? {
+          title: "Menunggu pengepul…",
+          desc: "Pesananmu sedang ditawarkan ke pengepul terdekat. Mohon tunggu sebentar.",
+          tone: "wait",
+          Icon: Loader2,
+        }
+      : order.status === "CONFIRMED"
+      ? {
+          title: `${partnerName} menerima pesananmu`,
+          desc: "Koordinasikan waktu & lokasi lewat WhatsApp.",
+          tone: "active",
+          Icon: CheckCircle2,
+        }
+      : order.status === "IN_PROGRESS"
+      ? {
+          title: isCustomer ? "Pengepul sedang menuju lokasimu" : "Menuju lokasi customer",
+          desc: "Hubungi via WhatsApp untuk koordinasi titik temu di jalan.",
+          tone: "active",
+          Icon: Truck,
+        }
+      : order.status === "AWAITING_CONFIRMATION"
+      ? {
+          title: "Menunggu persetujuan timbangan",
+          desc: isCustomer
+            ? "Cek hasil timbangan & harga, lalu setujui untuk menyelesaikan."
+            : "Menunggu customer menyetujui hasil timbangan.",
+          tone: "active",
+          Icon: Scale,
+        }
+      : order.status === "COMPLETED"
+      ? {
+          title: "Transaksi selesai 🎉",
+          desc: "Terima kasih sudah mendaur ulang lewat Rongsok.in!",
+          tone: "done",
+          Icon: CheckCircle2,
+        }
+      : {
+          title: "Pesanan dibatalkan",
+          desc: "Pesanan ini sudah tidak aktif.",
+          tone: "cancel",
+          Icon: XCircle,
+        };
+
+  const heroTone =
+    statusMeta.tone === "active"
+      ? "bg-brand-100 border-brand-200"
+      : statusMeta.tone === "done"
+      ? "bg-brand-100 border-brand-200"
+      : statusMeta.tone === "cancel"
+      ? "bg-status-error/10 border-status-error/30"
+      : "bg-surface border-ink-faint";
 
   const handleValidateSubmit = () => {
     const items = getOrderItems(order);
@@ -243,6 +310,52 @@ export default function OrderTrackingPage() {
       </header>
 
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 md:px-8 py-6 space-y-6">
+        {/* STATUS HERO + KONTAK WHATSAPP */}
+        <section className={`rounded-2xl p-6 border ${heroTone}`}>
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-surface-raised flex items-center justify-center shrink-0 text-ink">
+              <statusMeta.Icon
+                size={24}
+                className={order.status === "PENDING" ? "animate-spin text-brand-700" : "text-brand-700"}
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h2 className="font-display font-extrabold text-lg text-ink tracking-tight leading-tight">
+                {statusMeta.title}
+              </h2>
+              <p className="text-sm text-ink-muted mt-1 leading-relaxed">{statusMeta.desc}</p>
+            </div>
+          </div>
+
+          {showContact && (
+            <div className="mt-4 flex flex-col sm:flex-row gap-2">
+              {waLink ? (
+                <a
+                  href={waLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 block"
+                >
+                  <Button className="w-full flex items-center justify-center gap-2">
+                    <MessageSquare size={18} /> Chat {partnerLabel} via WhatsApp
+                  </Button>
+                </a>
+              ) : (
+                <span className="flex-1 text-xs text-ink-muted bg-surface-raised rounded-xl px-3 py-2.5 text-center">
+                  Nomor WhatsApp {partnerLabel.toLowerCase()} belum tersedia.
+                </span>
+              )}
+              {partner?.phone && (
+                <a href={`tel:${partner.phone}`} className="sm:w-auto block">
+                  <Button variant="outline" className="w-full flex items-center justify-center gap-2">
+                    <Phone size={18} /> Telepon
+                  </Button>
+                </a>
+              )}
+            </div>
+          )}
+        </section>
+
         {/* PROGRESS STEPPER */}
         <section className="bg-surface-raised rounded-2xl p-6">
           <h3 className="font-display font-bold text-xs text-mute uppercase tracking-widest mb-6">
@@ -749,6 +862,26 @@ export default function OrderTrackingPage() {
                 {ratingLoading ? "Mengirim…" : "Kirim Ulasan"}
               </Button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* STICKY MOBILE CONTACT BAR — selalu kebuka selama proses berjalan */}
+      {showContact && waLink && (
+        <div className="fixed bottom-20 left-0 right-0 z-40 px-4 md:hidden">
+          <div className="max-w-6xl mx-auto bg-surface-raised rounded-2xl border border-ink-faint p-2 flex gap-2 shadow-lg">
+            <a href={waLink} target="_blank" rel="noopener noreferrer" className="flex-1 block">
+              <Button className="w-full flex items-center justify-center gap-2">
+                <MessageSquare size={18} /> Chat {partnerLabel}
+              </Button>
+            </a>
+            {partner?.phone && (
+              <a href={`tel:${partner.phone}`} className="block">
+                <Button variant="outline" className="px-4 flex items-center justify-center">
+                  <Phone size={18} />
+                </Button>
+              </a>
+            )}
           </div>
         </div>
       )}

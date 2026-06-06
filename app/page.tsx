@@ -98,7 +98,7 @@ export default function LandingPage() {
   }, [token, user, router]);
 
   const { data: categories } = useWasteCategories();
-  const { data: stats } = useDiscoveryStats();
+  const { data: stats, isLoading: isStatsLoading } = useDiscoveryStats();
 
   // Widget estimasi cuan
   const [estIdx, setEstIdx] = useState(0);
@@ -307,9 +307,13 @@ export default function LandingPage() {
               key={stat.label}
               className="bg-surface-raised rounded-2xl p-5 text-center"
             >
-              <div className="text-2xl md:text-3xl font-display font-extrabold text-ink font-mono">
-                {stat.value}
-              </div>
+              {isStatsLoading ? (
+                <div className="h-8 md:h-9 w-12 mx-auto bg-surface rounded-md animate-pulse" />
+              ) : (
+                <div className="text-2xl md:text-3xl font-display font-extrabold text-ink font-mono">
+                  {stat.value}
+                </div>
+              )}
               <div className="text-[10px] md:text-xs font-bold text-mute uppercase tracking-wider mt-1">
                 {stat.label}
               </div>
