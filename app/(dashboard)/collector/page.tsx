@@ -22,6 +22,9 @@ import {
   LogOut,
   CreditCard,
   ArrowDownRight,
+  Eye,
+  ShieldAlert,
+  ImageOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { CollectorSkeleton } from "@/components/ui/Skeleton";
@@ -67,6 +70,7 @@ function IncomingOrderCard({
 }) {
   const router = useRouter();
   const [timeLeft, setTimeLeft] = useState(900);
+  const [showPhoto, setShowPhoto] = useState(false);
   const updateOrderStatus = useUpdateOrderStatus(order.id);
 
   useEffect(() => {
@@ -147,6 +151,38 @@ function IncomingOrderCard({
         </div>
       </div>
 
+      {/* Foto live tumpukan rongsok — bukti anti pesanan fiktif */}
+      {order.photoUrl ? (
+        <button
+          type="button"
+          onClick={() => setShowPhoto(true)}
+          className="relative w-full h-32 rounded-2xl overflow-hidden mb-3 block"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={order.photoUrl} alt="Foto rongsok" className="w-full h-full object-cover" />
+          <span className="absolute top-2 left-2 bg-brand-500 text-ink text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wide">
+            Foto Live
+          </span>
+          <span className="absolute bottom-2 right-2 bg-ink/70 text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1">
+            <Eye size={11} /> Perbesar
+          </span>
+        </button>
+      ) : (
+        <div className="w-full rounded-2xl mb-3 bg-status-error/10 border border-status-error/30 px-3 py-2 flex items-center gap-2">
+          <ImageOff size={14} className="text-status-error shrink-0" />
+          <span className="text-[11px] font-bold text-status-error">
+            Tanpa foto live — waspadai pesanan fiktif.
+          </span>
+        </div>
+      )}
+
+      {order.photoUrl && (
+        <p className="text-[10px] text-ink-muted flex items-start gap-1.5 mb-2.5">
+          <ShieldAlert size={12} className="shrink-0 mt-0.5 text-status-warning" />
+          Periksa foto. Tolak bila tampak palsu / tidak sesuai.
+        </p>
+      )}
+
       <div className="flex gap-2 pt-1">
         <Button
           variant="outline"
@@ -164,6 +200,29 @@ function IncomingOrderCard({
           <Check size={14} /> Terima
         </Button>
       </div>
+
+      {/* Lightbox foto */}
+      {showPhoto && order.photoUrl && (
+        <div
+          className="fixed inset-0 z-[100] bg-ink/90 flex items-center justify-center p-4"
+          onClick={() => setShowPhoto(false)}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={order.photoUrl}
+            alt="Foto rongsok"
+            className="max-w-full max-h-[82vh] rounded-2xl object-contain"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPhoto(false)}
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-surface-raised text-ink flex items-center justify-center"
+            aria-label="Tutup"
+          >
+            <X size={20} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -179,6 +238,7 @@ function RequestRow({
   onAccepted: (id: string) => void;
 }) {
   const router = useRouter();
+  const [showPhoto, setShowPhoto] = useState(false);
   const updateOrderStatus = useUpdateOrderStatus(order.id);
   const distance = `${((index + 1) * 0.8).toFixed(1)} km`;
 
@@ -202,7 +262,53 @@ function RequestRow({
 
   return (
     <tr className="hover:bg-surface transition-colors">
-      <td className="p-3 font-bold text-ink">Customer Terdekat</td>
+      <td className="p-3 font-bold text-ink">
+        <div className="flex items-center gap-2">
+          {order.photoUrl ? (
+            <button
+              type="button"
+              onClick={() => setShowPhoto(true)}
+              className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-ink-faint"
+              aria-label="Lihat foto rongsok"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={order.photoUrl} alt="Foto" className="w-full h-full object-cover" />
+              <span className="absolute inset-0 bg-ink/0 hover:bg-ink/20 flex items-center justify-center transition-colors">
+                <Eye size={12} className="text-white opacity-0 hover:opacity-100" />
+              </span>
+            </button>
+          ) : (
+            <span
+              className="w-10 h-10 rounded-lg shrink-0 bg-status-error/10 border border-status-error/30 flex items-center justify-center"
+              title="Tanpa foto live"
+            >
+              <ImageOff size={14} className="text-status-error" />
+            </span>
+          )}
+          <span>Customer Terdekat</span>
+        </div>
+        {showPhoto && order.photoUrl && (
+          <div
+            className="fixed inset-0 z-[100] bg-ink/90 flex items-center justify-center p-4"
+            onClick={() => setShowPhoto(false)}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={order.photoUrl}
+              alt="Foto rongsok"
+              className="max-w-full max-h-[82vh] rounded-2xl object-contain"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPhoto(false)}
+              className="absolute top-4 right-4 w-10 h-10 rounded-full bg-surface-raised text-ink flex items-center justify-center"
+              aria-label="Tutup"
+            >
+              <X size={20} />
+            </button>
+          </div>
+        )}
+      </td>
       <td className="p-3">
         <div className="flex flex-wrap gap-1 max-w-[160px]">
           {items.length > 0 ? (

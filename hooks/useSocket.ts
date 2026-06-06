@@ -59,6 +59,8 @@ export const useSocket = () => {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         items,
+        // Foto live tumpukan rongsok (anti pesanan fiktif) — pengepul wajib lihat
+        photoUrl: payload.photo_url || payload.photoUrl,
         // Legacy fallback untuk komponen yang masih baca categoryId/estimatedWeight
         categoryId: items[0]?.categoryId,
         estimatedWeight: totalWeight,

@@ -6,10 +6,27 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Logo } from "@/components/ui/Logo";
-import { User, Store, ArrowLeft, ArrowRight, CheckCircle2, MapPin } from "lucide-react";
+import { CameraCapture } from "@/components/ui/CameraCapture";
+import {
+  User,
+  Store,
+  ArrowLeft,
+  ArrowRight,
+  CheckCircle2,
+  MapPin,
+  ShieldCheck,
+  Loader2,
+  AlertTriangle,
+  Pencil,
+  ScanLine,
+} from "lucide-react";
 import { useRegister } from "@/hooks/useAuth";
 import { useUpdateCollectorProfile } from "@/hooks/useCollector";
+import { recognizeKtp } from "@/lib/ktpOcr";
+import { uploadToCloudinary } from "@/lib/upload";
 import toast from "react-hot-toast";
+
+type OcrStatus = "idle" | "scanning" | "done" | "failed";
 
 export default function RegisterPage() {
   return (
@@ -25,13 +42,22 @@ function RegisterForm() {
   const [step, setStep] = useState(1);
   const [role, setRole] = useState<"CUSTOMER" | "COLLECTOR" | "">("");
 
-  // Step 2 Form States
-  const [name, setName] = useState("");
+  // Step 2 — Biodata
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
 
-  // Step 3 Form States (Collector Only)
+  // Step 3 — KYC (KTP)
+  const [showCamera, setShowCamera] = useState(true);
+  const [ktpPreview, setKtpPreview] = useState("");
+  const [ktpUrl, setKtpUrl] = useState("");
+  const [uploadingKtp, setUploadingKtp] = useState(false);
+  const [nik, setNik] = useState("");
+  const [ktpName, setKtpName] = useState("");
+  const [ocrStatus, setOcrStatus] = useState<OcrStatus>("idle");
+  const [fieldsLocked, setFieldsLocked] = useState(false);
+
+  // Step 4 — Profil lapak (collector)
   const [shopName, setShopName] = useState("");
   const [description, setDescription] = useState("");
   const [radiusKm, setRadiusKm] = useState(5);
@@ -42,24 +68,98 @@ function RegisterForm() {
   const { mutate: register, isPending: isRegistering } = useRegister();
   const { mutate: setupProfile, isPending: isSettingProfile } = useUpdateCollectorProfile();
 
-  // Preselect role from URL (?role=COLLECTOR)
+  // Preselect role dari URL (?role=COLLECTOR)
   useEffect(() => {
     const r = searchParams.get("role");
     if (r === "COLLECTOR" || r === "CUSTOMER") setRole(r);
   }, [searchParams]);
 
-  const handleStep2Submit = (e: React.FormEvent) => {
+  const totalSteps = role === "COLLECTOR" ? 4 : 3;
+  const stepList = role === "COLLECTOR" ? [1, 2, 3, 4] : [1, 2, 3];
+
+  // ── Step 2: biodata → lanjut ke KYC ──────────────────────────────────────
+  const handleBiodataNext = (e: React.FormEvent) => {
     e.preventDefault();
     if (password.length < 8) {
       toast.error("Kata sandi minimal 8 karakter!");
       return;
     }
+    setStep(3);
+  };
+
+  // ── Step 3: hasil foto KTP → OCR + upload ────────────────────────────────
+  const handleKtpCapture = async (blob: Blob, dataUrl: string) => {
+    setKtpPreview(dataUrl);
+    setShowCamera(false);
+    setOcrStatus("scanning");
+    setNik("");
+    setKtpName("");
+
+    // Upload ke Cloudinary (paralel dengan OCR)
+    setUploadingKtp(true);
+    uploadToCloudinary(blob)
+      .then((r) => setKtpUrl(r.url))
+      .catch(() => toast.error("Gagal mengunggah foto KTP. Ulangi foto."))
+      .finally(() => setUploadingKtp(false));
+
+    // OCR NIK + Nama
+    try {
+      const res = await recognizeKtp(blob);
+      setNik(res.nik || "");
+      setKtpName(res.name || "");
+      const ok = !!res.nik && !!res.name;
+      setOcrStatus(ok ? "done" : "failed");
+      setFieldsLocked(ok);
+    } catch {
+      setOcrStatus("failed");
+      setFieldsLocked(false);
+    }
+  };
+
+  const retakeKtp = () => {
+    setShowCamera(true);
+    setKtpPreview("");
+    setKtpUrl("");
+    setNik("");
+    setKtpName("");
+    setOcrStatus("idle");
+    setFieldsLocked(false);
+  };
+
+  // ── Step 3 submit: register dengan data KYC ──────────────────────────────
+  const handleKycSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ktpPreview) {
+      toast.error("Ambil foto KTP terlebih dahulu.");
+      return;
+    }
+    if (uploadingKtp) {
+      toast.error("Tunggu, foto KTP sedang diunggah…");
+      return;
+    }
+    if (!/^\d{16}$/.test(nik)) {
+      toast.error("NIK harus 16 digit angka.");
+      return;
+    }
+    if (ktpName.trim().length < 3) {
+      toast.error("Nama sesuai KTP tidak valid.");
+      return;
+    }
 
     register(
-      { name, email, phone, password, role },
+      {
+        name: ktpName.trim(),
+        email,
+        phone,
+        password,
+        role: role as "CUSTOMER" | "COLLECTOR",
+        nik,
+        ktpName: ktpName.trim(),
+        ktpUrl: ktpUrl || undefined,
+      },
       {
         onSuccess: () => {
-          toast.success("Registrasi akun berhasil!");
+          toast.success("Verifikasi & registrasi berhasil!");
           if (role === "COLLECTOR") {
             if (navigator.geolocation) {
               navigator.geolocation.getCurrentPosition(
@@ -71,25 +171,28 @@ function RegisterForm() {
                 () => setGpsDetected(false)
               );
             }
-            setStep(3);
+            setStep(4);
           } else {
             router.push("/dashboard");
           }
         },
-        onError: (err: any) => {
-          toast.error(err.response?.data?.message || "Registrasi gagal. Coba email lain.");
+        onError: (err: unknown) => {
+          const msg =
+            (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+            "Registrasi gagal. Coba lagi.";
+          toast.error(msg);
         },
       }
     );
   };
 
-  const handleStep3Submit = (e: React.FormEvent) => {
+  // ── Step 4: profil lapak ─────────────────────────────────────────────────
+  const handleProfileSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (shopName.length < 3) {
       toast.error("Nama lapak minimal 3 karakter!");
       return;
     }
-
     setupProfile(
       { shopName, description, radiusKm, isOpen: true, lat: collectorLat, lng: collectorLng },
       {
@@ -97,12 +200,24 @@ function RegisterForm() {
           toast.success("Profil lapak berhasil dikonfigurasi!");
           router.push("/collector");
         },
-        onError: (err: any) => {
-          toast.error(err.response?.data?.message || "Gagal mengatur profil lapak.");
+        onError: (err: unknown) => {
+          const msg =
+            (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+            "Gagal mengatur profil lapak.";
+          toast.error(msg);
         },
       }
     );
   };
+
+  const headerSub =
+    step === 1
+      ? "Pilih peranmu di ekosistem ini"
+      : step === 2
+      ? "Lengkapi data akunmu"
+      : step === 3
+      ? "Verifikasi identitas dengan KTP"
+      : "Lengkapi profil lapakmu";
 
   return (
     <div className="min-h-screen flex flex-col p-6 bg-surface justify-center">
@@ -116,29 +231,27 @@ function RegisterForm() {
 
         {/* Step indicator */}
         <div className="flex items-center gap-2 mb-5 justify-center">
-          {[1, 2, role === "COLLECTOR" ? 3 : null].filter(Boolean).map((s, i, arr) => (
-            <div key={i} className="flex items-center gap-2">
+          {stepList.map((s, i, arr) => (
+            <div key={s} className="flex items-center gap-2">
               <div
                 className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold font-mono transition-colors ${
-                  step >= (s as number)
+                  step >= s
                     ? "bg-brand-500 text-ink"
-                    : "bg-surface-raised text-mute border border-ink-faint"
+                    : "bg-surface-raised text-ink-muted border border-ink-faint"
                 }`}
               >
                 {s}
               </div>
               {i < arr.length - 1 && (
                 <div
-                  className={`w-8 h-0.5 rounded-full ${
-                    step > (s as number) ? "bg-brand-500" : "bg-ink-faint"
-                  }`}
+                  className={`w-7 h-0.5 rounded-full ${step > s ? "bg-brand-500" : "bg-ink-faint"}`}
                 />
               )}
             </div>
           ))}
         </div>
 
-        {step > 1 && step < 3 && (
+        {(step === 2 || step === 3) && (
           <button
             onClick={() => setStep(step - 1)}
             className="flex items-center gap-1 text-sm font-semibold text-ink-muted hover:text-ink mb-3 transition-colors"
@@ -150,15 +263,9 @@ function RegisterForm() {
         <div className="w-full bg-surface-raised rounded-2xl p-8">
           <div className="mb-7">
             <h1 className="font-display text-2xl font-extrabold tracking-tight text-ink">
-              Daftar akun
+              {step === 3 ? "Verifikasi identitas" : "Daftar akun"}
             </h1>
-            <p className="text-sm text-ink-muted mt-1">
-              {step === 1
-                ? "Pilih peranmu di ekosistem ini"
-                : step === 2
-                ? "Lengkapi data dirimu"
-                : "Lengkapi profil lapakmu"}
-            </p>
+            <p className="text-sm text-ink-muted mt-1">{headerSub}</p>
           </div>
 
           {/* STEP 1: PILIH ROLE */}
@@ -168,9 +275,7 @@ function RegisterForm() {
                 type="button"
                 onClick={() => setRole("CUSTOMER")}
                 className={`w-full border rounded-2xl p-4 flex items-center gap-4 cursor-pointer transition-colors text-left ${
-                  role === "CUSTOMER"
-                    ? "border-ink bg-brand-100"
-                    : "border-ink-faint hover:border-ink"
+                  role === "CUSTOMER" ? "border-ink bg-brand-100" : "border-ink-faint hover:border-ink"
                 }`}
               >
                 <div
@@ -190,9 +295,7 @@ function RegisterForm() {
                 type="button"
                 onClick={() => setRole("COLLECTOR")}
                 className={`w-full border rounded-2xl p-4 flex items-center gap-4 cursor-pointer transition-colors text-left ${
-                  role === "COLLECTOR"
-                    ? "border-ink bg-brand-100"
-                    : "border-ink-faint hover:border-ink"
+                  role === "COLLECTOR" ? "border-ink bg-brand-100" : "border-ink-faint hover:border-ink"
                 }`}
               >
                 <div
@@ -229,19 +332,7 @@ function RegisterForm() {
 
           {/* STEP 2: BIODATA */}
           {step === 2 && (
-            <form onSubmit={handleStep2Submit} className="space-y-4">
-              <div>
-                <label className="text-xs font-bold text-ink uppercase tracking-wider mb-2 block">
-                  Nama Lengkap
-                </label>
-                <Input
-                  type="text"
-                  placeholder="Sesuai KTP"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                />
-              </div>
+            <form onSubmit={handleBiodataNext} className="space-y-4">
               <div>
                 <label className="text-xs font-bold text-ink uppercase tracking-wider mb-2 block">
                   Email
@@ -280,22 +371,141 @@ function RegisterForm() {
                   required
                 />
               </div>
+              <p className="text-xs text-ink-muted flex items-start gap-2">
+                <ShieldCheck size={14} className="shrink-0 mt-0.5 text-brand-700" />
+                Nama lengkap akan otomatis terisi dari KTP di langkah verifikasi.
+              </p>
 
               <div className="pt-3">
-                <Button type="submit" className="w-full" disabled={isRegistering}>
-                  {isRegistering
-                    ? "Memproses…"
-                    : role === "COLLECTOR"
-                    ? "Lanjut Profil Lapak"
-                    : "Selesai Mendaftar"}
+                <Button type="submit" className="w-full flex items-center justify-center gap-1">
+                  Lanjut Verifikasi KTP <ArrowRight size={18} />
                 </Button>
               </div>
             </form>
           )}
 
-          {/* STEP 3: PROFIL LAPAK */}
+          {/* STEP 3: KYC / VERIFIKASI KTP */}
           {step === 3 && (
-            <form onSubmit={handleStep3Submit} className="space-y-4">
+            <form onSubmit={handleKycSubmit} className="space-y-4">
+              {showCamera ? (
+                <>
+                  <CameraCapture
+                    onCapture={handleKtpCapture}
+                    facingMode="environment"
+                    guide="card"
+                    watermark="Rongsok.in · KTP"
+                    hint="Posisikan KTP di dalam bingkai. Pastikan tulisan jelas & tidak silau."
+                  />
+                  <p className="text-xs text-ink-muted flex items-start gap-2">
+                    <ShieldCheck size={14} className="shrink-0 mt-0.5 text-brand-700" />
+                    Foto wajib diambil langsung dari kamera. Data KTP hanya dipakai untuk verifikasi
+                    identitas (1 KTP = 1 akun) dan tidak dibagikan ke pihak lain.
+                  </p>
+                </>
+              ) : (
+                <>
+                  {/* Preview KTP */}
+                  <div className="relative overflow-hidden rounded-2xl border border-ink-faint">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={ktpPreview} alt="Foto KTP" className="w-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={retakeKtp}
+                      className="absolute top-2 right-2 rounded-full bg-ink/70 text-white text-xs font-semibold px-3 py-1.5"
+                    >
+                      Ganti Foto
+                    </button>
+                  </div>
+
+                  {/* Status OCR */}
+                  {ocrStatus === "scanning" && (
+                    <div className="flex items-center gap-2 text-sm text-ink-muted">
+                      <Loader2 size={16} className="animate-spin text-brand-700" />
+                      <ScanLine size={16} className="text-brand-700" />
+                      Membaca data KTP…
+                    </div>
+                  )}
+                  {ocrStatus === "done" && (
+                    <div className="flex items-center gap-2 text-sm text-brand-800 bg-brand-100 border border-brand-200 rounded-xl px-3 py-2">
+                      <CheckCircle2 size={16} className="text-brand-700 shrink-0" />
+                      Data terbaca otomatis. Periksa sebelum lanjut.
+                    </div>
+                  )}
+                  {ocrStatus === "failed" && (
+                    <div className="flex items-start gap-2 text-sm text-status-error bg-status-error/10 border border-status-error/30 rounded-xl px-3 py-2">
+                      <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+                      Sebagian data tidak terbaca jelas. Isi NIK & Nama secara manual sesuai KTP.
+                    </div>
+                  )}
+
+                  {/* NIK */}
+                  <div>
+                    <label className="text-xs font-bold text-ink uppercase tracking-wider mb-2 block">
+                      NIK
+                    </label>
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="16 digit sesuai KTP"
+                      value={nik}
+                      onChange={(e) => setNik(e.target.value.replace(/\D/g, "").slice(0, 16))}
+                      readOnly={fieldsLocked}
+                      maxLength={16}
+                      className={fieldsLocked ? "bg-surface cursor-not-allowed" : ""}
+                      required
+                    />
+                  </div>
+
+                  {/* Nama */}
+                  <div>
+                    <label className="text-xs font-bold text-ink uppercase tracking-wider mb-2 block">
+                      Nama Lengkap (sesuai KTP)
+                    </label>
+                    <Input
+                      type="text"
+                      placeholder="Nama sesuai KTP"
+                      value={ktpName}
+                      onChange={(e) => setKtpName(e.target.value.toUpperCase())}
+                      readOnly={fieldsLocked}
+                      className={fieldsLocked ? "bg-surface cursor-not-allowed" : ""}
+                      required
+                    />
+                  </div>
+
+                  {/* Unlock manual */}
+                  {fieldsLocked && (
+                    <button
+                      type="button"
+                      onClick={() => setFieldsLocked(false)}
+                      className="flex items-center gap-1.5 text-xs font-semibold text-ink-muted hover:text-ink"
+                    >
+                      <Pencil size={13} /> Data tidak sesuai? Koreksi manual
+                    </button>
+                  )}
+
+                  <div className="pt-2">
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      disabled={isRegistering || uploadingKtp || ocrStatus === "scanning"}
+                    >
+                      {isRegistering
+                        ? "Memproses…"
+                        : uploadingKtp
+                        ? "Mengunggah foto…"
+                        : role === "COLLECTOR"
+                        ? "Verifikasi & Lanjut"
+                        : "Verifikasi & Selesai"}
+                    </Button>
+                  </div>
+                </>
+              )}
+            </form>
+          )}
+
+          {/* STEP 4: PROFIL LAPAK */}
+          {step === 4 && (
+            <form onSubmit={handleProfileSubmit} className="space-y-4">
               <div>
                 <label className="text-xs font-bold text-ink uppercase tracking-wider mb-2 block">
                   Nama Lapak
@@ -313,7 +523,7 @@ function RegisterForm() {
                   Deskripsi Lapak
                 </label>
                 <textarea
-                  className="w-full border border-ink rounded-md bg-surface-raised p-3 text-sm text-ink placeholder:text-mute focus:outline-none focus:ring-2 focus:ring-brand-500 min-h-[80px]"
+                  className="w-full border border-ink rounded-md bg-surface-raised p-3 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-brand-500 min-h-[80px]"
                   placeholder="Deskripsi singkat lapak Anda…"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
@@ -359,6 +569,12 @@ function RegisterForm() {
             </form>
           )}
         </div>
+
+        {step === 1 && (
+          <p className="text-center text-xs text-ink-muted mt-4">
+            Dengan mendaftar kamu menyetujui verifikasi identitas via KTP.
+          </p>
+        )}
       </div>
     </div>
   );
