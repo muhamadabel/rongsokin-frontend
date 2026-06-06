@@ -151,16 +151,17 @@ export default function EditProfilePage() {
 
     setIsSaving(true);
     try {
-      // 1) Update user umum (nama, phone, avatar, lokasi customer)
+      // 1) Update user umum (nama, phone, avatar) + LOKASI.
+      // Lokasi SELALU disimpan ke User.location untuk customer & collector —
+      // karena pencarian pengepul (discovery) membaca dari User.location.
       await new Promise<void>((resolve, reject) => {
         updateMe.mutate(
           {
             name,
             phone,
             avatarUrl: avatarUrl || undefined,
-            // Untuk customer, lokasi disimpan langsung di User.location
-            // Untuk collector, lokasi customer-side dilewati (sumber kebenaran di collector profile)
-            ...(isCollector ? {} : { lat: coords.lat, lng: coords.lng }),
+            lat: coords.lat,
+            lng: coords.lng,
           },
           {
             onSuccess: () => resolve(),
@@ -169,7 +170,7 @@ export default function EditProfilePage() {
         );
       });
 
-      // 2) Kalau collector, update collector profile (termasuk shop location)
+      // 2) Kalau collector, update data lapak (lokasi sudah tersimpan di User.location di atas)
       if (isCollector) {
         await new Promise<void>((resolve, reject) => {
           updateCollector.mutate(
@@ -178,8 +179,6 @@ export default function EditProfilePage() {
               description,
               radiusKm,
               isOpen,
-              lat: coords.lat,
-              lng: coords.lng,
             },
             {
               onSuccess: () => resolve(),
