@@ -38,6 +38,7 @@ import { getSocket } from "@/lib/socket";
 import {
   formatRupiah,
   formatDate,
+  unitLabel,
   getOrderItems,
   getOrderTotalEstWeight,
   getOrderTotalActualWeight,
@@ -338,8 +339,9 @@ export default function OrderTrackingPage() {
                               {it.category?.name || "Kategori"}
                             </span>
                             <span className="text-[10px] text-mute font-mono">
-                              est. {it.estimatedWeight} kg
-                              {it.actualWeight != null && ` · aktual ${it.actualWeight} kg`}
+                              est. {it.estimatedWeight} {unitLabel(it.category?.unit)}
+                              {it.actualWeight != null &&
+                                ` · aktual ${it.actualWeight} ${unitLabel(it.category?.unit)}`}
                             </span>
                             {it.notes && (
                               <p className="text-[11px] text-ink-muted italic leading-snug mt-0.5">
@@ -357,10 +359,10 @@ export default function OrderTrackingPage() {
                     })}
                     <div className="border-t border-dashed border-ink-faint pt-2 flex justify-between items-center">
                       <span className="text-[10px] font-bold text-mute uppercase tracking-wider">
-                        Total Berat
+                        Jumlah Kategori
                       </span>
                       <span className="text-sm font-extrabold text-ink font-mono">
-                        {(getOrderTotalActualWeight(order) || getOrderTotalEstWeight(order)).toFixed(1)} kg
+                        {getOrderItems(order).length}
                       </span>
                     </div>
                   </div>
@@ -430,7 +432,7 @@ export default function OrderTrackingPage() {
                             {it.category?.name || "Kategori"}
                           </span>
                           <span className="text-[10px] text-mute font-mono">
-                            est. {it.estimatedWeight} kg
+                            est. {it.estimatedWeight} {unitLabel(it.category?.unit)}
                           </span>
                         </div>
                         {it.notes && (
@@ -441,7 +443,7 @@ export default function OrderTrackingPage() {
                         <div className="grid grid-cols-2 gap-2">
                           <div>
                             <label className="text-[9px] font-bold text-mute uppercase tracking-wider mb-1 block">
-                              Berat Aktual (kg)
+                              Aktual ({unitLabel(it.category?.unit)})
                             </label>
                             <Input
                               type="number"
@@ -456,7 +458,7 @@ export default function OrderTrackingPage() {
                           </div>
                           <div>
                             <label className="text-[9px] font-bold text-mute uppercase tracking-wider mb-1 block">
-                              Harga (Rp/kg)
+                              Harga (Rp/{unitLabel(it.category?.unit)})
                             </label>
                             <Input
                               type="number"
@@ -531,7 +533,7 @@ export default function OrderTrackingPage() {
                             {it.category?.name || "Kategori"}
                           </span>
                           <span className="font-mono text-mute">
-                            {aw} kg × {formatRupiah(ap)}
+                            {aw} {unitLabel(it.category?.unit)} × {formatRupiah(ap)}
                           </span>
                         </div>
                         <div className="flex justify-end">
@@ -644,7 +646,7 @@ export default function OrderTrackingPage() {
                           </div>
                           <div className="flex justify-between gap-3 text-mute text-[10px]">
                             <span>
-                              {aw} kg × {formatRupiah(ap)}
+                              {aw} {unitLabel(it.category?.unit)} × {formatRupiah(ap)}
                             </span>
                           </div>
                           {it.notes && (

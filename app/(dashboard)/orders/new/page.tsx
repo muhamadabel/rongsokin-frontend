@@ -18,7 +18,6 @@ import {
   Sparkles,
   X,
   ChevronRight,
-  ChevronDown,
   Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -30,7 +29,6 @@ import { DEFAULT_COORDS, unitLabel } from "@/lib/utils";
 import { useCategoryTree } from "@/hooks/useDiscovery";
 import { useCreateOrder } from "@/hooks/useOrders";
 import { useAuthStore } from "@/store/authStore";
-import { WasteCategory } from "@/types";
 import toast from "react-hot-toast";
 
 // Ikon per kategori UTAMA (by name)
@@ -77,15 +75,13 @@ function OrderForm() {
     }
   }, [token, user, router]);
 
-  const { mains, byId, childrenOf, isLoading: isCategoriesLoading } = useCategoryTree();
+  const { mains, byId, isLoading: isCategoriesLoading } = useCategoryTree();
   const createOrder = useCreateOrder();
 
   const [step, setStep] = useState(1);
 
-  /** Items yang dipilih customer (1..N item leaf) */
+  /** Kategori yang dipilih customer (1..N kategori) */
   const [items, setItems] = useState<ItemDraft[]>([]);
-  /** Induk yang sedang di-expand di Step 1 */
-  const [expandedMain, setExpandedMain] = useState<string | null>(null);
   const [photoUrl, setPhotoUrl] = useState("");
   const [method, setMethod] = useState<"PICKUP" | "DROPOFF" | "">("");
   const [lat, setLat] = useState<number | null>(null);
@@ -94,28 +90,15 @@ function OrderForm() {
   const [isUploading, setIsUploading] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
 
-  /** Item (leaf) yang bisa dipilih di bawah sebuah induk. Kalau induk tak punya anak (BE lama), induk itu sendiri. */
-  const leavesOf = (main: WasteCategory): WasteCategory[] => {
-    const ch = childrenOf[main.id];
-    return ch && ch.length > 0 ? ch : [main];
-  };
-
-  // Pre-select dari URL (?category=) — bisa id induk, id item, atau nama induk
+  // Pre-select dari URL (?category=) — id atau nama kategori
   useEffect(() => {
     if (!initCat || mains.length === 0 || items.length > 0) return;
-    // cocokkan ke induk by id atau nama
-    const main =
+    const cat =
       mains.find((m) => m.id === initCat) ||
-      mains.find((m) => m.name.toLowerCase() === initCat.toLowerCase());
-    if (main) {
-      setExpandedMain(main.id);
-      return;
-    }
-    // cocokkan ke item (leaf) by id
-    const leaf = byId[initCat];
-    if (leaf) {
-      setItems([{ categoryId: leaf.id, weight: "", notes: "" }]);
-      if (leaf.parentId) setExpandedMain(leaf.parentId);
+      mains.find((m) => m.name.toLowerCase() === initCat.toLowerCase()) ||
+      byId[initCat];
+    if (cat) {
+      setItems([{ categoryId: cat.id, weight: "", notes: "" }]);
       setStep(2);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -329,92 +312,64 @@ function OrderForm() {
         </div>
 
         <main className="p-6 md:p-8">
-          {/* STEP 1: PILIH KATEGORI → ITEM (2 tingkat) */}
+          {/* STEP 1: PILIH KATEGORI (multi-select) */}
           {step === 1 && (
             <div className="space-y-5">
               <h2 className="font-display text-2xl font-extrabold text-ink tracking-tight">
                 Apa yang ingin kamu jual?
               </h2>
               <p className="text-sm text-ink-muted -mt-3">
-                Pilih kategori, lalu centang item yang sesuai. Bisa lebih dari satu.
+                Pilih kategori yang sesuai. Bisa lebih dari satu.
               </p>
 
               {isCategoriesLoading ? (
                 <div className="space-y-2">
                   {[1, 2, 3, 4].map((i) => (
-                    <div key={i} className="rounded-2xl animate-pulse bg-surface h-14" />
+                    <div key={i} className="rounded-2xl animate-pulse bg-surface h-16" />
                   ))}
                 </div>
               ) : mains.length > 0 ? (
                 <div className="space-y-2">
-                  {mains.map((main) => {
-                    const Icon = mainIcon(main.name);
-                    const leaves = leavesOf(main);
-                    const selectedInMain = leaves.filter((l) =>
-                      items.some((it) => it.categoryId === l.id)
-                    ).length;
-                    const isExpanded = expandedMain === main.id;
+                  {mains.map((cat) => {
+                    const Icon = mainIcon(cat.name);
+                    const isSel = items.some((it) => it.categoryId === cat.id);
                     return (
-                      <div
-                        key={main.id}
-                        className={`rounded-2xl border transition-colors ${
-                          isExpanded ? "border-ink bg-surface-raised" : "border-ink-faint bg-surface-raised"
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => toggleCategory(cat.id)}
+                        className={`w-full p-3.5 flex items-center gap-3 text-left rounded-2xl border transition-colors ${
+                          isSel ? "border-ink bg-brand-100" : "border-ink-faint bg-surface-raised hover:border-ink"
                         }`}
                       >
-                        <button
-                          type="button"
-                          onClick={() => setExpandedMain(isExpanded ? null : main.id)}
-                          className="w-full p-3.5 flex items-center gap-3 text-left"
+                        <div
+                          className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${
+                            isSel ? "bg-brand-500 text-ink" : "bg-surface text-ink-muted"
+                          }`}
                         >
-                          <div
-                            className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${
-                              selectedInMain > 0 ? "bg-brand-500 text-ink" : "bg-surface text-ink-muted"
-                            }`}
-                          >
-                            <Icon size={20} />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <span className="font-bold text-sm text-ink block">{main.name}</span>
-                            <span className="text-[11px] text-mute">
-                              {selectedInMain > 0
-                                ? `${selectedInMain} item dipilih`
-                                : `${leaves.length} item`}
+                          <Icon size={20} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <span className="font-bold text-sm text-ink block">
+                            {cat.name}
+                            {cat.unit && cat.unit !== "kg" && (
+                              <span className="text-[10px] text-mute font-mono ml-1.5">/{cat.unit}</span>
+                            )}
+                          </span>
+                          {cat.description && (
+                            <span className="text-[11px] text-ink-muted leading-snug block mt-0.5">
+                              {cat.description}
                             </span>
-                          </div>
-                          <ChevronDown
-                            size={18}
-                            className={`text-ink-muted transition-transform ${
-                              isExpanded ? "rotate-180" : ""
-                            }`}
-                          />
-                        </button>
-
-                        {isExpanded && (
-                          <div className="px-3.5 pb-3.5 flex flex-wrap gap-2">
-                            {leaves.map((leaf) => {
-                              const isSel = items.some((it) => it.categoryId === leaf.id);
-                              return (
-                                <button
-                                  key={leaf.id}
-                                  type="button"
-                                  onClick={() => toggleCategory(leaf.id)}
-                                  className={`px-3 py-2 rounded-2xl text-xs font-bold border transition-colors flex items-center gap-1.5 ${
-                                    isSel
-                                      ? "bg-brand-500 text-ink border-brand-500"
-                                      : "bg-surface text-ink-muted border-ink-faint hover:border-ink"
-                                  }`}
-                                >
-                                  {isSel && <Check size={12} strokeWidth={3} />}
-                                  {leaf.name}
-                                  {leaf.unit && leaf.unit !== "kg" && (
-                                    <span className="text-[9px] opacity-70">/{leaf.unit}</span>
-                                  )}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
+                          )}
+                        </div>
+                        <div
+                          className={`w-5 h-5 rounded-md flex items-center justify-center border-2 shrink-0 ${
+                            isSel ? "bg-brand-500 border-ink" : "border-ink-faint bg-surface-raised"
+                          }`}
+                        >
+                          {isSel && <Check size={12} strokeWidth={3} className="text-ink" />}
+                        </div>
+                      </button>
                     );
                   })}
                 </div>
