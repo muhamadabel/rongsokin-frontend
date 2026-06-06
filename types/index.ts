@@ -22,7 +22,24 @@ export interface User {
   /** Lokasi tersimpan: lat & lng dari PostGIS Point. Diharapkan BE return ini di /auth/me. */
   lat?: number;
   lng?: number;
+  /** KYC — verifikasi KTP (anti akun-ganda). Diisi BE setelah register ber-KYC. */
+  nik?: string;
+  ktpName?: string;
+  isVerified?: boolean;
   collectorProfile?: CollectorProfile;
+}
+
+/** Payload registrasi termasuk data KYC opsional (graceful: BE lama tetap jalan tanpa ini). */
+export interface RegisterPayload {
+  name: string;
+  email: string;
+  phone?: string;
+  password: string;
+  role: 'CUSTOMER' | 'COLLECTOR';
+  /** Hasil OCR KTP + foto live (Cloudinary URL). */
+  nik?: string;
+  ktpName?: string;
+  ktpUrl?: string;
 }
 
 export interface CollectorProfile {

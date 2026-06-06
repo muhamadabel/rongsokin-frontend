@@ -11,7 +11,6 @@ import {
   Tv,
   Droplets,
   ArrowLeft,
-  Camera,
   MapPin,
   CheckCircle2,
   Truck,
@@ -22,10 +21,12 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { CameraCapture } from "@/components/ui/CameraCapture";
 import DesktopNav from "@/components/ui/DesktopNav";
 import BottomNav from "@/components/ui/BottomNav";
 import { PageSkeleton } from "@/components/ui/Skeleton";
 import { DEFAULT_COORDS, unitLabel } from "@/lib/utils";
+import { uploadToCloudinary } from "@/lib/upload";
 import { useCategoryTree } from "@/hooks/useDiscovery";
 import { useCreateOrder } from "@/hooks/useOrders";
 import { useAuthStore } from "@/store/authStore";
@@ -82,7 +83,8 @@ function OrderForm() {
 
   /** Kategori yang dipilih customer (1..N kategori) */
   const [items, setItems] = useState<ItemDraft[]>([]);
-  const [photoUrl, setPhotoUrl] = useState("");
+  const [photoUrl, setPhotoUrl] = useState(""); // URL final (Cloudinary) untuk submit
+  const [photoPreview, setPhotoPreview] = useState(""); // dataUrl untuk preview
   const [method, setMethod] = useState<"PICKUP" | "DROPOFF" | "">("");
   const [lat, setLat] = useState<number | null>(null);
   const [lng, setLng] = useState<number | null>(null);
@@ -121,48 +123,24 @@ function OrderForm() {
     setItems((prev) => prev.map((it) => (it.categoryId === catId ? { ...it, notes } : it)));
   };
 
-  // ── Upload foto ──────────────────────────────────────────────────────────
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Foto terlalu besar. Maksimal 5MB.");
-      return;
-    }
-
+  // ── Foto sampah (kamera live, anti fake-order) ───────────────────────────
+  const handlePhotoCapture = async (blob: Blob, dataUrl: string) => {
+    setPhotoPreview(dataUrl);
     setIsUploading(true);
     try {
-      const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-      const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
-
-      if (!cloudName || !uploadPreset) {
-        const localUrl = URL.createObjectURL(file);
-        setPhotoUrl(localUrl);
-        toast.success("Foto berhasil dipilih! (Mode demo)");
-        return;
-      }
-
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("upload_preset", uploadPreset);
-
-      const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-
-      if (data.secure_url) {
-        setPhotoUrl(data.secure_url);
-        toast.success("Foto berhasil diunggah!");
-      } else {
-        throw new Error(data.error?.message || "Upload failed");
-      }
+      const { url } = await uploadToCloudinary(blob);
+      setPhotoUrl(url);
     } catch {
-      toast.error("Gagal upload foto. Coba lagi.");
+      toast.error("Gagal mengunggah foto. Foto ulang ya.");
+      setPhotoPreview("");
     } finally {
       setIsUploading(false);
     }
+  };
+
+  const clearPhoto = () => {
+    setPhotoUrl("");
+    setPhotoPreview("");
   };
 
   // ── Lokasi GPS ───────────────────────────────────────────────────────────
@@ -198,6 +176,10 @@ function OrderForm() {
       toast.error("Mohon lengkapi semua data setoran.");
       return;
     }
+    if (!photoUrl) {
+      toast.error("Foto tumpukan rongsok wajib diambil dari kamera.");
+      return;
+    }
     const invalidItem = items.find((it) => !it.weight || Number(it.weight) <= 0);
     if (invalidItem) {
       toast.error("Berat setiap kategori harus diisi & lebih dari 0.");
@@ -231,7 +213,11 @@ function OrderForm() {
 
   // ── Derived ──────────────────────────────────────────────────────────────
   const canGoStep2 = items.length > 0;
-  const canGoStep3 = items.length > 0 && items.every((it) => Number(it.weight) > 0);
+  const canGoStep3 =
+    items.length > 0 &&
+    items.every((it) => Number(it.weight) > 0) &&
+    !!photoUrl &&
+    !isUploading;
   const canGoStep4 = !!method && !!lat && !!lng;
   const canSubmit = canGoStep2 && canGoStep3 && canGoStep4;
 
@@ -486,48 +472,44 @@ function OrderForm() {
                 </button>
               </div>
 
-              {/* Foto */}
+              {/* Foto sampah — wajib, dari kamera (anti pesanan fiktif) */}
               <div>
                 <label className="text-[10px] font-bold text-mute uppercase tracking-widest mb-2 block">
-                  Foto Barang{" "}
-                  <span className="text-ink-faint normal-case font-medium">
-                    (opsional, maks 5MB)
-                  </span>
+                  Foto Tumpukan Rongsok <span className="text-status-error">*</span>
                 </label>
-                {!photoUrl ? (
-                  <label
-                    className={`border-2 border-dashed rounded-2xl p-8 flex flex-col items-center gap-3 cursor-pointer transition-colors ${
-                      isUploading
-                        ? "border-brand-500 bg-brand-100"
-                        : "border-ink-faint hover:border-ink hover:bg-surface"
-                    }`}
-                  >
-                    {isUploading ? (
-                      <RefreshCw size={36} className="animate-spin text-brand-700" />
-                    ) : (
-                      <Camera size={36} className="text-ink-faint" />
-                    )}
-                    <span className="text-xs font-bold text-ink-muted text-center">
-                      {isUploading ? "Mengunggah foto…" : "Klik untuk ambil atau pilih foto"}
-                    </span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleFileUpload}
-                      disabled={isUploading}
+                {!photoPreview ? (
+                  <>
+                    <CameraCapture
+                      onCapture={handlePhotoCapture}
+                      facingMode="environment"
+                      guide="free"
+                      watermark="Rongsok.in"
+                      hint="Foto langsung tumpukan sampah yang mau dijual. Galeri tidak diizinkan untuk mencegah pesanan fiktif."
                     />
-                  </label>
+                  </>
                 ) : (
                   <div className="relative rounded-2xl overflow-hidden">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={photoUrl} alt="Preview" className="w-full max-h-48 object-cover" />
-                    <button
-                      onClick={() => setPhotoUrl("")}
-                      className="absolute top-2 right-2 bg-surface-raised text-status-error px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1"
-                    >
-                      <X size={12} /> Hapus
-                    </button>
+                    <img src={photoPreview} alt="Foto rongsok" className="w-full max-h-56 object-cover" />
+                    {isUploading && (
+                      <div className="absolute inset-0 bg-ink/50 flex flex-col items-center justify-center gap-2 text-white">
+                        <RefreshCw size={28} className="animate-spin" />
+                        <span className="text-xs font-bold">Mengunggah…</span>
+                      </div>
+                    )}
+                    {!isUploading && (
+                      <div className="absolute top-2 right-2 flex items-center gap-2">
+                        <span className="bg-brand-500 text-ink px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1">
+                          <CheckCircle2 size={12} /> Foto siap
+                        </span>
+                        <button
+                          onClick={clearPhoto}
+                          className="bg-surface-raised text-status-error px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1"
+                        >
+                          <X size={12} /> Ulangi
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -676,10 +658,10 @@ function OrderForm() {
               </h2>
 
               <div className="bg-surface rounded-2xl overflow-hidden">
-                {photoUrl && (
+                {photoPreview && (
                   <div className="relative h-36 overflow-hidden">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={photoUrl} alt="Foto barang" className="w-full h-full object-cover" />
+                    <img src={photoPreview} alt="Foto rongsok" className="w-full h-full object-cover" />
                   </div>
                 )}
 
@@ -747,10 +729,10 @@ function OrderForm() {
 
                   <div className="px-5 py-4 flex items-center justify-between">
                     <span className="text-xs font-bold text-mute uppercase tracking-wider">
-                      Foto
+                      Foto Live
                     </span>
                     <span className="text-xs font-bold text-ink">
-                      {photoUrl ? "✓ Terlampir" : "Tidak ada (opsional)"}
+                      {photoPreview ? "✓ Terlampir" : "—"}
                     </span>
                   </div>
                 </div>

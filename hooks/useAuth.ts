@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import api from '@/lib/axios';
 import { useAuthStore } from '@/store/authStore';
-import { User } from '@/types';
+import { User, RegisterPayload } from '@/types';
 
 interface AuthResponse {
   status: string;
@@ -30,7 +30,7 @@ export const useRegister = () => {
   const setAuth = useAuthStore((state) => state.setAuth);
 
   return useMutation({
-    mutationFn: async (payload: any) => {
+    mutationFn: async (payload: RegisterPayload) => {
       const res = await api.post<AuthResponse>('/auth/register', payload);
       return res.data;
     },
