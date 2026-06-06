@@ -12,10 +12,12 @@ import {
   FileText,
   LogOut,
   ChevronRight,
+  ShieldAlert,
 } from "lucide-react";
 import BottomNav from "@/components/ui/BottomNav";
 import DesktopNav from "@/components/ui/DesktopNav";
 import { ProfileSkeleton } from "@/components/ui/Skeleton";
+import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
 import { useMe } from "@/hooks/useAuth";
 import { useOrdersList } from "@/hooks/useOrders";
 import { useAuthStore } from "@/store/authStore";
@@ -99,12 +101,24 @@ export default function ProfilePage() {
               <Settings size={14} />
             </Link>
           </div>
-          <h2 className="font-display font-extrabold text-lg text-ink">
-            {me?.name || "User Rongsok.in"}
-          </h2>
+          <div className="flex items-center gap-2">
+            <h2 className="font-display font-extrabold text-lg text-ink">
+              {me?.name || "User Rongsok.in"}
+            </h2>
+            {me?.isVerified && <VerifiedBadge size="xs" />}
+          </div>
           <p className="text-xs font-semibold text-mute uppercase tracking-widest mt-1">
             {me?.phone || me?.email || "Tidak ada kontak"}
           </p>
+          {me && !me.isVerified && (
+            <Link
+              href="/profile/verify"
+              className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-ink bg-brand-100 border border-brand-200 rounded-full px-3 py-1.5 hover:bg-brand-200 transition-colors"
+            >
+              <ShieldAlert size={13} className="text-brand-700" />
+              Verifikasi KTP sekarang
+            </Link>
+          )}
 
           <div className="mt-6 w-full max-w-sm grid grid-cols-2 gap-3">
             <div className="bg-surface p-4 rounded-2xl text-center">

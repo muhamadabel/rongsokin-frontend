@@ -20,6 +20,7 @@ import DesktopNav from "@/components/ui/DesktopNav";
 import BottomNav from "@/components/ui/BottomNav";
 import { Button } from "@/components/ui/Button";
 import { DashboardSkeleton } from "@/components/ui/Skeleton";
+import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
 import {
   Archive,
   RefreshCw,
@@ -307,6 +308,7 @@ export default function CustomerDashboard() {
                       <h3 className="font-bold text-sm text-ink truncate">
                         {collector.shopName}
                       </h3>
+                      {collector.isVerified && <VerifiedBadge size="xs" />}
                       <span className="text-[9px] font-bold text-brand-800 bg-brand-100 rounded-full px-1.5 py-0.5 shrink-0">
                         Buka
                       </span>

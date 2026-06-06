@@ -99,6 +99,7 @@ export const useSearchCollectors = (params: SearchQueryParams) => {
           ownerName: c.ownerName,
           distance: c.distance, // in meters
           isOpen: true,
+          isVerified: Boolean(c.ownerVerified ?? c.isVerified),
         }));
       } catch (err) {
         // BE lama: search butuh auth + categoryId → kalau gagal, anggap kosong
