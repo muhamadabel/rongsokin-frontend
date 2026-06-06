@@ -251,32 +251,33 @@ function WeeklyBarChart({
 
 // ── CATEGORY MANAGER (hierarkis: induk → item) ───────────────────────────
 function CategoryManager() {
-  const { mains, childrenOf, isLoading } = useCategoryTree();
+  const { mains, isLoading } = useCategoryTree();
   const createCat = useCreateCategory();
   const updateCat = useUpdateCategory();
   const deleteCat = useDeleteCategory();
 
-  const [newMainName, setNewMainName] = useState("");
-  const [addingToMain, setAddingToMain] = useState<string | null>(null);
-  const [subName, setSubName] = useState("");
-  const [subUnit, setSubUnit] = useState<"kg" | "liter" | "pcs">("kg");
+  const [newName, setNewName] = useState("");
+  const [newUnit, setNewUnit] = useState<"kg" | "liter" | "pcs">("kg");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
+  const [editUnit, setEditUnit] = useState<"kg" | "liter" | "pcs">("kg");
+  const [editDesc, setEditDesc] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<WasteCategory | null>(null);
 
-  const handleAddMain = (e: React.FormEvent) => {
+  const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
-    const name = newMainName.trim();
+    const name = newName.trim();
     if (name.length < 2) {
       toast.error("Nama kategori minimal 2 karakter.");
       return;
     }
     createCat.mutate(
-      { name, parentId: null, sortOrder: mains.length },
+      { name, unit: newUnit, sortOrder: mains.length },
       {
         onSuccess: () => {
-          toast.success(`Kategori utama "${name}" ditambahkan.`);
-          setNewMainName("");
+          toast.success(`Kategori "${name}" ditambahkan.`);
+          setNewName("");
+          setNewUnit("kg");
         },
         onError: (err: unknown) => {
           const e = err as { response?: { data?: { message?: string } } };
@@ -286,32 +287,11 @@ function CategoryManager() {
     );
   };
 
-  const handleAddSub = (mainId: string) => {
-    const name = subName.trim();
-    if (name.length < 2) {
-      toast.error("Nama item minimal 2 karakter.");
-      return;
-    }
-    createCat.mutate(
-      { name, parentId: mainId, unit: subUnit, sortOrder: (childrenOf[mainId]?.length ?? 0) },
-      {
-        onSuccess: () => {
-          toast.success(`Item "${name}" ditambahkan.`);
-          setSubName("");
-          setSubUnit("kg");
-          setAddingToMain(null);
-        },
-        onError: (err: unknown) => {
-          const e = err as { response?: { data?: { message?: string } } };
-          toast.error(e?.response?.data?.message || "Gagal menambah item.");
-        },
-      }
-    );
-  };
-
   const startEdit = (cat: WasteCategory) => {
     setEditingId(cat.id);
     setEditName(cat.name);
+    setEditUnit((cat.unit as "kg" | "liter" | "pcs") || "kg");
+    setEditDesc(cat.description || "");
   };
 
   const saveEdit = (id: string) => {
@@ -321,7 +301,7 @@ function CategoryManager() {
       return;
     }
     updateCat.mutate(
-      { id, payload: { name } },
+      { id, payload: { name, unit: editUnit, description: editDesc } },
       {
         onSuccess: () => {
           toast.success("Kategori diperbarui.");
@@ -348,31 +328,17 @@ function CategoryManager() {
     });
   };
 
-  const editRow = (cat: WasteCategory) =>
-    editingId === cat.id ? (
-      <div className="flex gap-1.5 items-center">
-        <Input
-          type="text"
-          value={editName}
-          onChange={(e) => setEditName(e.target.value)}
-          autoFocus
-          className="text-xs h-8 py-1 flex-1"
-        />
-        <button
-          onClick={() => saveEdit(cat.id)}
-          disabled={updateCat.isPending}
-          className="h-8 px-2.5 bg-brand-500 hover:bg-brand-600 disabled:opacity-50 rounded-2xl text-ink text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
-        >
-          <Check size={12} />
-        </button>
-        <button
-          onClick={() => setEditingId(null)}
-          className="h-8 px-2 border border-ink-faint hover:bg-surface rounded-2xl text-ink-muted shrink-0"
-        >
-          <X size={12} />
-        </button>
-      </div>
-    ) : null;
+  const unitOptions = (value: string, onChange: (v: "kg" | "liter" | "pcs") => void) => (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value as "kg" | "liter" | "pcs")}
+      className="h-11 rounded-md border border-ink bg-surface-raised text-sm font-bold px-2.5"
+    >
+      <option value="kg">kg</option>
+      <option value="liter">liter</option>
+      <option value="pcs">pcs</option>
+    </select>
+  );
 
   return (
     <section className="bg-surface-raised p-6 rounded-2xl space-y-5">
@@ -382,16 +348,17 @@ function CategoryManager() {
           Kategori Sampah
         </h3>
 
-        <form onSubmit={handleAddMain} className="flex gap-2 shrink-0">
+        <form onSubmit={handleAdd} className="flex gap-2 shrink-0">
           <Input
             type="text"
-            placeholder="Kategori utama baru…"
-            value={newMainName}
-            onChange={(e) => setNewMainName(e.target.value)}
-            className="h-11 w-48 py-2"
+            placeholder="Kategori baru…"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            className="h-11 w-44 py-2"
           />
+          {unitOptions(newUnit, setNewUnit)}
           <Button type="submit" disabled={createCat.isPending} className="px-4 py-2 flex items-center gap-1">
-            <Plus size={16} /> {createCat.isPending ? "…" : "Induk"}
+            <Plus size={16} /> {createCat.isPending ? "…" : "Tambah"}
           </Button>
         </form>
       </div>
@@ -399,132 +366,85 @@ function CategoryManager() {
       {isLoading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-surface rounded-2xl h-20 animate-pulse" />
+            <div key={i} className="bg-surface rounded-2xl h-16 animate-pulse" />
           ))}
         </div>
       ) : mains.length > 0 ? (
-        <div className="space-y-3">
-          {mains.map((main) => {
-            const subs = childrenOf[main.id] || [];
-            return (
-              <div key={main.id} className="bg-surface rounded-2xl p-4 space-y-3">
-                {/* Header induk */}
-                <div className="flex items-center justify-between gap-2">
-                  {editingId === main.id ? (
-                    <div className="flex-1">{editRow(main)}</div>
-                  ) : (
-                    <>
-                      <div className="flex items-center gap-2 min-w-0">
-                        <h4 className="font-display font-extrabold text-sm text-ink truncate">
-                          {main.name}
-                        </h4>
-                        <span className="text-[10px] text-mute font-mono shrink-0">
-                          {subs.length} item
-                        </span>
-                      </div>
-                      <div className="flex gap-1.5 shrink-0">
-                        <button
-                          onClick={() => startEdit(main)}
-                          className="h-7 px-2 border border-ink-faint hover:border-ink rounded-2xl text-ink-muted hover:text-ink text-[10px] font-bold flex items-center gap-1 cursor-pointer"
-                        >
-                          <Pencil size={11} />
-                        </button>
-                        <button
-                          onClick={() => setConfirmDelete(main)}
-                          className="h-7 px-2 border border-ink-faint hover:border-status-error rounded-2xl text-ink-muted hover:text-status-error cursor-pointer"
-                        >
-                          <Trash2 size={11} />
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                {/* Sub-item chips */}
-                <div className="flex flex-wrap gap-2">
-                  {subs.map((sub) =>
-                    editingId === sub.id ? (
-                      <div key={sub.id} className="w-full">{editRow(sub)}</div>
-                    ) : (
-                      <span
-                        key={sub.id}
-                        className="bg-surface-raised rounded-2xl pl-3 pr-1.5 py-1.5 flex items-center gap-1.5 text-xs"
-                      >
-                        <span className="font-bold text-ink">{sub.name}</span>
-                        <span className="text-[9px] text-mute font-mono uppercase">{sub.unit || "kg"}</span>
-                        <button
-                          onClick={() => startEdit(sub)}
-                          className="text-ink-faint hover:text-ink ml-1"
-                        >
-                          <Pencil size={11} />
-                        </button>
-                        <button
-                          onClick={() => setConfirmDelete(sub)}
-                          className="text-ink-faint hover:text-status-error"
-                        >
-                          <Trash2 size={11} />
-                        </button>
-                      </span>
-                    )
-                  )}
-
-                  {/* Tambah item */}
-                  {addingToMain === main.id ? (
-                    <div className="w-full flex gap-1.5 items-center mt-1">
-                      <Input
-                        type="text"
-                        placeholder="Nama item…"
-                        value={subName}
-                        onChange={(e) => setSubName(e.target.value)}
-                        autoFocus
-                        className="text-xs h-8 py-1 flex-1"
-                      />
-                      <select
-                        value={subUnit}
-                        onChange={(e) => setSubUnit(e.target.value as "kg" | "liter" | "pcs")}
-                        className="h-8 rounded-md border border-ink bg-surface-raised text-xs font-bold px-2"
-                      >
-                        <option value="kg">kg</option>
-                        <option value="liter">liter</option>
-                        <option value="pcs">pcs</option>
-                      </select>
-                      <button
-                        onClick={() => handleAddSub(main.id)}
-                        disabled={createCat.isPending}
-                        className="h-8 px-2.5 bg-brand-500 hover:bg-brand-600 disabled:opacity-50 rounded-2xl text-ink text-[11px] font-bold cursor-pointer shrink-0"
-                      >
-                        <Check size={12} />
-                      </button>
-                      <button
-                        onClick={() => setAddingToMain(null)}
-                        className="h-8 px-2 border border-ink-faint hover:bg-surface rounded-2xl text-ink-muted shrink-0"
-                      >
-                        <X size={12} />
-                      </button>
-                    </div>
-                  ) : (
+        <div className="space-y-2.5">
+          {mains.map((cat) => (
+            <div key={cat.id} className="bg-surface rounded-2xl p-4">
+              {editingId === cat.id ? (
+                <div className="space-y-2.5">
+                  <div className="flex gap-2">
+                    <Input
+                      type="text"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      autoFocus
+                      className="flex-1 py-2"
+                    />
+                    {unitOptions(editUnit, setEditUnit)}
+                  </div>
+                  <textarea
+                    value={editDesc}
+                    onChange={(e) => setEditDesc(e.target.value)}
+                    placeholder="Contoh isi kategori — mis. botol, gelas, ember…"
+                    className="w-full rounded-md border border-ink bg-surface-raised px-3 py-2 text-xs text-ink placeholder:text-mute focus:outline-none focus:ring-2 focus:ring-brand-500 min-h-[56px]"
+                  />
+                  <div className="flex gap-2 justify-end">
                     <button
-                      onClick={() => {
-                        setAddingToMain(main.id);
-                        setSubName("");
-                        setSubUnit("kg");
-                      }}
-                      className="rounded-2xl border border-dashed border-ink-faint hover:border-ink px-3 py-1.5 text-xs font-bold text-ink-muted hover:text-ink flex items-center gap-1 transition-colors cursor-pointer"
+                      onClick={() => setEditingId(null)}
+                      className="h-9 px-3 border border-ink-faint hover:bg-surface-raised rounded-2xl text-ink-muted text-xs font-bold cursor-pointer"
                     >
-                      <Plus size={12} /> Item
+                      Batal
                     </button>
-                  )}
+                    <button
+                      onClick={() => saveEdit(cat.id)}
+                      disabled={updateCat.isPending}
+                      className="h-9 px-4 bg-brand-500 hover:bg-brand-600 disabled:opacity-50 rounded-2xl text-ink text-xs font-bold flex items-center gap-1 cursor-pointer"
+                    >
+                      <Check size={13} /> Simpan
+                    </button>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              ) : (
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-display font-extrabold text-sm text-ink">{cat.name}</h4>
+                      <span className="text-[9px] text-brand-800 bg-brand-100 rounded-full px-1.5 py-0.5 font-bold uppercase font-mono">
+                        {cat.unit || "kg"}
+                      </span>
+                    </div>
+                    {cat.description && (
+                      <p className="text-[11px] text-ink-muted leading-snug mt-1">{cat.description}</p>
+                    )}
+                  </div>
+                  <div className="flex gap-1.5 shrink-0">
+                    <button
+                      onClick={() => startEdit(cat)}
+                      className="h-7 px-2 border border-ink-faint hover:border-ink rounded-2xl text-ink-muted hover:text-ink cursor-pointer"
+                    >
+                      <Pencil size={12} />
+                    </button>
+                    <button
+                      onClick={() => setConfirmDelete(cat)}
+                      className="h-7 px-2 border border-ink-faint hover:border-status-error rounded-2xl text-ink-muted hover:text-status-error cursor-pointer"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       ) : (
         <div className="bg-surface rounded-2xl p-10 flex flex-col items-center text-center">
           <Archive size={28} className="text-ink-faint mb-2" />
           <p className="text-xs font-bold text-ink">Belum ada kategori</p>
           <p className="text-[11px] text-mute mt-1 max-w-xs">
-            Tambahkan kategori utama dulu, lalu isi item di dalamnya.
+            Tambahkan kategori pertama di form atas.
           </p>
         </div>
       )}
