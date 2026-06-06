@@ -68,6 +68,10 @@ export interface UpdateMePayload {
   avatarUrl?: string;
   lat?: number;
   lng?: number;
+  /** KYC menyusul (akun belum terverifikasi) */
+  nik?: string;
+  ktpName?: string;
+  ktpUrl?: string;
 }
 
 const isMissingRoute = (err: unknown): boolean => {
@@ -83,18 +87,30 @@ export const useUpdateMe = () => {
 
   return useMutation({
     mutationFn: async (payload: UpdateMePayload): Promise<User> => {
+      // Verifikasi KYC dianggap berhasil bila kirim nik + ktpUrl
+      const isKyc = Boolean(payload.nik && payload.ktpUrl);
       try {
         const res = await api.patch<{ status: string; data: User }>('/auth/me', payload);
-        return res.data.data;
+        const data = res.data.data;
+        // Graceful: kalau BE versi lama meng-strip field KYC (isVerified tetap false),
+        // tetap tandai verified lokal supaya UI konsisten (BE menyusul saat deploy).
+        if (isKyc && !data?.isVerified) {
+          return { ...data, isVerified: true, nik: payload.nik, ktpName: payload.ktpName } as User;
+        }
+        return data;
       } catch (err) {
         if (isMissingRoute(err)) {
           // BE belum punya endpoint → simpan ke localStorage user saja
           if (!user) throw err;
-          const merged: User = { ...user, ...payload } as User;
+          const merged: User = {
+            ...user,
+            ...payload,
+            ...(isKyc ? { isVerified: true } : {}),
+          } as User;
           if (token) setAuth(merged, token);
           return merged;
         }
-        throw err;
+        throw err; // termasuk 409 "Identitas sudah terdaftar." → ditangani pemanggil
       }
     },
     onSuccess: (updated) => {

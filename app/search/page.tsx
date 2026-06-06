@@ -5,6 +5,7 @@ import { Search, MapPin, Archive, Star } from "lucide-react";
 import BottomNav from "@/components/ui/BottomNav";
 import DesktopNav from "@/components/ui/DesktopNav";
 import { Input } from "@/components/ui/Input";
+import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
 import Link from "next/link";
 import { useSearchCollectors, useCategoryTree } from "@/hooks/useDiscovery";
 import { useAuthStore } from "@/store/authStore";
@@ -170,9 +171,7 @@ function SearchInner() {
                         <h4 className="font-bold text-sm text-ink truncate">
                           {collector.shopName}
                         </h4>
-                        <span className="text-[9px] font-bold bg-brand-500 text-ink px-1.5 py-0.5 rounded-full uppercase tracking-wider shrink-0">
-                          Verified
-                        </span>
+                        {collector.isVerified && <VerifiedBadge size="xs" className="mt-0.5" />}
                       </div>
                       <p className="text-[11px] text-ink-muted mt-1 flex items-center gap-1">
                         <MapPin size={12} className="text-brand-700 shrink-0" />

@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/Button";
 import DesktopNav from "@/components/ui/DesktopNav";
 import BottomNav from "@/components/ui/BottomNav";
 import { PengepulDetailSkeleton } from "@/components/ui/Skeleton";
+import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
 import { useCollectorDetails, useWasteCategories } from "@/hooks/useDiscovery";
 import { useUserRatings } from "@/hooks/useRatings";
 import { formatRupiah, formatDate } from "@/lib/utils";
@@ -132,6 +133,7 @@ export default function PengepulDetailPage() {
               <div className="space-y-1.5">
                 <h2 className="text-xl md:text-2xl font-display font-extrabold text-ink flex flex-wrap items-center gap-2">
                   {collector.shopName}
+                  {collector.user?.isVerified && <VerifiedBadge size="sm" />}
                   {collector.isPremium && (
                     <span className="text-[10px] font-bold bg-brand-500 text-ink px-2 py-0.5 rounded-full uppercase tracking-wider">
                       Premium

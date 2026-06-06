@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import DesktopNav from "@/components/ui/DesktopNav";
 import BottomNav from "@/components/ui/BottomNav";
+import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
 import {
   Store,
   Archive,
@@ -29,6 +31,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { CollectorSkeleton } from "@/components/ui/Skeleton";
 import { useAuthStore } from "@/store/authStore";
+import { useMe } from "@/hooks/useAuth";
 import { useSocket } from "@/hooks/useSocket";
 import { useOrderStore } from "@/store/orderStore";
 import { useOrdersList, useUpdateOrderStatus } from "@/hooks/useOrders";
@@ -64,9 +67,11 @@ const mainIcon = (name: string): any => {
 function IncomingOrderCard({
   order,
   onRemove,
+  canAccept = true,
 }: {
   order: Order;
   onRemove: (id: string) => void;
+  canAccept?: boolean;
 }) {
   const router = useRouter();
   const [timeLeft, setTimeLeft] = useState(900);
@@ -83,6 +88,10 @@ function IncomingOrderCard({
   }, [timeLeft, order.id, onRemove]);
 
   const handleAccept = () => {
+    if (!canAccept) {
+      toast.error("Verifikasi KTP dulu sebelum menerima pesanan.");
+      return;
+    }
     updateOrderStatus.mutate(
       { action: "accept" },
       {
@@ -195,7 +204,7 @@ function IncomingOrderCard({
         <Button
           onClick={handleAccept}
           className="flex-1 py-2 text-xs"
-          disabled={updateOrderStatus.isPending}
+          disabled={updateOrderStatus.isPending || !canAccept}
         >
           <Check size={14} /> Terima
         </Button>
@@ -232,10 +241,12 @@ function RequestRow({
   order,
   index,
   onAccepted,
+  canAccept = true,
 }: {
   order: Order;
   index: number;
   onAccepted: (id: string) => void;
+  canAccept?: boolean;
 }) {
   const router = useRouter();
   const [showPhoto, setShowPhoto] = useState(false);
@@ -243,6 +254,10 @@ function RequestRow({
   const distance = `${((index + 1) * 0.8).toFixed(1)} km`;
 
   const handleAccept = () => {
+    if (!canAccept) {
+      toast.error("Verifikasi KTP dulu sebelum menerima pesanan.");
+      return;
+    }
     updateOrderStatus.mutate(
       { action: "accept" },
       {
@@ -337,7 +352,7 @@ function RequestRow({
       <td className="p-3 text-right">
         <button
           onClick={handleAccept}
-          disabled={updateOrderStatus.isPending}
+          disabled={updateOrderStatus.isPending || !canAccept}
           className="bg-brand-500 hover:bg-brand-600 text-ink font-bold text-[10px] px-3.5 py-2 rounded-2xl transition-all inline-flex items-center gap-1 cursor-pointer disabled:opacity-50"
         >
           <Check size={10} /> Ambil
@@ -360,6 +375,9 @@ export default function CollectorDashboard() {
 
   const incomingOrders = useOrderStore((state) => state.incomingOrders);
   const removeIncomingOrder = useOrderStore((state) => state.removeIncomingOrder);
+
+  const { data: me } = useMe();
+  const needsVerify = me?.isVerified === false; // hanya gate kalau eksplisit false
 
   const { data: profile, isLoading: isProfileLoading } = useCollectorProfile();
   const { mains } = useCategoryTree();
@@ -412,6 +430,10 @@ export default function CollectorDashboard() {
   }));
 
   const handleToggleOpen = () => {
+    if (needsVerify) {
+      toast.error("Verifikasi KTP dulu sebelum membuka lapak.");
+      return;
+    }
     const newStatus = !profile?.isOpen;
     updateProfile.mutate(
       {
@@ -487,13 +509,35 @@ export default function CollectorDashboard() {
       </header>
 
       <main className="flex-1 px-4 md:px-8 py-5 md:py-8 max-w-6xl w-full mx-auto space-y-6">
+        {/* BANNER VERIFIKASI — pengepul belum KYC tidak bisa buka lapak/terima order */}
+        {needsVerify && (
+          <section className="bg-status-warning/15 border border-status-warning/40 rounded-2xl p-4 flex items-start gap-3">
+            <ShieldAlert size={20} className="text-ink shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <h3 className="font-bold text-sm text-ink">Akun belum terverifikasi</h3>
+              <p className="text-xs text-ink-muted mt-0.5">
+                Verifikasi KTP dulu untuk bisa membuka lapak & menerima pesanan.
+              </p>
+            </div>
+            <Link
+              href="/profile/verify"
+              className="shrink-0 bg-ink text-white text-xs font-bold rounded-full px-4 py-2 hover:opacity-90 transition-opacity"
+            >
+              Verifikasi
+            </Link>
+          </section>
+        )}
+
         {/* STATUS TOGGLE */}
         <section className="bg-surface-raised rounded-2xl p-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xs font-bold text-mute uppercase tracking-widest mb-1">
-                Status Lapak
-              </h2>
+              <div className="flex items-center gap-2 mb-1">
+                <h2 className="text-xs font-bold text-mute uppercase tracking-widest">
+                  Status Lapak
+                </h2>
+                {me?.isVerified && <VerifiedBadge size="xs" />}
+              </div>
               <div className="flex items-center gap-2">
                 <span className="relative flex h-3 w-3">
                   {profile?.isOpen && (
@@ -512,7 +556,8 @@ export default function CollectorDashboard() {
             </div>
             <button
               onClick={handleToggleOpen}
-              className={`w-16 h-8 rounded-full p-1 cursor-pointer transition-colors ${
+              disabled={needsVerify}
+              className={`w-16 h-8 rounded-full p-1 cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                 profile?.isOpen ? "bg-brand-500" : "bg-surface-sunken"
               }`}
             >
@@ -561,6 +606,7 @@ export default function CollectorDashboard() {
                         order={order}
                         index={idx}
                         onAccepted={removeIncomingOrder}
+                        canAccept={!needsVerify}
                       />
                     ))
                   ) : (
@@ -599,6 +645,7 @@ export default function CollectorDashboard() {
                     key={order.id}
                     order={order}
                     onRemove={removeIncomingOrder}
+                    canAccept={!needsVerify}
                   />
                 ))
               ) : (
