@@ -13,7 +13,6 @@ import {
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
-  MapPin,
   ShieldCheck,
   Loader2,
   AlertTriangle,
@@ -66,7 +65,6 @@ function RegisterForm() {
   const [radiusKm, setRadiusKm] = useState(5);
   const [collectorLat, setCollectorLat] = useState(-7.7956);
   const [collectorLng, setCollectorLng] = useState(110.3695);
-  const [gpsDetected, setGpsDetected] = useState(false);
 
   // Step 4 — Lokasi (customer). null = belum dipilih; LocationPicker auto-GPS saat muncul.
   const [customerCoords, setCustomerCoords] = useState<{ lat: number; lng: number } | null>(null);
@@ -180,17 +178,8 @@ function RegisterForm() {
       {
         onSuccess: () => {
           toast.success("Verifikasi & registrasi berhasil!");
-          if (role === "COLLECTOR" && navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-              (pos) => {
-                setCollectorLat(pos.coords.latitude);
-                setCollectorLng(pos.coords.longitude);
-                setGpsDetected(true);
-              },
-              () => setGpsDetected(false)
-            );
-          }
-          // Semua role lanjut ke step 4: collector → profil lapak, customer → pilih lokasi
+          // Step 4: collector → profil lapak (+peta), customer → pilih lokasi.
+          // LocationPicker (autoLocate) yang menangani deteksi GPS awal di kedua kasus.
           setStep(4);
         },
         onError: (err: unknown) => {
@@ -604,23 +593,17 @@ function RegisterForm() {
                   required
                 />
               </div>
-              <div
-                className={`border rounded-2xl p-4 flex items-start gap-3 ${
-                  gpsDetected
-                    ? "bg-brand-100 border-brand-200 text-brand-800"
-                    : "bg-surface border-ink-faint text-ink-muted"
-                }`}
-              >
-                {gpsDetected ? (
-                  <CheckCircle2 size={20} className="shrink-0 mt-0.5 text-brand-700" />
-                ) : (
-                  <MapPin size={20} className="shrink-0 mt-0.5 text-ink-muted" />
-                )}
-                <p className="text-xs leading-relaxed">
-                  {gpsDetected
-                    ? "Lokasi GPS terdeteksi. Lapakmu akan muncul di hasil pencarian terdekat."
-                    : "Menggunakan lokasi default Yogyakarta. Detail harga & jam operasional bisa diatur di Dashboard."}
-                </p>
+              <div>
+                <LocationPicker
+                  value={{ lat: collectorLat, lng: collectorLng }}
+                  onChange={(c) => {
+                    setCollectorLat(c.lat);
+                    setCollectorLng(c.lng);
+                  }}
+                  autoLocate
+                  label="Lokasi Lapak"
+                  helperText="Geser peta tepat ke lokasi lapakmu — ini yang dipakai customer mencari pengepul terdekat. Tombol GPS butuh koneksi HTTPS."
+                />
               </div>
 
               <div className="pt-3">

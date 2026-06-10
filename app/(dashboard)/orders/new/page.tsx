@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect, useRef, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
@@ -11,7 +11,6 @@ import {
   Tv,
   Droplets,
   ArrowLeft,
-  MapPin,
   CheckCircle2,
   Truck,
   Sparkles,
@@ -27,10 +26,12 @@ import { CameraCapture } from "@/components/ui/CameraCapture";
 import DesktopNav from "@/components/ui/DesktopNav";
 import BottomNav from "@/components/ui/BottomNav";
 import { PageSkeleton } from "@/components/ui/Skeleton";
-import { DEFAULT_COORDS, unitLabel } from "@/lib/utils";
+import { unitLabel } from "@/lib/utils";
 import { uploadToCloudinary } from "@/lib/upload";
+import LocationPicker from "@/components/features/profile/LocationPicker";
 import { useCategoryTree } from "@/hooks/useDiscovery";
 import { useCreateOrder, useOrdersList } from "@/hooks/useOrders";
+import { useMe } from "@/hooks/useAuth";
 import { useAuthStore } from "@/store/authStore";
 import toast from "react-hot-toast";
 
@@ -80,6 +81,7 @@ function OrderForm() {
 
   const { mains, byId, isLoading: isCategoriesLoading } = useCategoryTree();
   const createOrder = useCreateOrder();
+  const { data: me } = useMe();
 
   // Anti-scam: PICKUP hanya untuk user yang sudah punya >=1 transaksi COMPLETED.
   // User baru wajib DROP-OFF dulu (antar sendiri) agar tidak ada pesanan jemput fiktif.
@@ -101,7 +103,19 @@ function OrderForm() {
   const [lng, setLng] = useState<number | null>(null);
 
   const [isUploading, setIsUploading] = useState(false);
-  const [isLocating, setIsLocating] = useState(false);
+
+  // Seed titik lokasi awal dari lokasi tersimpan customer (yang di-set saat register/
+  // edit profil). User bisa geser peta untuk menyesuaikan per pesanan. Sekali saja
+  // supaya tidak menimpa hasil geser/GPS user (hindari race seperti bug lokasi dulu).
+  const seededCoords = useRef(false);
+  useEffect(() => {
+    if (seededCoords.current) return;
+    if (me?.lat != null && me?.lng != null) {
+      seededCoords.current = true;
+      setLat(me.lat);
+      setLng(me.lng);
+    }
+  }, [me]);
 
   // Pre-select dari URL (?category=) — id atau nama kategori
   useEffect(() => {
@@ -160,33 +174,6 @@ function OrderForm() {
   const clearPhoto = () => {
     setPhotoUrl("");
     setPhotoPreview("");
-  };
-
-  // ── Lokasi GPS ───────────────────────────────────────────────────────────
-  const handleGetLocation = () => {
-    setIsLocating(true);
-    if (typeof window !== "undefined" && "geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setLat(pos.coords.latitude);
-          setLng(pos.coords.longitude);
-          setIsLocating(false);
-          toast.success("Lokasi GPS berhasil didapat!");
-        },
-        () => {
-          setLat(DEFAULT_COORDS.lat);
-          setLng(DEFAULT_COORDS.lng);
-          setIsLocating(false);
-          toast("Gagal GPS, memakai lokasi default Yogyakarta.", { icon: "📍" });
-        },
-        { timeout: 10000 }
-      );
-    } else {
-      setLat(DEFAULT_COORDS.lat);
-      setLng(DEFAULT_COORDS.lng);
-      setIsLocating(false);
-      toast("GPS tidak didukung, memakai lokasi default.", { icon: "📍" });
-    }
   };
 
   // ── Submit ───────────────────────────────────────────────────────────────
@@ -639,56 +626,16 @@ function OrderForm() {
                 <label className="text-[10px] font-bold text-mute uppercase tracking-widest mb-2 block">
                   Lokasi Setoran <span className="text-status-error">*</span>
                 </label>
-
-                {lat && lng ? (
-                  <div className="bg-brand-100 rounded-2xl p-4 flex items-start gap-3">
-                    <MapPin className="text-brand-700 shrink-0 mt-0.5" size={20} />
-                    <div className="flex-1">
-                      <h4 className="font-bold text-sm text-brand-800">Lokasi Terkunci ✓</h4>
-                      <p className="text-[11px] text-brand-700 font-mono mt-0.5">
-                        {lat.toFixed(5)}, {lng.toFixed(5)}
-                      </p>
-                      <button
-                        onClick={handleGetLocation}
-                        className="text-[11px] font-bold text-ink underline mt-1"
-                        disabled={isLocating}
-                      >
-                        {isLocating ? "Memperbarui…" : "Perbarui Lokasi GPS"}
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <button
-                    onClick={handleGetLocation}
-                    disabled={isLocating}
-                    className="w-full border-2 border-dashed border-ink-faint hover:border-ink rounded-2xl py-6 flex flex-col items-center gap-2 transition-colors disabled:opacity-60"
-                  >
-                    {isLocating ? (
-                      <RefreshCw size={24} className="animate-spin text-brand-700" />
-                    ) : (
-                      <MapPin size={24} className="text-ink-muted" />
-                    )}
-                    <span className="text-sm font-bold text-ink-muted">
-                      {isLocating ? "Mendeteksi GPS…" : "Klik untuk deteksi lokasi GPS"}
-                    </span>
-                    <span className="text-xs text-ink-faint">
-                      Atau gunakan lokasi default Yogyakarta
-                    </span>
-                  </button>
-                )}
-
-                {!lat && !lng && !isLocating && (
-                  <button
-                    onClick={() => {
-                      setLat(DEFAULT_COORDS.lat);
-                      setLng(DEFAULT_COORDS.lng);
-                      toast("Memakai lokasi default Yogyakarta.", { icon: "📍" });
-                    }}
-                    className="w-full mt-2 text-xs font-bold text-ink underline"
-                  >
-                    Gunakan lokasi default Yogyakarta
-                  </button>
-                )}
+                <LocationPicker
+                  value={lat != null && lng != null ? { lat, lng } : null}
+                  onChange={(c) => {
+                    setLat(c.lat);
+                    setLng(c.lng);
+                  }}
+                  autoLocate={me?.lat == null}
+                  label={method === "PICKUP" ? "Titik Penjemputan" : "Lokasimu"}
+                  helperText="Geser peta untuk menandai titik tepat. Tombol GPS butuh koneksi HTTPS (jalan di situs live)."
+                />
               </div>
 
               <div className="flex gap-3 pt-2">
