@@ -18,6 +18,8 @@ import {
   X,
   ChevronRight,
   Check,
+  Lock,
+  ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -28,7 +30,7 @@ import { PageSkeleton } from "@/components/ui/Skeleton";
 import { DEFAULT_COORDS, unitLabel } from "@/lib/utils";
 import { uploadToCloudinary } from "@/lib/upload";
 import { useCategoryTree } from "@/hooks/useDiscovery";
-import { useCreateOrder } from "@/hooks/useOrders";
+import { useCreateOrder, useOrdersList } from "@/hooks/useOrders";
 import { useAuthStore } from "@/store/authStore";
 import toast from "react-hot-toast";
 
@@ -79,6 +81,15 @@ function OrderForm() {
   const { mains, byId, isLoading: isCategoriesLoading } = useCategoryTree();
   const createOrder = useCreateOrder();
 
+  // Anti-scam: PICKUP hanya untuk user yang sudah punya >=1 transaksi COMPLETED.
+  // User baru wajib DROP-OFF dulu (antar sendiri) agar tidak ada pesanan jemput fiktif.
+  // Saat loading, anggap BELUM punya (fail-safe ke DROPOFF).
+  const { data: completedOrders, isLoading: isCompletedLoading } = useOrdersList({
+    status: "COMPLETED",
+    limit: 1,
+  });
+  const pickupUnlocked = (completedOrders?.length ?? 0) > 0;
+
   const [step, setStep] = useState(1);
 
   /** Kategori yang dipilih customer (1..N kategori) */
@@ -105,6 +116,14 @@ function OrderForm() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initCat, mains, byId]);
+
+  // Kalau user memilih PICKUP lalu ternyata belum boleh (atau status berubah),
+  // reset pilihan supaya tidak lolos ke langkah berikutnya.
+  useEffect(() => {
+    if (method === "PICKUP" && !pickupUnlocked) {
+      setMethod("");
+    }
+  }, [method, pickupUnlocked]);
 
   // ── Toggle kategori (multi-select) ───────────────────────────────────────
   const toggleCategory = (catId: string) => {
@@ -176,6 +195,10 @@ function OrderForm() {
       toast.error("Mohon lengkapi semua data setoran.");
       return;
     }
+    if (method === "PICKUP" && !pickupUnlocked) {
+      toast.error("Transaksi pertama wajib antar sendiri (drop-off) untuk mencegah pesanan fiktif.");
+      return;
+    }
     if (!photoUrl) {
       toast.error("Foto tumpukan rongsok wajib diambil dari kamera.");
       return;
@@ -218,7 +241,8 @@ function OrderForm() {
     items.every((it) => Number(it.weight) > 0) &&
     !!photoUrl &&
     !isUploading;
-  const canGoStep4 = !!method && !!lat && !!lng;
+  const canGoStep4 =
+    !!method && (method === "DROPOFF" || pickupUnlocked) && !!lat && !!lng;
   const canSubmit = canGoStep2 && canGoStep3 && canGoStep4;
 
   if (!token) {
@@ -536,6 +560,18 @@ function OrderForm() {
                 Opsi Pengiriman
               </h2>
 
+              {/* Anti-scam: transaksi pertama wajib drop-off */}
+              {!pickupUnlocked && !isCompletedLoading && (
+                <div className="bg-surface border border-ink-faint rounded-2xl p-3.5 flex items-start gap-3">
+                  <ShieldCheck size={18} className="text-brand-700 shrink-0 mt-0.5" />
+                  <p className="text-xs text-ink-muted leading-relaxed">
+                    Transaksi pertamamu wajib <b className="text-ink">Antar Sendiri</b> ke lapak
+                    pengepul. Opsi <b className="text-ink">dijemput</b> terbuka otomatis setelah 1×
+                    transaksi selesai — ini mencegah pesanan jemput fiktif.
+                  </p>
+                </div>
+              )}
+
               <div className="space-y-3">
                 {(
                   [
@@ -552,31 +588,51 @@ function OrderForm() {
                       emoji: "🚶",
                     },
                   ] as const
-                ).map((opt) => (
-                  <button
-                    key={opt.value}
-                    onClick={() => setMethod(opt.value)}
-                    className={`w-full border rounded-2xl p-4 flex items-start gap-4 text-left transition-all ${
-                      method === opt.value
-                        ? "border-ink bg-brand-100"
-                        : "border-ink-faint hover:border-ink"
-                    }`}
-                  >
-                    <div
-                      className={`w-5 h-5 rounded-full border-2 mt-0.5 flex shrink-0 items-center justify-center ${
-                        method === opt.value ? "border-ink" : "border-ink-faint"
+                ).map((opt) => {
+                  const locked = opt.value === "PICKUP" && !pickupUnlocked;
+                  const selected = method === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      disabled={locked}
+                      onClick={() => {
+                        if (locked) return;
+                        setMethod(opt.value);
+                      }}
+                      className={`w-full border rounded-2xl p-4 flex items-start gap-4 text-left transition-all ${
+                        locked
+                          ? "border-ink-faint bg-surface opacity-60 cursor-not-allowed"
+                          : selected
+                          ? "border-ink bg-brand-100"
+                          : "border-ink-faint hover:border-ink"
                       }`}
                     >
-                      {method === opt.value && <div className="w-2.5 h-2.5 bg-brand-500 rounded-full" />}
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-sm text-ink mb-1">
-                        {opt.emoji} {opt.title}
-                      </h3>
-                      <p className="text-xs text-ink-muted">{opt.desc}</p>
-                    </div>
-                  </button>
-                ))}
+                      <div
+                        className={`w-5 h-5 rounded-full border-2 mt-0.5 flex shrink-0 items-center justify-center ${
+                          selected ? "border-ink" : "border-ink-faint"
+                        }`}
+                      >
+                        {selected && <div className="w-2.5 h-2.5 bg-brand-500 rounded-full" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-bold text-sm text-ink mb-1 flex items-center gap-1.5 flex-wrap">
+                          <span>
+                            {opt.emoji} {opt.title}
+                          </span>
+                          {locked && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-ink-muted bg-surface-raised border border-ink-faint rounded-full px-2 py-0.5">
+                              <Lock size={10} /> Terkunci
+                            </span>
+                          )}
+                        </h3>
+                        <p className="text-xs text-ink-muted">
+                          {locked ? "Tersedia setelah 1× transaksi selesai." : opt.desc}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
 
               <div>

@@ -10,6 +10,7 @@ export const useSocket = () => {
   const user = useAuthStore((state) => state.user);
   const addIncomingOrder = useOrderStore((state) => state.addIncomingOrder);
   const updateOrderStatus = useOrderStore((state) => state.updateOrderStatus);
+  const removeIncomingOrder = useOrderStore((state) => state.removeIncomingOrder);
 
   useEffect(() => {
     if (!token || !user) {
@@ -84,10 +85,17 @@ export const useSocket = () => {
     socket.on('order_status_update', handleStatusUpdate);
     socket.on('order_status_updated', handleStatusUpdate); // double-handle for compatibility
 
+    // Order sudah diambil/dibatalkan → hapus dari antrean collector lain (FCFS instan)
+    const handleOrderTaken = (payload: { orderId: string }) => {
+      removeIncomingOrder(payload.orderId);
+    };
+    socket.on('order_taken', handleOrderTaken);
+
     return () => {
       socket.off('new_order');
       socket.off('order_status_update');
       socket.off('order_status_updated');
+      socket.off('order_taken', handleOrderTaken);
     };
-  }, [token, user, addIncomingOrder, updateOrderStatus]);
+  }, [token, user, addIncomingOrder, updateOrderStatus, removeIncomingOrder]);
 };

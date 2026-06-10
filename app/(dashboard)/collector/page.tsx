@@ -375,6 +375,7 @@ export default function CollectorDashboard() {
 
   const incomingOrders = useOrderStore((state) => state.incomingOrders);
   const removeIncomingOrder = useOrderStore((state) => state.removeIncomingOrder);
+  const addIncomingOrder = useOrderStore((state) => state.addIncomingOrder);
 
   const { data: me } = useMe();
   const needsVerify = me?.isVerified === false; // hanya gate kalau eksplisit false
@@ -385,6 +386,23 @@ export default function CollectorDashboard() {
     role: "collector",
     limit: 100,
   });
+
+  // Bootstrap antrean: order PENDING yang di-broadcast ke pengepul ini, diambil saat
+  // dashboard load (selain realtime socket) — supaya order yang masuk sebelum app
+  // dibuka tetap muncul. Butuh BE getOrders mendukung role=collector&status=PENDING
+  // (via tabel OrderCollector); sebelum BE deploy, query ini balik [] dengan aman.
+  const { data: pendingBroadcast } = useOrdersList({
+    role: "collector",
+    status: "PENDING",
+    limit: 100,
+  });
+
+  useEffect(() => {
+    if (pendingBroadcast && pendingBroadcast.length > 0) {
+      // addIncomingOrder dedupe by id → aman digabung dengan yang dari socket
+      pendingBroadcast.forEach((o) => addIncomingOrder(o));
+    }
+  }, [pendingBroadcast, addIncomingOrder]);
 
   const updateProfile = useUpdateCollectorProfile();
   const updateCatalogs = useUpdateCatalogs();

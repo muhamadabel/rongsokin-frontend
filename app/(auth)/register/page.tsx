@@ -22,8 +22,9 @@ import {
   Lock,
   Camera,
 } from "lucide-react";
-import { useRegister } from "@/hooks/useAuth";
+import { useRegister, useUpdateMe } from "@/hooks/useAuth";
 import { useUpdateCollectorProfile } from "@/hooks/useCollector";
+import LocationPicker from "@/components/features/profile/LocationPicker";
 import { recognizeKtp } from "@/lib/ktpOcr";
 import { uploadToCloudinary } from "@/lib/upload";
 import toast from "react-hot-toast";
@@ -67,8 +68,12 @@ function RegisterForm() {
   const [collectorLng, setCollectorLng] = useState(110.3695);
   const [gpsDetected, setGpsDetected] = useState(false);
 
+  // Step 4 — Lokasi (customer). null = belum dipilih; LocationPicker auto-GPS saat muncul.
+  const [customerCoords, setCustomerCoords] = useState<{ lat: number; lng: number } | null>(null);
+
   const { mutate: register, isPending: isRegistering } = useRegister();
   const { mutate: setupProfile, isPending: isSettingProfile } = useUpdateCollectorProfile();
+  const { mutate: updateMe, isPending: isSavingLocation } = useUpdateMe();
 
   // Preselect role dari URL (?role=COLLECTOR)
   useEffect(() => {
@@ -76,8 +81,9 @@ function RegisterForm() {
     if (r === "COLLECTOR" || r === "CUSTOMER") setRole(r);
   }, [searchParams]);
 
-  const totalSteps = role === "COLLECTOR" ? 4 : 3;
-  const stepList = role === "COLLECTOR" ? [1, 2, 3, 4] : [1, 2, 3];
+  // 4 langkah untuk semua role: step 4 = profil lapak (collector) atau pilih lokasi (customer)
+  const totalSteps = 4;
+  const stepList = [1, 2, 3, 4];
 
   // ── Step 2: biodata → lanjut ke KYC ──────────────────────────────────────
   const handleBiodataNext = (e: React.FormEvent) => {
@@ -174,21 +180,18 @@ function RegisterForm() {
       {
         onSuccess: () => {
           toast.success("Verifikasi & registrasi berhasil!");
-          if (role === "COLLECTOR") {
-            if (navigator.geolocation) {
-              navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                  setCollectorLat(pos.coords.latitude);
-                  setCollectorLng(pos.coords.longitude);
-                  setGpsDetected(true);
-                },
-                () => setGpsDetected(false)
-              );
-            }
-            setStep(4);
-          } else {
-            router.push("/dashboard");
+          if (role === "COLLECTOR" && navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+              (pos) => {
+                setCollectorLat(pos.coords.latitude);
+                setCollectorLng(pos.coords.longitude);
+                setGpsDetected(true);
+              },
+              () => setGpsDetected(false)
+            );
           }
+          // Semua role lanjut ke step 4: collector → profil lapak, customer → pilih lokasi
+          setStep(4);
         },
         onError: (err: unknown) => {
           const msg =
@@ -224,6 +227,29 @@ function RegisterForm() {
     );
   };
 
+  // ── Step 4 (customer): simpan lokasi → dashboard ─────────────────────────
+  const handleCustomerLocationSubmit = () => {
+    if (!customerCoords) {
+      toast.error("Pilih titik lokasimu dulu di peta.");
+      return;
+    }
+    updateMe(
+      { lat: customerCoords.lat, lng: customerCoords.lng },
+      {
+        onSuccess: () => {
+          toast.success("Lokasi tersimpan!");
+          router.push("/dashboard");
+        },
+        onError: (err: unknown) => {
+          const msg =
+            (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+            "Gagal menyimpan lokasi. Coba lagi.";
+          toast.error(msg);
+        },
+      }
+    );
+  };
+
   const headerSub =
     step === 1
       ? "Pilih peranmu di ekosistem ini"
@@ -231,7 +257,9 @@ function RegisterForm() {
       ? "Lengkapi data akunmu"
       : step === 3
       ? "Verifikasi identitas dengan KTP"
-      : "Lengkapi profil lapakmu";
+      : role === "COLLECTOR"
+      ? "Lengkapi profil lapakmu"
+      : "Tentukan lokasimu";
 
   return (
     <div className="min-h-screen flex flex-col p-6 bg-surface justify-center">
@@ -529,9 +557,7 @@ function RegisterForm() {
                         ? "Membaca KTP…"
                         : !/^\d{16}$/.test(nik)
                         ? "NIK belum terbaca"
-                        : role === "COLLECTOR"
-                        ? "Verifikasi & Lanjut"
-                        : "Verifikasi & Selesai"}
+                        : "Verifikasi & Lanjut"}
                     </Button>
                   </div>
                 </>
@@ -539,8 +565,8 @@ function RegisterForm() {
             </form>
           )}
 
-          {/* STEP 4: PROFIL LAPAK */}
-          {step === 4 && (
+          {/* STEP 4 (COLLECTOR): PROFIL LAPAK */}
+          {step === 4 && role === "COLLECTOR" && (
             <form onSubmit={handleProfileSubmit} className="space-y-4">
               <div>
                 <label className="text-xs font-bold text-ink uppercase tracking-wider mb-2 block">
@@ -603,6 +629,33 @@ function RegisterForm() {
                 </Button>
               </div>
             </form>
+          )}
+
+          {/* STEP 4 (CUSTOMER): PILIH LOKASI */}
+          {step === 4 && role === "CUSTOMER" && (
+            <div className="space-y-4">
+              <p className="text-sm text-ink-muted -mt-3">
+                Geser peta untuk menandai lokasimu. Ini jadi titik pencarian pengepul
+                terdekat & lokasi default setoranmu (bisa diubah nanti).
+              </p>
+              <LocationPicker
+                value={customerCoords}
+                onChange={setCustomerCoords}
+                label="Pilih Titik Lokasi"
+                autoLocate
+                helperText="Lokasi tersimpan dipakai untuk mencari pengepul terdekat di sekitarmu."
+              />
+              <div className="pt-1">
+                <Button
+                  type="button"
+                  onClick={handleCustomerLocationSubmit}
+                  className="w-full"
+                  disabled={isSavingLocation || !customerCoords}
+                >
+                  {isSavingLocation ? "Menyimpan…" : "Selesai Mendaftar"}
+                </Button>
+              </div>
+            </div>
           )}
         </div>
 
