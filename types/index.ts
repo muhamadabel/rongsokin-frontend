@@ -122,6 +122,13 @@ export interface Order {
   customer?: User;
   collector?: User;
   receipt?: Receipt;
+
+  /** Koordinat lokasi (di-parse dari User.location) untuk peta rute antar/jemput.
+   *  Diisi oleh getOrderDetails di BE; null kalau pihak terkait belum set lokasi. */
+  customerLat?: number | null;
+  customerLng?: number | null;
+  collectorLat?: number | null;
+  collectorLng?: number | null;
 }
 
 export interface OrderCollector {

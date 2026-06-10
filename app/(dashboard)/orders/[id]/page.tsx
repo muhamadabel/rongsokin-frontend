@@ -24,6 +24,7 @@ import {
   Loader2,
   XCircle,
   Download,
+  Navigation,
 } from "lucide-react";
 
 const categoryIcons: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
@@ -42,6 +43,8 @@ import { getSocket } from "@/lib/socket";
 import {
   formatRupiah,
   formatDate,
+  formatDistance,
+  haversineMeters,
   unitLabel,
   getOrderItems,
   getOrderTotalEstWeight,
@@ -52,6 +55,7 @@ import {
 import toast from "react-hot-toast";
 import api from "@/lib/axios";
 import EcoImpactModal from "@/components/features/eco-impact/EcoImpactModal";
+import OrderRouteMap from "@/components/features/orders/OrderRouteMap";
 
 export default function OrderTrackingPage() {
   const { id } = useParams() as { id: string };
@@ -155,6 +159,25 @@ export default function OrderTrackingPage() {
   // Kontak aktif: ada partner & order sedang berjalan (penjemputan/otw/timbang)
   const activeStatuses = ["CONFIRMED", "IN_PROGRESS", "AWAITING_CONFIRMATION"];
   const showContact = !!partner && activeStatuses.includes(order.status);
+
+  // Peta rute antar/jemput (butuh koordinat kedua pihak dari getOrderDetails)
+  const custLoc =
+    order.customerLat != null && order.customerLng != null
+      ? { lat: order.customerLat, lng: order.customerLng }
+      : null;
+  const collLoc =
+    order.collectorLat != null && order.collectorLng != null
+      ? { lat: order.collectorLat, lng: order.collectorLng }
+      : null;
+  const showRoute = activeStatuses.includes(order.status) && !!custLoc && !!collLoc;
+  const routeDistance = showRoute ? haversineMeters(custLoc!, collLoc!) : 0;
+  // Arah navigasi: PICKUP → pengepul menuju customer; DROPOFF → customer menuju lapak
+  const navOrigin = order.method === "PICKUP" ? collLoc : custLoc;
+  const navDest = order.method === "PICKUP" ? custLoc : collLoc;
+  const navUrl =
+    showRoute && navOrigin && navDest
+      ? `https://www.google.com/maps/dir/?api=1&origin=${navOrigin.lat},${navOrigin.lng}&destination=${navDest.lat},${navDest.lng}&travelmode=driving`
+      : "";
 
   // Pesan hero per status
   const partnerLabel = isCustomer ? "Pengepul" : "Customer";
@@ -368,6 +391,53 @@ export default function OrderTrackingPage() {
             </div>
           )}
         </section>
+
+        {/* PETA RUTE ANTAR/JEMPUT */}
+        {showRoute && custLoc && collLoc && (
+          <section className="bg-surface-raised rounded-2xl p-5 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="font-display font-extrabold text-sm text-ink tracking-tight flex items-center gap-2">
+                <Navigation size={16} className="text-brand-700" />
+                {order.method === "PICKUP" ? "Rute Penjemputan" : "Rute Antar ke Lapak"}
+              </h3>
+              <span className="text-[11px] font-bold text-brand-700 font-mono">
+                ± {formatDistance(routeDistance)}
+              </span>
+            </div>
+
+            <OrderRouteMap customer={custLoc} collector={collLoc} />
+
+            <div className="flex items-center gap-4 text-[11px] text-ink-muted">
+              <span className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-full bg-brand-500 border border-ink shrink-0" /> Customer
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-full bg-surface-raised border border-ink shrink-0" /> Pengepul
+              </span>
+            </div>
+
+            <p className="text-[11px] text-ink-muted leading-relaxed">
+              {order.method === "PICKUP"
+                ? isCollector
+                  ? "Arahkan ke lokasi customer untuk menjemput rongsok."
+                  : "Pengepul sedang menuju lokasimu — pantau & koordinasi lewat WhatsApp."
+                : isCustomer
+                ? "Antar rongsokmu ke lapak pengepul mengikuti rute ini."
+                : "Customer sedang menuju lapakmu."}
+            </p>
+
+            {navUrl && (
+              <a href={navUrl} target="_blank" rel="noopener noreferrer" className="block">
+                <Button
+                  variant="outline"
+                  className="w-full flex items-center justify-center gap-2 text-xs"
+                >
+                  <Navigation size={16} /> Buka Navigasi di Google Maps
+                </Button>
+              </a>
+            )}
+          </section>
+        )}
 
         {/* PROGRESS STEPPER */}
         <section className="bg-surface-raised rounded-2xl p-6">
