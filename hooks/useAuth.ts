@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AxiosError } from 'axios';
 import api from '@/lib/axios';
 import { useAuthStore } from '@/store/authStore';
 import { User, RegisterPayload } from '@/types';
@@ -53,14 +52,14 @@ export const useMe = () => {
   });
 };
 
-// ── Update profil user (customer) ────────────────────────────────────────
+// ── Update profil user + KYC ───────────────────────────────────────────────
 /**
- * Endpoint yang dibutuhkan BE: PATCH /auth/me
- *   body: { name?, phone?, avatarUrl?, lat?, lng? }
- *   response: { status, data: User }
+ * PATCH /auth/me
+ *   body: { name?, phone?, avatarUrl?, lat?, lng?, nik?, ktpName?, ktpUrl? }
+ *   response: { status, data: User }  — isVerified asli dari server.
  *
- * Selama BE belum siap (return 404/405/501), hook ini akan tetap update
- * authStore lokal supaya UI optimistic; nanti BE jadi → otomatis sync.
+ * BE menyimpan field KYC & menyetel isVerified bila nik + ktpUrl lengkap,
+ * jadi klien TIDAK lagi memalsukan status verifikasi.
  */
 export interface UpdateMePayload {
   name?: string;
@@ -74,47 +73,19 @@ export interface UpdateMePayload {
   ktpUrl?: string;
 }
 
-const isMissingRoute = (err: unknown): boolean => {
-  const s = (err as AxiosError | undefined)?.response?.status;
-  return s === 404 || s === 405 || s === 501;
-};
-
 export const useUpdateMe = () => {
   const qc = useQueryClient();
-  const user = useAuthStore((s) => s.user);
   const token = useAuthStore((s) => s.token);
   const setAuth = useAuthStore((s) => s.setAuth);
 
   return useMutation({
     mutationFn: async (payload: UpdateMePayload): Promise<User> => {
-      // Verifikasi KYC dianggap berhasil bila kirim nik + ktpUrl
-      const isKyc = Boolean(payload.nik && payload.ktpUrl);
-      try {
-        const res = await api.patch<{ status: string; data: User }>('/auth/me', payload);
-        const data = res.data.data;
-        // Graceful: kalau BE versi lama meng-strip field KYC (isVerified tetap false),
-        // tetap tandai verified lokal supaya UI konsisten (BE menyusul saat deploy).
-        if (isKyc && !data?.isVerified) {
-          return { ...data, isVerified: true, nik: payload.nik, ktpName: payload.ktpName } as User;
-        }
-        return data;
-      } catch (err) {
-        if (isMissingRoute(err)) {
-          // BE belum punya endpoint → simpan ke localStorage user saja
-          if (!user) throw err;
-          const merged: User = {
-            ...user,
-            ...payload,
-            ...(isKyc ? { isVerified: true } : {}),
-          } as User;
-          if (token) setAuth(merged, token);
-          return merged;
-        }
-        throw err; // termasuk 409 "Identitas sudah terdaftar." → ditangani pemanggil
-      }
+      // Pakai apa adanya dari server (termasuk isVerified). 409 "Identitas sudah
+      // terdaftar." dari BE diteruskan sebagai error → ditangani pemanggil.
+      const res = await api.patch<{ status: string; data: User }>('/auth/me', payload);
+      return res.data.data;
     },
     onSuccess: (updated) => {
-      // Sync ke authStore + cache
       if (token) setAuth(updated, token);
       qc.setQueryData(['me'], updated);
       qc.invalidateQueries({ queryKey: ['me'] });

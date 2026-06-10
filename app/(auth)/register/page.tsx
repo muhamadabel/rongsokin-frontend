@@ -97,10 +97,19 @@ function RegisterForm() {
     setNik("");
     setKtpName("");
 
-    // Upload ke Cloudinary (paralel dengan OCR)
+    // Upload foto KTP ke server (paralel dengan OCR)
     setUploadingKtp(true);
     uploadToCloudinary(blob)
-      .then((r) => setKtpUrl(r.url))
+      .then((r) => {
+        if (!r.remote) {
+          // Upload tidak sampai ke server (mis. jaringan) → jangan pakai blob lokal
+          // sebagai ktpUrl, supaya tidak ada akun "verified" dengan foto yang hilang.
+          setKtpUrl("");
+          toast.error("Gagal mengunggah foto KTP ke server. Foto ulang.");
+          return;
+        }
+        setKtpUrl(r.url);
+      })
       .catch(() => toast.error("Gagal mengunggah foto KTP. Ulangi foto."))
       .finally(() => setUploadingKtp(false));
 
@@ -136,6 +145,10 @@ function RegisterForm() {
     }
     if (uploadingKtp) {
       toast.error("Tunggu, foto KTP sedang diunggah…");
+      return;
+    }
+    if (!ktpUrl) {
+      toast.error("Foto KTP belum berhasil diunggah ke server. Foto ulang.");
       return;
     }
     if (!/^\d{16}$/.test(nik)) {

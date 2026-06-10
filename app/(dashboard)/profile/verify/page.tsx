@@ -64,7 +64,14 @@ export default function VerifyKtpPage() {
 
     setUploadingKtp(true);
     uploadToCloudinary(blob)
-      .then((r) => setKtpUrl(r.url))
+      .then((r) => {
+        if (!r.remote) {
+          setKtpUrl("");
+          toast.error("Gagal mengunggah foto KTP ke server. Foto ulang.");
+          return;
+        }
+        setKtpUrl(r.url);
+      })
       .catch(() => toast.error("Gagal mengunggah foto KTP. Ulangi foto."))
       .finally(() => setUploadingKtp(false));
 
@@ -94,11 +101,12 @@ export default function VerifyKtpPage() {
     e.preventDefault();
     if (!ktpPreview) return toast.error("Ambil foto KTP terlebih dahulu.");
     if (uploadingKtp) return toast.error("Tunggu, foto KTP sedang diunggah…");
+    if (!ktpUrl) return toast.error("Foto KTP belum berhasil diunggah ke server. Foto ulang.");
     if (!/^\d{16}$/.test(nik)) return toast.error("NIK harus 16 digit. Foto ulang KTP.");
     if (ktpName.trim().length < 3) return toast.error("Nama sesuai KTP tidak valid.");
 
     updateMe.mutate(
-      { nik, ktpName: ktpName.trim(), ktpUrl: ktpUrl || undefined },
+      { nik, ktpName: ktpName.trim(), ktpUrl },
       {
         onSuccess: () => {
           toast.success("Identitas berhasil diverifikasi!");
