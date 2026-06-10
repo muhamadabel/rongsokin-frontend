@@ -10,6 +10,12 @@ interface EcoImpactModalProps {
   actualWeight: number;
   orderId: string;
   onClose: () => void;
+  /** 'order' = dampak 1 pesanan (default); 'lifetime' = total kumulatif customer */
+  variant?: "order" | "lifetime";
+  /** Teks gelar di kartu (mis. tier gamifikasi). Default "Pahlawan Lingkungan". */
+  titleLabel?: string;
+  /** Label tombol tutup. Default "Lanjut Beri Rating". */
+  closeLabel?: string;
 }
 
 export default function EcoImpactModal({
@@ -17,7 +23,11 @@ export default function EcoImpactModal({
   actualWeight,
   orderId,
   onClose,
+  variant = "order",
+  titleLabel = "Pahlawan Lingkungan",
+  closeLabel = "Lanjut Beri Rating",
 }: EcoImpactModalProps) {
+  const periodText = variant === "lifetime" ? "sampah sampai hari ini" : "sampah hari ini";
   const [isDownloading, setIsDownloading] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -147,7 +157,7 @@ export default function EcoImpactModal({
                   {customerName}
                 </h4>
                 <p className="text-[10px] text-brand-200 mt-0.5 uppercase tracking-widest font-mono flex items-center justify-center gap-1">
-                  <ShieldCheck size={11} className="text-brand-400" /> Pahlawan Lingkungan
+                  <ShieldCheck size={11} className="text-brand-400" /> {titleLabel}
                 </p>
               </div>
 
@@ -158,7 +168,7 @@ export default function EcoImpactModal({
                 <span className="font-mono text-white font-extrabold text-sm border-b border-brand-400 pb-0.5">
                   {actualWeight.toFixed(1)} kg
                 </span>{" "}
-                sampah hari ini. Dampaknya setara dengan mengurangi emisi karbon dari
+                {periodText}. Dampaknya setara dengan mengurangi emisi karbon dari
                 perjalanan motor sejauh{" "}
                 <span className="font-mono text-brand-400 font-extrabold text-sm border-b border-brand-400 pb-0.5">
                   {carbonKm.toFixed(1)} km
@@ -190,7 +200,7 @@ export default function EcoImpactModal({
             onClick={onClose}
             className="w-full border border-ink-faint hover:bg-surface-sunken text-ink-muted font-bold py-3.5 px-6 rounded-2xl flex items-center justify-center gap-1.5 transition-all active:scale-[0.98] cursor-pointer text-sm"
           >
-            Lanjut Beri Rating
+            {closeLabel}
             <ArrowRight size={16} />
           </button>
         </div>

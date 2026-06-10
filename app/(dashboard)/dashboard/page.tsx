@@ -40,6 +40,8 @@ import {
   ChevronRight,
   Bell,
   Plus,
+  Leaf,
+  Trophy,
 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { useRouter } from "next/navigation";
@@ -233,6 +235,34 @@ export default function CustomerDashboard() {
             </div>
           </div>
         </section>
+
+        {/* ECO IMPACT + LEADERBOARD ENTRY */}
+        <Link
+          href="/eco"
+          className="block bg-ink rounded-2xl p-5 text-forest-ink hover:brightness-110 transition-all relative overflow-hidden"
+        >
+          <div
+            className="absolute -top-12 -right-12 w-36 h-36 rounded-full"
+            style={{ background: "radial-gradient(circle, rgba(159,232,112,0.2), transparent 70%)" }}
+          />
+          <div className="relative z-10 flex items-center gap-4">
+            <div className="w-11 h-11 rounded-2xl bg-brand-500 flex items-center justify-center shrink-0 text-ink">
+              <Leaf size={22} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-sm text-forest-ink">Dampak Ekologismu</h3>
+                <span className="inline-flex items-center gap-1 text-[9px] font-extrabold uppercase tracking-wider text-brand-500 bg-brand-500/15 rounded-full px-2 py-0.5">
+                  <Trophy size={10} /> Papan Peringkat
+                </span>
+              </div>
+              <p className="text-[11px] text-forest-muted mt-0.5">
+                Sudah {totalWeight.toFixed(1)} kg terdaur ulang — lihat dampak & peringkatmu!
+              </p>
+            </div>
+            <ChevronRight size={18} className="text-brand-500 shrink-0" />
+          </div>
+        </Link>
 
         {/* JUAL PER KATEGORI */}
         <section className="space-y-3">
