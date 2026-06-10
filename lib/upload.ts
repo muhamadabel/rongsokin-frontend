@@ -1,6 +1,4 @@
-// Upload helper Cloudinary (direct dari FE, unsigned preset).
-// Dipakai untuk foto KTP (KYC) & foto sampah (anti fake-order) & foto profil.
-// Mode demo: kalau env Cloudinary belum di-set, kembalikan object URL lokal supaya UI tetap jalan.
+import api from './axios';
 
 export interface UploadResult {
   url: string;
@@ -15,29 +13,27 @@ export async function uploadToCloudinary(file: File | Blob): Promise<UploadResul
     throw new Error('Foto terlalu besar. Maksimal 5MB.');
   }
 
-  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-  const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+  try {
+    const formData = new FormData();
+    // Backend expects a single file field named 'image'
+    formData.append('image', file);
 
-  // Demo / dev tanpa env → object URL lokal (tidak persist, tapi UI jalan)
-  if (!cloudName || !uploadPreset) {
-    return { url: URL.createObjectURL(file), remote: false };
+    const res = await api.post('/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    if (res.data?.status === 'success' && res.data?.data?.url) {
+      return { url: res.data.data.url, remote: true };
+    }
+    throw new Error('Gagal mengunggah foto.');
+  } catch (error) {
+    console.warn('Backend upload failed, falling back to local object URL:', error);
+    try {
+      return { url: URL.createObjectURL(file), remote: false };
+    } catch (e) {
+      throw new Error('Gagal mengunggah foto. Coba lagi.');
+    }
   }
-
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('upload_preset', uploadPreset);
-
-  const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
-    method: 'POST',
-    body: formData,
-  });
-
-  if (!res.ok) {
-    throw new Error('Gagal mengunggah foto. Coba lagi.');
-  }
-  const data = await res.json();
-  if (!data.secure_url) {
-    throw new Error('Gagal mengunggah foto. Coba lagi.');
-  }
-  return { url: data.secure_url as string, remote: true };
 }

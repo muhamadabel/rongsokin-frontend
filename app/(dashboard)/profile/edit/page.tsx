@@ -25,6 +25,7 @@ import {
 import { useAuthStore } from "@/store/authStore";
 import { DEFAULT_COORDS } from "@/lib/utils";
 import toast from "react-hot-toast";
+import { uploadToCloudinary } from "@/lib/upload";
 
 export default function EditProfilePage() {
   const router = useRouter();
@@ -93,41 +94,18 @@ export default function EditProfilePage() {
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Foto terlalu besar. Maksimal 5MB.");
-      return;
-    }
 
     setIsUploading(true);
     try {
-      const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-      const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
-
-      if (!cloudName || !uploadPreset) {
-        const localUrl = URL.createObjectURL(file);
-        setAvatarUrl(localUrl);
-        toast.success("Foto profil dipilih (Mode demo).");
-        return;
-      }
-
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("upload_preset", uploadPreset);
-
-      const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-
-      if (data.secure_url) {
-        setAvatarUrl(data.secure_url);
+      const { url, remote } = await uploadToCloudinary(file);
+      setAvatarUrl(url);
+      if (remote) {
         toast.success("Foto profil diunggah!");
       } else {
-        throw new Error(data.error?.message || "Upload failed");
+        toast.success("Foto profil dipilih (Mode demo).");
       }
-    } catch {
-      toast.error("Gagal unggah foto. Coba lagi.");
+    } catch (err: any) {
+      toast.error(err.message || "Gagal unggah foto. Coba lagi.");
     } finally {
       setIsUploading(false);
     }
