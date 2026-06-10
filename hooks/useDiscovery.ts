@@ -58,7 +58,10 @@ export const useCategoryTree = () => {
   return { ...tree, isLoading, error };
 };
 
-export const useSearchCollectors = (params: SearchQueryParams) => {
+export const useSearchCollectors = (
+  params: SearchQueryParams,
+  options?: { enabled?: boolean }
+) => {
   const { data: categories } = useWasteCategories();
 
   return useQuery({
@@ -109,7 +112,7 @@ export const useSearchCollectors = (params: SearchQueryParams) => {
         throw err;
       }
     },
-    enabled: !params.category || !!categories,
+    enabled: (!params.category || !!categories) && (options?.enabled ?? true),
     retry: false,
   });
 };

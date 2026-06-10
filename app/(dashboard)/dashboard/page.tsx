@@ -5,8 +5,8 @@ import { useState, useEffect } from "react";
 import { useMe } from "@/hooks/useAuth";
 import { useOrdersList } from "@/hooks/useOrders";
 import { useCategoryTree, useSearchCollectors } from "@/hooks/useDiscovery";
+import { useUserCoords } from "@/hooks/useUserCoords";
 import {
-  DEFAULT_COORDS,
   formatRupiah,
   formatDistance,
   formatDate,
@@ -85,7 +85,6 @@ export default function CustomerDashboard() {
   const { data: orders, isLoading: isOrdersLoading } = useOrdersList({ limit: 50 });
   const { mains } = useCategoryTree();
 
-  const [coords, setCoords] = useState(DEFAULT_COORDS);
   const [greeting, setGreeting] = useState("Halo");
 
   useEffect(() => {
@@ -96,22 +95,13 @@ export default function CustomerDashboard() {
     else setGreeting("Selamat malam");
   }, []);
 
-  useEffect(() => {
-    if (typeof navigator !== "undefined" && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setCoords({ lat: position.coords.latitude, lng: position.coords.longitude });
-        },
-        () => {}
-      );
-    }
-  }, []);
+  // Lokasi pencarian: lokasi tersimpan customer > GPS > default Yogyakarta
+  const { coords, source: coordsSource, ready: coordsReady } = useUserCoords();
 
-  const { data: nearbyCollectors, isLoading: isNearbyLoading } = useSearchCollectors({
-    lat: coords.lat,
-    lng: coords.lng,
-    radius: 5,
-  });
+  const { data: nearbyCollectors, isLoading: isNearbyLoading } = useSearchCollectors(
+    { lat: coords.lat, lng: coords.lng, radius: 5 },
+    { enabled: coordsReady }
+  );
 
   const activeOrder = orders?.find(
     (o) => o.status !== "COMPLETED" && o.status !== "CANCELLED"
@@ -285,7 +275,7 @@ export default function CustomerDashboard() {
             </h2>
             <span className="text-xs font-semibold text-mute flex items-center gap-1">
               <MapPin size={12} className="text-brand-700" />
-              {coords === DEFAULT_COORDS ? "Yogyakarta" : "Lokasimu"}
+              {coordsSource === "default" ? "Yogyakarta" : "Lokasimu"}
             </span>
           </div>
 

@@ -8,8 +8,9 @@ import { Input } from "@/components/ui/Input";
 import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
 import Link from "next/link";
 import { useSearchCollectors, useCategoryTree } from "@/hooks/useDiscovery";
+import { useUserCoords } from "@/hooks/useUserCoords";
 import { useAuthStore } from "@/store/authStore";
-import { DEFAULT_COORDS, formatDistance } from "@/lib/utils";
+import { formatDistance } from "@/lib/utils";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PageSkeleton } from "@/components/ui/Skeleton";
 
@@ -38,7 +39,8 @@ function SearchInner() {
     }
   }, [token, user, router]);
 
-  const [coords, setCoords] = useState(DEFAULT_COORDS);
+  // Lokasi pencarian: lokasi tersimpan customer > GPS > default Yogyakarta
+  const { coords, ready: coordsReady } = useUserCoords();
   const [selectedMainId, setSelectedMainId] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -54,24 +56,16 @@ function SearchInner() {
     setSelectedMainId((prev) => prev || byName?.id || mains[0].id);
   }, [mains, searchParams]);
 
-  useEffect(() => {
-    if (typeof navigator !== "undefined" && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setCoords({ lat: position.coords.latitude, lng: position.coords.longitude });
-        },
-        () => {}
-      );
-    }
-  }, []);
-
   const selectedMain = mains.find((m) => m.id === selectedMainId);
-  const { data: collectors, isLoading } = useSearchCollectors({
-    lat: coords.lat,
-    lng: coords.lng,
-    categoryId: selectedMainId || undefined,
-    radius: 50,
-  });
+  const { data: collectors, isLoading } = useSearchCollectors(
+    {
+      lat: coords.lat,
+      lng: coords.lng,
+      categoryId: selectedMainId || undefined,
+      radius: 50,
+    },
+    { enabled: coordsReady }
+  );
 
   const filteredCollectors =
     collectors?.filter(
