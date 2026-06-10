@@ -394,6 +394,24 @@ export default function CollectorDashboard() {
     Record<string, { minPrice: number; maxPrice: number; isActive: boolean }>
   >({});
 
+  // Deep-link dari BottomNav: /collector#katalog (auto-expand) & /collector#antrean
+  useEffect(() => {
+    const applyHash = () => {
+      const hash = window.location.hash;
+      if (hash !== "#katalog" && hash !== "#antrean") return;
+      if (hash === "#katalog") setIsCatalogExpanded(true);
+      // Tunggu render dulu (katalog baru muncul setelah expand)
+      requestAnimationFrame(() => {
+        document
+          .querySelector(hash)
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    };
+    applyHash();
+    window.addEventListener("hashchange", applyHash);
+    return () => window.removeEventListener("hashchange", applyHash);
+  }, []);
+
   // Init harga per kategori
   useEffect(() => {
     if (mains.length > 0) {
@@ -627,7 +645,7 @@ export default function CollectorDashboard() {
           </section>
 
           {/* INCOMING QUEUE */}
-          <section className="bg-surface-raised rounded-2xl p-6 space-y-4">
+          <section id="antrean" className="bg-surface-raised rounded-2xl p-6 space-y-4 scroll-mt-20">
             <h3 className="font-display font-extrabold text-base text-ink tracking-tight flex items-center gap-2">
               <Store className="text-brand-700" size={18} />
               Antrean Masuk
@@ -750,7 +768,7 @@ export default function CollectorDashboard() {
         </section>
 
         {/* CATALOG MANAGER (COLLAPSIBLE) */}
-        <section className="bg-surface-raised rounded-2xl overflow-hidden">
+        <section id="katalog" className="bg-surface-raised rounded-2xl overflow-hidden scroll-mt-20">
           <button
             onClick={() => setIsCatalogExpanded(!isCatalogExpanded)}
             className="w-full p-5 flex items-center justify-between cursor-pointer hover:bg-surface transition-colors text-left"

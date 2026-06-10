@@ -4,7 +4,8 @@ let socket: Socket | null = null;
 
 export const getSocket = (token: string): Socket => {
   if (!socket) {
-    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000';
+    // Default ke BE hosting supaya app jalan tanpa .env (lihat catatan di lib/axios.ts).
+    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'https://be-rongsokin.hallojanu.xyz';
     socket = io(socketUrl, {
       auth: { token },
       autoConnect: true,

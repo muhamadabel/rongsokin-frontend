@@ -1,6 +1,8 @@
 import axios from 'axios'
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1'
+// Default ke BE hosting (bukan rahasia) supaya app tetap jalan tanpa .env —
+// .env* di-gitignore jadi tidak ikut ke-push. Override via NEXT_PUBLIC_API_URL kalau pakai BE lokal.
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://be-rongsokin.hallojanu.xyz/api/v1'
 
 const api = axios.create({ baseURL: BASE_URL })
 

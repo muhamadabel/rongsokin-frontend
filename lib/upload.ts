@@ -1,10 +1,17 @@
-// Upload helper Cloudinary (direct dari FE, unsigned preset).
-// Dipakai untuk foto KTP (KYC) & foto sampah (anti fake-order) & foto profil.
-// Mode demo: kalau env Cloudinary belum di-set, kembalikan object URL lokal supaya UI tetap jalan.
+// Upload helper foto. Kini lewat endpoint backend POST /api/v1/upload (multer field 'image'),
+// yang melakukan signed upload ke Cloudinary di server — jadi FE TIDAK butuh env Cloudinary lagi.
+// Dipakai untuk foto KTP (KYC), foto sampah (anti fake-order), & foto profil/avatar.
+//
+// Fallback object URL lokal dipakai bila:
+//   - upload backend gagal / server belum siap (mode demo), atau
+//   - belum ada token (mis. upload KTP saat REGISTER, sebelum akun jadi) → endpoint 401.
+// Object URL tidak persist (hilang saat reload) — UI tetap jalan, tapi tidak tersimpan.
+
+import api from './axios';
 
 export interface UploadResult {
   url: string;
-  /** true bila benar-benar terunggah ke Cloudinary; false = object URL lokal (demo). */
+  /** true bila benar-benar terunggah ke server (persisten); false = object URL lokal (demo/tanpa auth). */
   remote: boolean;
 }
 
@@ -15,29 +22,23 @@ export async function uploadToCloudinary(file: File | Blob): Promise<UploadResul
     throw new Error('Foto terlalu besar. Maksimal 5MB.');
   }
 
-  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-  const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+  try {
+    const formData = new FormData();
+    // BE mengharapkan field bernama 'image' (multer upload.single('image')).
+    formData.append('image', file);
 
-  // Demo / dev tanpa env → object URL lokal (tidak persist, tapi UI jalan)
-  if (!cloudName || !uploadPreset) {
+    // PENTING: jangan set header Content-Type manual. Biarkan browser yang
+    // menambahkan boundary multipart — kalau di-hardcode 'multipart/form-data'
+    // tanpa boundary, multer di server gagal mem-parse file.
+    const res = await api.post('/upload', formData);
+
+    const url = res.data?.data?.url;
+    if (res.data?.status === 'success' && url) {
+      return { url, remote: true };
+    }
+    throw new Error('Respons upload tidak valid.');
+  } catch (err) {
+    console.warn('[upload] gagal unggah ke backend, fallback object URL lokal:', err);
     return { url: URL.createObjectURL(file), remote: false };
   }
-
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('upload_preset', uploadPreset);
-
-  const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
-    method: 'POST',
-    body: formData,
-  });
-
-  if (!res.ok) {
-    throw new Error('Gagal mengunggah foto. Coba lagi.');
-  }
-  const data = await res.json();
-  if (!data.secure_url) {
-    throw new Error('Gagal mengunggah foto. Coba lagi.');
-  }
-  return { url: data.secure_url as string, remote: true };
 }

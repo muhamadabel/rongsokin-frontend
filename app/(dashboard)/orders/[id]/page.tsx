@@ -23,6 +23,7 @@ import {
   Truck,
   Loader2,
   XCircle,
+  Download,
 } from "lucide-react";
 
 const categoryIcons: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
@@ -50,6 +51,7 @@ import {
 } from "@/lib/utils";
 import toast from "react-hot-toast";
 import api from "@/lib/axios";
+import EcoImpactModal from "@/components/features/eco-impact/EcoImpactModal";
 
 export default function OrderTrackingPage() {
   const { id } = useParams() as { id: string };
@@ -79,6 +81,10 @@ export default function OrderTrackingPage() {
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
   const [ratingLoading, setRatingLoading] = useState(false);
 
+  // Eco impact: modal apresiasi dampak ekologis (khusus customer) muncul saat order COMPLETED
+  const [showEcoImpact, setShowEcoImpact] = useState(false);
+  const [ecoImpactSeen, setEcoImpactSeen] = useState(false);
+
   useEffect(() => {
     if (!token || !id) return;
     const socket = getSocket(token);
@@ -101,10 +107,17 @@ export default function OrderTrackingPage() {
   }, [token, id, refetch]);
 
   useEffect(() => {
-    if (order?.status === "COMPLETED" && !ratingSubmitted) {
-      setShowRating(true);
+    if (order?.status === "COMPLETED") {
+      const isCustomerUser = user?.role === "CUSTOMER";
+      // Customer: tampilkan kartu dampak ekologis dulu, baru rating setelah ditutup.
+      if (isCustomerUser && !ecoImpactSeen) {
+        setShowEcoImpact(true);
+        setShowRating(false);
+      } else if (!ratingSubmitted) {
+        setShowRating(true);
+      }
     }
-  }, [order?.status, ratingSubmitted]);
+  }, [order?.status, user?.role, ecoImpactSeen, ratingSubmitted]);
 
   if (isLoading) {
     return <OrderDetailSkeleton />;
@@ -780,22 +793,45 @@ export default function OrderTrackingPage() {
                   </div>
                 </div>
 
-                <div className="bg-brand-100 rounded-2xl p-3.5 flex items-start gap-3">
-                  <RefreshCw className="text-brand-800 shrink-0 mt-0.5" size={16} />
-                  <div>
-                    <h5 className="font-bold text-brand-800 text-xs">Dampak Ekologis Kamu</h5>
-                    <p className="text-[10px] text-brand-700 leading-relaxed mt-0.5">
-                      Dengan mendaur ulang {getOrderTotalActualWeight(order).toFixed(1)} kg sampah
-                      di pesanan ini, kamu mencegah emisi karbon berbahaya dan menyelamatkan
-                      sumber daya alam!
-                    </p>
+                <div className="bg-brand-100 rounded-2xl p-3.5 flex flex-col gap-3">
+                  <div className="flex items-start gap-3">
+                    <RefreshCw className="text-brand-800 shrink-0 mt-0.5" size={16} />
+                    <div>
+                      <h5 className="font-bold text-brand-800 text-xs">Dampak Ekologis Kamu</h5>
+                      <p className="text-[10px] text-brand-700 leading-relaxed mt-0.5">
+                        Dengan mendaur ulang {getOrderTotalActualWeight(order).toFixed(1)} kg sampah
+                        di pesanan ini, kamu mencegah emisi karbon berbahaya dan menyelamatkan
+                        sumber daya alam!
+                      </p>
+                    </div>
                   </div>
+                  {isCustomer && (
+                    <button
+                      onClick={() => setShowEcoImpact(true)}
+                      className="w-full text-xs font-semibold py-2 px-3 flex items-center justify-center gap-1.5 border border-brand-800 text-brand-800 hover:bg-brand-200 rounded-2xl cursor-pointer transition-colors"
+                    >
+                      <Download size={14} /> Unduh Kartu Dampak
+                    </button>
+                  )}
                 </div>
               </section>
             )}
           </div>
         </div>
       </main>
+
+      {/* ECO IMPACT MODAL — apresiasi dampak ekologis (customer), muncul sebelum rating */}
+      {showEcoImpact && (
+        <EcoImpactModal
+          customerName={order.customer?.name || "Kawan Rongsok"}
+          actualWeight={getOrderTotalActualWeight(order)}
+          orderId={order.id}
+          onClose={() => {
+            setShowEcoImpact(false);
+            setEcoImpactSeen(true);
+          }}
+        />
+      )}
 
       {/* RATING MODAL */}
       {showRating && (
