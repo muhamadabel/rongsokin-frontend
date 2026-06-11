@@ -57,6 +57,7 @@ import api from "@/lib/axios";
 import EcoImpactModal from "@/components/features/eco-impact/EcoImpactModal";
 import OrderRouteMap from "@/components/features/orders/OrderRouteMap";
 import { useLiveTracking } from "@/hooks/useLiveTracking";
+import { useUserRatings } from "@/hooks/useRatings";
 
 export default function OrderTrackingPage() {
   const { id } = useParams() as { id: string };
@@ -112,6 +113,20 @@ export default function OrderTrackingPage() {
     };
   }, [token, id, refetch]);
 
+  // Cek apakah current user SUDAH pernah menilai order ini → jangan munculkan modal lagi.
+  // Pakai ratings yang diterima partner (rateeId), cari yang raterId = aku & orderId = order ini.
+  const rateeIdForCheck = order
+    ? user?.role === "CUSTOMER"
+      ? order.collectorId
+      : order.customerId
+    : undefined;
+  const { data: partnerRatings, isLoading: ratingsLoading } = useUserRatings(
+    rateeIdForCheck || undefined
+  );
+  const alreadyRated = !!partnerRatings?.some(
+    (r) => r.orderId === id && r.raterId === user?.id
+  );
+
   useEffect(() => {
     if (order?.status === "COMPLETED") {
       const isCustomerUser = user?.role === "CUSTOMER";
@@ -119,11 +134,11 @@ export default function OrderTrackingPage() {
       if (isCustomerUser && !ecoImpactSeen) {
         setShowEcoImpact(true);
         setShowRating(false);
-      } else if (!ratingSubmitted) {
+      } else if (!ratingSubmitted && !alreadyRated && !ratingsLoading) {
         setShowRating(true);
       }
     }
-  }, [order?.status, user?.role, ecoImpactSeen, ratingSubmitted]);
+  }, [order?.status, user?.role, ecoImpactSeen, ratingSubmitted, alreadyRated, ratingsLoading]);
 
   // ── Sudah sampai (arrive) + live tracking ────────────────────────────────
   const arriveInFlight = useRef(false);
@@ -390,7 +405,18 @@ export default function OrderTrackingPage() {
       setRatingSubmitted(true);
       setShowRating(false);
     } catch (error: any) {
-      toast.error(error.response?.data?.message || "Gagal mengirim ulasan.");
+      const status = error.response?.status;
+      const msg: string = error.response?.data?.message || error.message || "";
+      // Sudah pernah menilai order ini (unique orderId+raterId) → perlakukan sebagai selesai
+      const isDuplicate =
+        status === 409 || /unique|already|sudah|raterId|orderId/i.test(msg);
+      if (isDuplicate) {
+        toast("Kamu sudah memberi rating untuk transaksi ini. ⭐");
+        setRatingSubmitted(true);
+        setShowRating(false);
+      } else {
+        toast.error(msg || "Gagal mengirim ulasan.");
+      }
     } finally {
       setRatingLoading(false);
     }
@@ -519,18 +545,25 @@ export default function OrderTrackingPage() {
                     </span>
                   )}
                 </div>
-                <Button
-                  onClick={() => doArrive(false)}
-                  disabled={updateOrderStatus.isPending}
-                  className="w-full flex items-center justify-center gap-2 text-sm"
-                >
-                  <MapPin size={16} />
-                  {iAmMover ? "Saya Sudah Sampai" : "Tandai Sudah Sampai"}
-                </Button>
-                <p className="text-[10px] text-mute text-center leading-relaxed">
-                  Status berubah otomatis saat terdeteksi dekat lokasi. Tombol ini cadangan kalau
-                  GPS bermasalah.
-                </p>
+                {iAmMover ? (
+                  <>
+                    <Button
+                      onClick={() => doArrive(false)}
+                      disabled={updateOrderStatus.isPending}
+                      className="w-full flex items-center justify-center gap-2 text-sm"
+                    >
+                      <MapPin size={16} /> Saya Sudah Sampai
+                    </Button>
+                    <p className="text-[10px] text-mute text-center leading-relaxed">
+                      Status berubah otomatis saat terdeteksi dekat lokasi. Tombol ini cadangan
+                      kalau GPS bermasalah.
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-[11px] text-ink-muted text-center leading-relaxed">
+                    Menunggu {partnerLabel.toLowerCase()} tiba di lokasi… posisinya terlihat di peta.
+                  </p>
+                )}
               </div>
             )}
 
@@ -547,24 +580,31 @@ export default function OrderTrackingPage() {
           </section>
         )}
 
-        {/* OTW tanpa peta (koordinat belum lengkap) — tombol Sudah Sampai tetap tersedia */}
+        {/* OTW tanpa peta (koordinat belum lengkap) — tombol Sudah Sampai untuk pihak yang OTW */}
         {isOtw && !showRoute && (
           <section className="bg-surface-raised rounded-2xl p-5 space-y-3">
             <h3 className="font-display font-extrabold text-sm text-ink tracking-tight flex items-center gap-2">
               <MapPin size={16} className="text-brand-700" /> Konfirmasi Tiba di Lokasi
             </h3>
-            <p className="text-[11px] text-ink-muted leading-relaxed">
-              Peta rute tidak tersedia (lokasi belum lengkap). Tekan tombol di bawah saat sudah
-              sampai di lokasi.
-            </p>
-            <Button
-              onClick={() => doArrive(false)}
-              disabled={updateOrderStatus.isPending}
-              className="w-full flex items-center justify-center gap-2 text-sm"
-            >
-              <MapPin size={16} />
-              {iAmMover ? "Saya Sudah Sampai" : "Tandai Sudah Sampai"}
-            </Button>
+            {iAmMover ? (
+              <>
+                <p className="text-[11px] text-ink-muted leading-relaxed">
+                  Peta rute tidak tersedia (lokasi belum lengkap). Tekan tombol saat kamu sudah
+                  sampai di lokasi.
+                </p>
+                <Button
+                  onClick={() => doArrive(false)}
+                  disabled={updateOrderStatus.isPending}
+                  className="w-full flex items-center justify-center gap-2 text-sm"
+                >
+                  <MapPin size={16} /> Saya Sudah Sampai
+                </Button>
+              </>
+            ) : (
+              <p className="text-[11px] text-ink-muted leading-relaxed">
+                Menunggu {partnerLabel.toLowerCase()} tiba di lokasi…
+              </p>
+            )}
           </section>
         )}
 
@@ -581,7 +621,7 @@ export default function OrderTrackingPage() {
 
               let label = "Menunggu";
               if (s === "CONFIRMED") label = "Diterima";
-              if (s === "IN_PROGRESS") label = "Jemput";
+              if (s === "IN_PROGRESS") label = "Sampai";
               if (s === "AWAITING_CONFIRMATION") label = "Timbang";
               if (s === "COMPLETED") label = "Selesai";
 
