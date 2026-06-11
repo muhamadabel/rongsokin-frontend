@@ -55,7 +55,10 @@ export const useCreateOrder = () => {
 };
 
 // ── List & Detail ────────────────────────────────────────────────────────
-export const useOrdersList = (params: { status?: string; role?: string; limit?: number }) => {
+export const useOrdersList = (
+  params: { status?: string; role?: string; limit?: number },
+  options?: { refetchInterval?: number }
+) => {
   const token = useAuthStore((state) => state.token);
 
   return useQuery({
@@ -78,8 +81,13 @@ export const useOrdersList = (params: { status?: string; role?: string; limit?: 
     },
     enabled: !!token,
     retry: (count, err) => !isMissingRoute(err) && count < 2,
+    // Polling opsional (fallback real-time kalau WebSocket mati di hosting)
+    refetchInterval: options?.refetchInterval,
+    refetchIntervalInBackground: false,
   });
 };
+
+const ACTIVE_ORDER_STATUSES = ['PENDING', 'CONFIRMED', 'IN_PROGRESS', 'AWAITING_CONFIRMATION'];
 
 export const useOrderDetails = (id: string) => {
   const token = useAuthStore((state) => state.token);
@@ -91,6 +99,13 @@ export const useOrderDetails = (id: string) => {
       return res.data.data;
     },
     enabled: !!token && !!id,
+    // Fallback real-time: selama order masih berjalan, poll tiap 5 dtk supaya
+    // perubahan status (mis. pengepul menerima/sampai) cepat terlihat walau
+    // WebSocket di hosting belum aktif. Berhenti saat COMPLETED/CANCELLED.
+    refetchInterval: (query) => {
+      const status = (query.state.data as Order | undefined)?.status;
+      return status && ACTIVE_ORDER_STATUSES.includes(status) ? 5000 : false;
+    },
   });
 };
 

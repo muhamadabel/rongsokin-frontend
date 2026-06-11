@@ -29,6 +29,7 @@ import { Input } from "@/components/ui/Input";
 import { Logo } from "@/components/ui/Logo";
 import { useAuthStore } from "@/store/authStore";
 import { useCategoryTree } from "@/hooks/useDiscovery";
+import { CATEGORY_ICON_OPTIONS, iconForCategory } from "@/lib/categoryIcons";
 import {
   useAdminStats,
   useAdminOrders,
@@ -258,10 +259,12 @@ function CategoryManager() {
 
   const [newName, setNewName] = useState("");
   const [newUnit, setNewUnit] = useState<"kg" | "liter" | "pcs">("kg");
+  const [newIcon, setNewIcon] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editUnit, setEditUnit] = useState<"kg" | "liter" | "pcs">("kg");
   const [editDesc, setEditDesc] = useState("");
+  const [editIcon, setEditIcon] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<WasteCategory | null>(null);
 
   const handleAdd = (e: React.FormEvent) => {
@@ -271,13 +274,18 @@ function CategoryManager() {
       toast.error("Nama kategori minimal 2 karakter.");
       return;
     }
+    if (!newIcon) {
+      toast.error("Pilih ikon kategori dulu biar tampilannya jelas.");
+      return;
+    }
     createCat.mutate(
-      { name, unit: newUnit, sortOrder: mains.length },
+      { name, unit: newUnit, iconUrl: newIcon, sortOrder: mains.length },
       {
         onSuccess: () => {
           toast.success(`Kategori "${name}" ditambahkan.`);
           setNewName("");
           setNewUnit("kg");
+          setNewIcon("");
         },
         onError: (err: unknown) => {
           const e = err as { response?: { data?: { message?: string } } };
@@ -292,6 +300,7 @@ function CategoryManager() {
     setEditName(cat.name);
     setEditUnit((cat.unit as "kg" | "liter" | "pcs") || "kg");
     setEditDesc(cat.description || "");
+    setEditIcon(cat.iconUrl || "");
   };
 
   const saveEdit = (id: string) => {
@@ -301,7 +310,7 @@ function CategoryManager() {
       return;
     }
     updateCat.mutate(
-      { id, payload: { name, unit: editUnit, description: editDesc } },
+      { id, payload: { name, unit: editUnit, description: editDesc, iconUrl: editIcon || undefined } },
       {
         onSuccess: () => {
           toast.success("Kategori diperbarui.");
@@ -340,28 +349,60 @@ function CategoryManager() {
     </select>
   );
 
+  const iconPicker = (value: string, onChange: (k: string) => void) => (
+    <div className="flex flex-wrap gap-2">
+      {CATEGORY_ICON_OPTIONS.map((opt) => (
+        <button
+          type="button"
+          key={opt.key}
+          onClick={() => onChange(opt.key)}
+          title={opt.label}
+          aria-label={opt.label}
+          className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-colors cursor-pointer ${
+            value === opt.key
+              ? "bg-brand-500 text-ink border-ink"
+              : "bg-surface-raised text-ink-muted border-ink-faint hover:border-ink"
+          }`}
+        >
+          <opt.Icon size={18} />
+        </button>
+      ))}
+    </div>
+  );
+
   return (
     <section className="bg-surface-raised p-6 rounded-2xl space-y-5">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h3 className="font-display font-extrabold text-base text-ink tracking-tight flex items-center gap-2">
-          <Archive className="text-brand-700" size={18} />
-          Kategori Sampah
-        </h3>
+      <h3 className="font-display font-extrabold text-base text-ink tracking-tight flex items-center gap-2">
+        <Archive className="text-brand-700" size={18} />
+        Kategori Sampah
+      </h3>
 
-        <form onSubmit={handleAdd} className="flex gap-2 shrink-0">
+      {/* FORM TAMBAH KATEGORI — wajib pilih ikon biar tampilannya jelas */}
+      <form onSubmit={handleAdd} className="bg-surface rounded-2xl p-4 space-y-3">
+        <div className="flex gap-2">
           <Input
             type="text"
-            placeholder="Kategori baru…"
+            placeholder="Nama kategori baru…"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
-            className="h-11 w-44 py-2"
+            className="flex-1 py-2"
           />
           {unitOptions(newUnit, setNewUnit)}
-          <Button type="submit" disabled={createCat.isPending} className="px-4 py-2 flex items-center gap-1">
-            <Plus size={16} /> {createCat.isPending ? "…" : "Tambah"}
-          </Button>
-        </form>
-      </div>
+        </div>
+        <div>
+          <label className="text-[10px] font-bold text-mute uppercase tracking-widest mb-1.5 block">
+            Ikon Kategori <span className="text-status-error">*</span>
+          </label>
+          {iconPicker(newIcon, setNewIcon)}
+        </div>
+        <Button
+          type="submit"
+          disabled={createCat.isPending}
+          className="px-4 py-2 flex items-center gap-1"
+        >
+          <Plus size={16} /> {createCat.isPending ? "…" : "Tambah Kategori"}
+        </Button>
+      </form>
 
       {isLoading ? (
         <div className="space-y-3">
@@ -391,6 +432,12 @@ function CategoryManager() {
                     placeholder="Contoh isi kategori — mis. botol, gelas, ember…"
                     className="w-full rounded-md border border-ink bg-surface-raised px-3 py-2 text-xs text-ink placeholder:text-mute focus:outline-none focus:ring-2 focus:ring-brand-500 min-h-[56px]"
                   />
+                  <div>
+                    <label className="text-[10px] font-bold text-mute uppercase tracking-widest mb-1.5 block">
+                      Ikon
+                    </label>
+                    {iconPicker(editIcon, setEditIcon)}
+                  </div>
                   <div className="flex gap-2 justify-end">
                     <button
                       onClick={() => setEditingId(null)}
@@ -409,16 +456,26 @@ function CategoryManager() {
                 </div>
               ) : (
                 <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-display font-extrabold text-sm text-ink">{cat.name}</h4>
-                      <span className="text-[9px] text-brand-800 bg-brand-100 rounded-full px-1.5 py-0.5 font-bold uppercase font-mono">
-                        {cat.unit || "kg"}
-                      </span>
+                  <div className="flex items-start gap-3 min-w-0">
+                    {(() => {
+                      const Icon = iconForCategory(cat);
+                      return (
+                        <div className="w-9 h-9 rounded-xl bg-brand-100 text-brand-800 flex items-center justify-center shrink-0">
+                          <Icon size={18} />
+                        </div>
+                      );
+                    })()}
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-display font-extrabold text-sm text-ink">{cat.name}</h4>
+                        <span className="text-[9px] text-brand-800 bg-brand-100 rounded-full px-1.5 py-0.5 font-bold uppercase font-mono">
+                          {cat.unit || "kg"}
+                        </span>
+                      </div>
+                      {cat.description && (
+                        <p className="text-[11px] text-ink-muted leading-snug mt-1">{cat.description}</p>
+                      )}
                     </div>
-                    {cat.description && (
-                      <p className="text-[11px] text-ink-muted leading-snug mt-1">{cat.description}</p>
-                    )}
                   </div>
                   <div className="flex gap-1.5 shrink-0">
                     <button

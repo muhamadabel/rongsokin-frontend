@@ -43,6 +43,7 @@ import {
   Leaf,
   Trophy,
 } from "lucide-react";
+import { iconForCategory } from "@/lib/categoryIcons";
 import { useAuthStore } from "@/store/authStore";
 import { useRouter } from "next/navigation";
 
@@ -84,7 +85,10 @@ export default function CustomerDashboard() {
   useSocket();
 
   const { data: me, isLoading: isMeLoading } = useMe();
-  const { data: orders, isLoading: isOrdersLoading } = useOrdersList({ limit: 50 });
+  const { data: orders, isLoading: isOrdersLoading } = useOrdersList(
+    { limit: 50 },
+    { refetchInterval: 8000 } // fallback real-time: status pesanan aktif ke-update walau WS mati
+  );
   const { mains } = useCategoryTree();
 
   const [greeting, setGreeting] = useState("Halo");
@@ -272,7 +276,7 @@ export default function CustomerDashboard() {
           <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
             {mains && mains.length > 0
               ? mains.map((cat) => {
-                  const Icon = mainIcon(cat.name);
+                  const Icon = iconForCategory(cat);
                   return (
                     <Link
                       key={cat.id}

@@ -28,6 +28,7 @@ import {
   ShieldAlert,
   ImageOff,
 } from "lucide-react";
+import { iconForCategory } from "@/lib/categoryIcons";
 import { Button } from "@/components/ui/Button";
 import { CollectorSkeleton } from "@/components/ui/Skeleton";
 import { useAuthStore } from "@/store/authStore";
@@ -391,11 +392,10 @@ export default function CollectorDashboard() {
   // dashboard load (selain realtime socket) — supaya order yang masuk sebelum app
   // dibuka tetap muncul. Butuh BE getOrders mendukung role=collector&status=PENDING
   // (via tabel OrderCollector); sebelum BE deploy, query ini balik [] dengan aman.
-  const { data: pendingBroadcast } = useOrdersList({
-    role: "collector",
-    status: "PENDING",
-    limit: 100,
-  });
+  const { data: pendingBroadcast } = useOrdersList(
+    { role: "collector", status: "PENDING", limit: 100 },
+    { refetchInterval: 8000 } // fallback real-time: rebutan masuk tiap 8 dtk walau WS mati
+  );
 
   useEffect(() => {
     if (pendingBroadcast && pendingBroadcast.length > 0) {
@@ -807,7 +807,7 @@ export default function CollectorDashboard() {
 
               <div className="space-y-2.5">
                 {mains.map((cat) => {
-                  const Icon = mainIcon(cat.name);
+                  const Icon = iconForCategory(cat);
                   const data =
                     editedCatalogs[cat.id] || { minPrice: 1000, maxPrice: 2000, isActive: false };
                   const unit = unitLabel(cat.unit);

@@ -20,6 +20,7 @@ import {
   Lock,
   ShieldCheck,
 } from "lucide-react";
+import { iconForCategory } from "@/lib/categoryIcons";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { CameraCapture } from "@/components/ui/CameraCapture";
@@ -328,7 +329,7 @@ function OrderForm() {
               ) : mains.length > 0 ? (
                 <div className="space-y-2">
                   {mains.map((cat) => {
-                    const Icon = mainIcon(cat.name);
+                    const Icon = iconForCategory(cat);
                     const isSel = items.some((it) => it.categoryId === cat.id);
                     return (
                       <button
@@ -427,7 +428,7 @@ function OrderForm() {
                 {items.map((it) => {
                   const leaf = byId[it.categoryId];
                   const parent = leaf?.parentId ? byId[leaf.parentId] : leaf;
-                  const Icon = parent ? mainIcon(parent.name) : Sparkles;
+                  const Icon = parent ? iconForCategory(parent) : Sparkles;
                   const unit = unitLabel(leaf?.unit);
                   return (
                     <div key={it.categoryId} className="bg-surface rounded-2xl p-3 space-y-2.5">
@@ -677,7 +678,7 @@ function OrderForm() {
                     {items.map((it) => {
                       const leaf = byId[it.categoryId];
                       const parent = leaf?.parentId ? byId[leaf.parentId] : leaf;
-                      const Icon = parent ? mainIcon(parent.name) : Sparkles;
+                      const Icon = parent ? iconForCategory(parent) : Sparkles;
                       return (
                         <div key={it.categoryId} className="space-y-0.5">
                           <div className="flex items-center justify-between gap-3">
