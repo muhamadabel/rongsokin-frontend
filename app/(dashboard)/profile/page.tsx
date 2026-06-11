@@ -7,9 +7,7 @@ import {
   User,
   Settings,
   MapPin,
-  CreditCard,
-  HelpCircle,
-  FileText,
+  BookOpen,
   LogOut,
   ChevronRight,
   ShieldAlert,
@@ -58,20 +56,15 @@ export default function ProfilePage() {
   interface MenuItem {
     icon: any;
     label: string;
-    href?: string;
-    toast?: string;
+    href: string;
   }
 
   const menuGroups: MenuItem[][] = [
     [
       { icon: User, label: "Edit Profil", href: "/profile/edit" },
       { icon: MapPin, label: "Alamat & Lokasi", href: "/profile/edit" },
-      { icon: CreditCard, label: "Rekening & E-Wallet", toast: "Fitur Rekening segera hadir!" },
     ],
-    [
-      { icon: HelpCircle, label: "Pusat Bantuan", toast: "Fitur Pusat Bantuan segera hadir!" },
-      { icon: FileText, label: "Syarat & Ketentuan", toast: "Syarat & Ketentuan Rongsok.in" },
-    ],
+    [{ icon: BookOpen, label: "Cara Kerja", href: "/cara-kerja" }],
   ];
 
   return (
@@ -163,21 +156,10 @@ export default function ProfilePage() {
                     />
                   </>
                 );
-                if (item.href) {
-                  return (
-                    <Link key={item.label} href={item.href} className={baseCls}>
-                      {inner}
-                    </Link>
-                  );
-                }
                 return (
-                  <button
-                    key={item.label}
-                    onClick={() => item.toast && toast.success(item.toast)}
-                    className={baseCls}
-                  >
+                  <Link key={item.label} href={item.href} className={baseCls}>
                     {inner}
-                  </button>
+                  </Link>
                 );
               })}
             </div>
