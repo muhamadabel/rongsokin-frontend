@@ -74,9 +74,10 @@ export default function OrderTrackingPage() {
   const statusFlow = ["PENDING", "CONFIRMED", "IN_PROGRESS", "AWAITING_CONFIRMATION", "COMPLETED"];
   const currentStepIdx = statusFlow.indexOf(order?.status || "PENDING");
 
-  /** Form validate per-item: key = OrderItem.id atau categoryId fallback */
+  /** Form validate per-item: key = OrderItem.id atau categoryId fallback.
+   *  rejected = pengepul menandai kategori ini tidak dibeli (mis. tidak laku). */
   const [validateForm, setValidateForm] = useState<
-    Record<string, { actualWeight: string; agreedPrice: string }>
+    Record<string, { actualWeight: string; agreedPrice: string; rejected?: boolean }>
   >({});
 
   const [ratingScore, setRatingScore] = useState(5);
@@ -240,22 +241,36 @@ export default function OrderTrackingPage() {
     const payloadItems = items.map((it) => {
       const key = it.id || it.categoryId;
       const form = validateForm[key];
+      const rejected = !!form?.rejected;
+      // Item ditolak (tidak dibeli) → kirim 0/0 supaya tidak masuk total bayar.
       return {
         id: it.id,
-        categoryId: it.categoryId,
-        actualWeight: Number(form?.actualWeight || 0),
-        agreedPrice: Number(form?.agreedPrice || 0),
+        actualWeight: rejected ? 0 : Number(form?.actualWeight || 0),
+        agreedPrice: rejected ? 0 : Number(form?.agreedPrice || 0),
+        rejected,
       };
     });
 
-    const invalid = payloadItems.find((p) => p.actualWeight <= 0 || p.agreedPrice <= 0);
+    const accepted = payloadItems.filter((p) => !p.rejected);
+    if (accepted.length === 0) {
+      toast.error("Minimal 1 kategori harus diterima. Kalau semua tidak laku, batalkan saja pesanannya.");
+      return;
+    }
+    const invalid = accepted.find((p) => p.actualWeight <= 0 || p.agreedPrice <= 0);
     if (invalid) {
-      toast.error("Isi berat aktual dan harga untuk semua kategori (≥ 1).");
+      toast.error("Isi berat & harga untuk kategori yang diterima, atau tandai 'Tidak diterima'.");
       return;
     }
 
     updateOrderStatus.mutate(
-      { action: "validate", items: payloadItems },
+      {
+        action: "validate",
+        items: payloadItems.map(({ id, actualWeight, agreedPrice }) => ({
+          id,
+          actualWeight,
+          agreedPrice,
+        })),
+      },
       {
         onSuccess: () => {
           toast.success("Validasi timbangan dikirim! Menunggu konfirmasi customer…");
@@ -276,6 +291,16 @@ export default function OrderTrackingPage() {
     setValidateForm((prev) => ({
       ...prev,
       [key]: { ...(prev[key] || { actualWeight: "", agreedPrice: "" }), [field]: value },
+    }));
+  };
+
+  const toggleItemRejected = (key: string) => {
+    setValidateForm((prev) => ({
+      ...prev,
+      [key]: {
+        ...(prev[key] || { actualWeight: "", agreedPrice: "" }),
+        rejected: !prev[key]?.rejected,
+      },
     }));
   };
 
@@ -621,59 +646,90 @@ export default function OrderTrackingPage() {
                     const form = validateForm[key] || { actualWeight: "", agreedPrice: "" };
                     const aw = Number(form.actualWeight) || 0;
                     const ap = Number(form.agreedPrice) || 0;
+                    const rejected = !!form.rejected;
                     return (
-                      <div key={key} className="bg-surface rounded-2xl p-3 space-y-2.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-bold text-ink">
+                      <div
+                        key={key}
+                        className={`rounded-2xl p-3 space-y-2.5 ${
+                          rejected ? "bg-surface opacity-80" : "bg-surface"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span
+                            className={`text-sm font-bold ${
+                              rejected ? "text-ink-muted line-through" : "text-ink"
+                            }`}
+                          >
                             {it.category?.name || "Kategori"}
+                            <span className="text-[10px] text-mute font-mono ml-1.5 no-underline">
+                              est. {it.estimatedWeight} {unitLabel(it.category?.unit)}
+                            </span>
                           </span>
-                          <span className="text-[10px] text-mute font-mono">
-                            est. {it.estimatedWeight} {unitLabel(it.category?.unit)}
-                          </span>
+                          <button
+                            type="button"
+                            onClick={() => toggleItemRejected(key)}
+                            className={`shrink-0 text-[10px] font-bold rounded-full px-2.5 py-1 border transition-colors cursor-pointer ${
+                              rejected
+                                ? "bg-status-error/10 text-status-error border-status-error/40"
+                                : "bg-surface-raised text-ink-muted border-ink-faint hover:border-ink"
+                            }`}
+                          >
+                            {rejected ? "✓ Tidak diterima" : "Tidak diterima?"}
+                          </button>
                         </div>
-                        {it.notes && (
+                        {it.notes && !rejected && (
                           <p className="text-[11px] text-ink-muted italic leading-snug -mt-1">
                             “{it.notes}”
                           </p>
                         )}
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <label className="text-[9px] font-bold text-mute uppercase tracking-wider mb-1 block">
-                              Aktual ({unitLabel(it.category?.unit)})
-                            </label>
-                            <Input
-                              type="number"
-                              placeholder="0"
-                              value={form.actualWeight}
-                              onChange={(e) =>
-                                setItemValidateField(key, "actualWeight", e.target.value)
-                              }
-                              className="font-bold font-mono py-2 text-center"
-                              step="0.1"
-                            />
+
+                        {rejected ? (
+                          <div className="flex items-center gap-2 text-[11px] font-semibold text-status-error bg-status-error/5 rounded-xl px-3 py-2">
+                            <XCircle size={14} className="shrink-0" />
+                            Kategori ini tidak dibeli — tidak masuk total bayar.
                           </div>
-                          <div>
-                            <label className="text-[9px] font-bold text-mute uppercase tracking-wider mb-1 block">
-                              Harga (Rp/{unitLabel(it.category?.unit)})
-                            </label>
-                            <Input
-                              type="number"
-                              placeholder="0"
-                              value={form.agreedPrice}
-                              onChange={(e) =>
-                                setItemValidateField(key, "agreedPrice", e.target.value)
-                              }
-                              className="font-bold font-mono py-2 text-center"
-                            />
-                          </div>
-                        </div>
-                        {aw > 0 && ap > 0 && (
-                          <div className="flex justify-between items-center pt-1 text-[11px]">
-                            <span className="text-mute font-bold">Subtotal</span>
-                            <span className="font-extrabold text-ink font-mono">
-                              {formatRupiah(aw * ap)}
-                            </span>
-                          </div>
+                        ) : (
+                          <>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="text-[9px] font-bold text-mute uppercase tracking-wider mb-1 block">
+                                  Aktual ({unitLabel(it.category?.unit)})
+                                </label>
+                                <Input
+                                  type="number"
+                                  placeholder="0"
+                                  value={form.actualWeight}
+                                  onChange={(e) =>
+                                    setItemValidateField(key, "actualWeight", e.target.value)
+                                  }
+                                  className="font-bold font-mono py-2 text-center"
+                                  step="0.1"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[9px] font-bold text-mute uppercase tracking-wider mb-1 block">
+                                  Harga (Rp/{unitLabel(it.category?.unit)})
+                                </label>
+                                <Input
+                                  type="number"
+                                  placeholder="0"
+                                  value={form.agreedPrice}
+                                  onChange={(e) =>
+                                    setItemValidateField(key, "agreedPrice", e.target.value)
+                                  }
+                                  className="font-bold font-mono py-2 text-center"
+                                />
+                              </div>
+                            </div>
+                            {aw > 0 && ap > 0 && (
+                              <div className="flex justify-between items-center pt-1 text-[11px]">
+                                <span className="text-mute font-bold">Subtotal</span>
+                                <span className="font-extrabold text-ink font-mono">
+                                  {formatRupiah(aw * ap)}
+                                </span>
+                              </div>
+                            )}
+                          </>
                         )}
                       </div>
                     );
@@ -685,6 +741,7 @@ export default function OrderTrackingPage() {
                   const grandTotal = getOrderItems(order).reduce((sum, it) => {
                     const key = it.id || it.categoryId;
                     const form = validateForm[key];
+                    if (form?.rejected) return sum;
                     return sum + (Number(form?.actualWeight) || 0) * (Number(form?.agreedPrice) || 0);
                   }, 0);
                   if (grandTotal <= 0) return null;
@@ -722,21 +779,34 @@ export default function OrderTrackingPage() {
                     const aw = it.actualWeight || 0;
                     const ap = it.agreedPrice || 0;
                     const subtotal = it.subtotal ?? aw * ap;
+                    const itemRejected = aw === 0;
                     return (
                       <div key={it.id || it.categoryId} className="space-y-1">
-                        <div className="flex justify-between text-xs">
-                          <span className="font-bold text-ink">
+                        <div className="flex justify-between text-xs gap-2">
+                          <span
+                            className={`font-bold ${
+                              itemRejected ? "text-ink-muted line-through" : "text-ink"
+                            }`}
+                          >
                             {it.category?.name || "Kategori"}
                           </span>
-                          <span className="font-mono text-mute">
-                            {aw} {unitLabel(it.category?.unit)} × {formatRupiah(ap)}
-                          </span>
+                          {itemRejected ? (
+                            <span className="font-bold text-status-error text-[11px] shrink-0">
+                              Tidak diterima
+                            </span>
+                          ) : (
+                            <span className="font-mono text-mute">
+                              {aw} {unitLabel(it.category?.unit)} × {formatRupiah(ap)}
+                            </span>
+                          )}
                         </div>
-                        <div className="flex justify-end">
-                          <span className="font-bold font-mono text-ink text-xs">
-                            {formatRupiah(subtotal)}
-                          </span>
-                        </div>
+                        {!itemRejected && (
+                          <div className="flex justify-end">
+                            <span className="font-bold font-mono text-ink text-xs">
+                              {formatRupiah(subtotal)}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -832,19 +902,32 @@ export default function OrderTrackingPage() {
                       const aw = it.actualWeight || 0;
                       const ap = it.agreedPrice || 0;
                       const subtotal = it.subtotal ?? aw * ap;
+                      const itemRejected = aw === 0;
                       return (
                         <div key={it.id || it.categoryId}>
                           <div className="flex justify-between gap-3">
-                            <span className="text-ink font-bold">
+                            <span
+                              className={`font-bold ${
+                                itemRejected ? "text-mute line-through" : "text-ink"
+                              }`}
+                            >
                               {it.category?.name || "Kategori"}
                             </span>
-                            <span className="font-bold text-ink">{formatRupiah(subtotal)}</span>
-                          </div>
-                          <div className="flex justify-between gap-3 text-mute text-[10px]">
-                            <span>
-                              {aw} {unitLabel(it.category?.unit)} × {formatRupiah(ap)}
+                            <span
+                              className={`font-bold ${
+                                itemRejected ? "text-status-error text-[10px]" : "text-ink"
+                              }`}
+                            >
+                              {itemRejected ? "Tidak diterima" : formatRupiah(subtotal)}
                             </span>
                           </div>
+                          {!itemRejected && (
+                            <div className="flex justify-between gap-3 text-mute text-[10px]">
+                              <span>
+                                {aw} {unitLabel(it.category?.unit)} × {formatRupiah(ap)}
+                              </span>
+                            </div>
+                          )}
                           {it.notes && (
                             <div className="text-mute text-[10px] italic pl-1 mt-0.5">
                               · {it.notes}
