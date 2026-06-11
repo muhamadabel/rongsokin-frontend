@@ -18,7 +18,6 @@ import {
   AlertTriangle,
   Pencil,
   ScanLine,
-  Lock,
   Camera,
 } from "lucide-react";
 import { useRegister, useUpdateMe } from "@/hooks/useAuth";
@@ -467,8 +466,8 @@ function RegisterForm() {
                       <div className="flex items-start gap-2">
                         <AlertTriangle size={16} className="shrink-0 mt-0.5" />
                         <span>
-                          NIK belum terbaca. Foto ulang KTP — pastikan terang, tidak buram, dan
-                          memenuhi bingkai.
+                          NIK belum terbaca otomatis. <b>Ketik NIK manual</b> di bawah, atau foto
+                          ulang KTP (terang, tidak buram, memenuhi bingkai).
                         </span>
                       </div>
                       <button
@@ -481,24 +480,24 @@ function RegisterForm() {
                     </div>
                   )}
 
-                  {/* NIK — hanya diisi sistem (OCR), tidak bisa diketik manual */}
+                  {/* NIK — terisi otomatis dari OCR, BISA dikoreksi manual (OCR sering meleset) */}
                   <div>
-                    <label className="text-xs font-bold text-ink uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                      NIK <Lock size={11} className="text-ink-muted" />
+                    <label className="text-xs font-bold text-ink uppercase tracking-wider mb-2 block">
+                      NIK
                     </label>
                     <Input
                       type="text"
                       inputMode="numeric"
-                      placeholder="Otomatis dari KTP…"
+                      placeholder="16 digit NIK (otomatis / ketik manual)"
                       value={nik}
-                      readOnly
-                      tabIndex={-1}
+                      onChange={(e) => setNik(e.target.value.replace(/\D/g, "").slice(0, 16))}
                       maxLength={16}
-                      className="bg-surface cursor-not-allowed font-mono tracking-wide"
+                      className="font-mono tracking-wide"
                       required
                     />
                     <p className="text-[11px] text-ink-muted mt-1">
-                      NIK diisi otomatis hasil pindai KTP & tidak bisa diketik manual.
+                      Terisi otomatis dari pindai KTP. Kalau salah atau kosong, ketik 16 digit NIK
+                      manual.
                     </p>
                   </div>
 
@@ -545,7 +544,7 @@ function RegisterForm() {
                         : ocrStatus === "scanning"
                         ? "Membaca KTP…"
                         : !/^\d{16}$/.test(nik)
-                        ? "NIK belum terbaca"
+                        ? "Lengkapi NIK (16 digit)"
                         : "Verifikasi & Lanjut"}
                     </Button>
                   </div>
