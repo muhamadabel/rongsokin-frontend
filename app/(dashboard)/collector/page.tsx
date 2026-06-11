@@ -332,7 +332,7 @@ function RequestRow({
                 key={it.id || it.categoryId}
                 className="bg-brand-100 text-brand-800 px-2 py-0.5 rounded-full font-bold uppercase tracking-wide text-[9px] font-mono"
               >
-                {it.category?.name || it.categoryId.slice(0, 6)}
+                {it.category?.name || "Rongsokan"}
               </span>
             ))
           ) : (
