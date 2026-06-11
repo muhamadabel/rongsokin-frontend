@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import DesktopNav from "@/components/ui/DesktopNav";
@@ -56,6 +56,7 @@ import toast from "react-hot-toast";
 import api from "@/lib/axios";
 import EcoImpactModal from "@/components/features/eco-impact/EcoImpactModal";
 import OrderRouteMap from "@/components/features/orders/OrderRouteMap";
+import { useLiveTracking } from "@/hooks/useLiveTracking";
 
 export default function OrderTrackingPage() {
   const { id } = useParams() as { id: string };
@@ -124,6 +125,32 @@ export default function OrderTrackingPage() {
     }
   }, [order?.status, user?.role, ecoImpactSeen, ratingSubmitted]);
 
+  // ── Sudah sampai (arrive) + live tracking ────────────────────────────────
+  const arriveInFlight = useRef(false);
+  const doArrive = (auto: boolean) => {
+    if (arriveInFlight.current) return;
+    arriveInFlight.current = true;
+    updateOrderStatus.mutate(
+      { action: "arrive" },
+      {
+        onSuccess: () => {
+          toast.success(auto ? "Terdeteksi sudah sampai di lokasi! 📍" : "Ditandai sudah sampai!");
+          refetch();
+        },
+        onError: (err: any) => {
+          arriveInFlight.current = false;
+          toast.error(err.response?.data?.message || "Gagal menandai sampai.");
+        },
+      }
+    );
+  };
+  const livePos = useLiveTracking({
+    order,
+    orderId: id,
+    role: user?.role,
+    onAutoArrive: () => doArrive(true),
+  });
+
   if (isLoading) {
     return <OrderDetailSkeleton />;
   }
@@ -180,6 +207,11 @@ export default function OrderTrackingPage() {
       ? `https://www.google.com/maps/dir/?api=1&origin=${navOrigin.lat},${navOrigin.lng}&destination=${navDest.lat},${navDest.lng}&travelmode=driving`
       : "";
 
+  // Fase OTW (CONFIRMED): pihak yang bergerak + tombol "Sudah Sampai"
+  const moverIsCollector = order.method === "PICKUP";
+  const iAmMover = moverIsCollector ? isCollector : isCustomer;
+  const isOtw = order.status === "CONFIRMED";
+
   // Pesan hero per status
   const partnerLabel = isCustomer ? "Pengepul" : "Customer";
   const statusMeta: { title: string; desc: string; tone: "wait" | "active" | "done" | "cancel"; Icon: React.ComponentType<{ size?: number; className?: string }> } =
@@ -192,17 +224,26 @@ export default function OrderTrackingPage() {
         }
       : order.status === "CONFIRMED"
       ? {
-          title: `${partnerName} menerima pesananmu`,
-          desc: "Koordinasikan waktu & lokasi lewat WhatsApp.",
+          title:
+            order.method === "PICKUP"
+              ? isCustomer
+                ? "Pengepul menuju lokasimu"
+                : "Menuju lokasi customer"
+              : isCustomer
+              ? "Menuju lapak pengepul"
+              : "Customer menuju lapakmu",
+          desc: "Posisi dilacak langsung di peta. Tekan ‘Sudah Sampai’ kalau sudah tiba (cadangan bila GPS bermasalah).",
           tone: "active",
-          Icon: CheckCircle2,
+          Icon: Truck,
         }
       : order.status === "IN_PROGRESS"
       ? {
-          title: isCustomer ? "Pengepul sedang menuju lokasimu" : "Menuju lokasi customer",
-          desc: "Hubungi via WhatsApp untuk koordinasi titik temu di jalan.",
+          title: "Sudah sampai di lokasi",
+          desc: isCustomer
+            ? "Pengepul sedang menimbang rongsokmu."
+            : "Timbang rongsok lalu kirim rincian ke customer.",
           tone: "active",
-          Icon: Truck,
+          Icon: MapPin,
         }
       : order.status === "AWAITING_CONFIRMATION"
       ? {
@@ -430,26 +471,68 @@ export default function OrderTrackingPage() {
               </span>
             </div>
 
-            <OrderRouteMap customer={custLoc} collector={collLoc} />
+            <OrderRouteMap customer={custLoc} collector={collLoc} live={isOtw ? livePos : null} />
 
-            <div className="flex items-center gap-4 text-[11px] text-ink-muted">
+            <div className="flex items-center gap-3 flex-wrap text-[11px] text-ink-muted">
               <span className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-full bg-brand-500 border border-ink shrink-0" /> Customer
               </span>
               <span className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-full bg-surface-raised border border-ink shrink-0" /> Pengepul
               </span>
+              {isOtw && livePos && (
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded-full bg-status-success shrink-0 animate-pulse" /> Posisi sekarang
+                </span>
+              )}
             </div>
 
             <p className="text-[11px] text-ink-muted leading-relaxed">
               {order.method === "PICKUP"
                 ? isCollector
                   ? "Arahkan ke lokasi customer untuk menjemput rongsok."
-                  : "Pengepul sedang menuju lokasimu — pantau & koordinasi lewat WhatsApp."
+                  : "Pengepul sedang menuju lokasimu — pantau posisinya di peta."
                 : isCustomer
                 ? "Antar rongsokmu ke lapak pengepul mengikuti rute ini."
-                : "Customer sedang menuju lapakmu."}
+                : "Customer sedang menuju lapakmu — pantau posisinya di peta."}
             </p>
+
+            {/* OTW: status live tracking + tombol Sudah Sampai (cadangan GPS) */}
+            {isOtw && (
+              <div className="space-y-2 border-t border-ink-faint pt-3">
+                <div className="flex items-center gap-2 text-[11px] font-semibold rounded-xl px-3 py-2 bg-surface">
+                  {livePos ? (
+                    <>
+                      <span className="relative flex h-2.5 w-2.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-status-success opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-status-success" />
+                      </span>
+                      <span className="text-ink">
+                        Live tracking aktif{iAmMover ? " — lokasimu sedang dibagikan" : ""}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-ink-muted">
+                      {iAmMover
+                        ? "Mengaktifkan GPS… izinkan akses lokasi untuk live tracking."
+                        : "Menunggu posisi live dari lawan…"}
+                    </span>
+                  )}
+                </div>
+                <Button
+                  onClick={() => doArrive(false)}
+                  disabled={updateOrderStatus.isPending}
+                  className="w-full flex items-center justify-center gap-2 text-sm"
+                >
+                  <MapPin size={16} />
+                  {iAmMover ? "Saya Sudah Sampai" : "Tandai Sudah Sampai"}
+                </Button>
+                <p className="text-[10px] text-mute text-center leading-relaxed">
+                  Status berubah otomatis saat terdeteksi dekat lokasi. Tombol ini cadangan kalau
+                  GPS bermasalah.
+                </p>
+              </div>
+            )}
 
             {navUrl && (
               <a href={navUrl} target="_blank" rel="noopener noreferrer" className="block">
@@ -461,6 +544,27 @@ export default function OrderTrackingPage() {
                 </Button>
               </a>
             )}
+          </section>
+        )}
+
+        {/* OTW tanpa peta (koordinat belum lengkap) — tombol Sudah Sampai tetap tersedia */}
+        {isOtw && !showRoute && (
+          <section className="bg-surface-raised rounded-2xl p-5 space-y-3">
+            <h3 className="font-display font-extrabold text-sm text-ink tracking-tight flex items-center gap-2">
+              <MapPin size={16} className="text-brand-700" /> Konfirmasi Tiba di Lokasi
+            </h3>
+            <p className="text-[11px] text-ink-muted leading-relaxed">
+              Peta rute tidak tersedia (lokasi belum lengkap). Tekan tombol di bawah saat sudah
+              sampai di lokasi.
+            </p>
+            <Button
+              onClick={() => doArrive(false)}
+              disabled={updateOrderStatus.isPending}
+              className="w-full flex items-center justify-center gap-2 text-sm"
+            >
+              <MapPin size={16} />
+              {iAmMover ? "Saya Sudah Sampai" : "Tandai Sudah Sampai"}
+            </Button>
           </section>
         )}
 
@@ -630,8 +734,8 @@ export default function OrderTrackingPage() {
 
           {/* RIGHT: ACTIONS */}
           <div className="space-y-6">
-            {/* COLLECTOR VALIDATE — per item */}
-            {isCollector && (order.status === "CONFIRMED" || order.status === "IN_PROGRESS") && (
+            {/* COLLECTOR VALIDATE — per item (setelah sampai di lokasi) */}
+            {isCollector && order.status === "IN_PROGRESS" && (
               <section className="bg-surface-raised border border-ink rounded-2xl p-6 space-y-4">
                 <div className="flex items-center gap-2 text-ink">
                   <Scale size={20} />

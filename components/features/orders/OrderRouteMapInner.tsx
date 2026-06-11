@@ -13,6 +13,8 @@ interface LatLng {
 interface Props {
   customer: LatLng;
   collector: LatLng;
+  /** Posisi live pihak yang sedang menuju lokasi (opsional) */
+  live?: LatLng | null;
   height?: number;
 }
 
@@ -29,21 +31,33 @@ const makeIcon = (bg: string, label: string) =>
     iconAnchor: [15, 40],
   });
 
-function FitBounds({ a, b }: { a: LatLng; b: LatLng }) {
+// Marker live (pihak yang bergerak) — titik berdenyut
+const liveIcon = () =>
+  L.divIcon({
+    className: "",
+    html: `<div style="position:relative;width:18px;height:18px">
+      <span style="position:absolute;inset:0;border-radius:9999px;background:#9fe870;opacity:.45;animation:rdotpulse 1.4s ease-out infinite"></span>
+      <span style="position:absolute;inset:4px;border-radius:9999px;background:#16a34a;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)"></span>
+    </div>
+    <style>@keyframes rdotpulse{0%{transform:scale(.6);opacity:.6}100%{transform:scale(2.2);opacity:0}}</style>`,
+    iconSize: [18, 18],
+    iconAnchor: [9, 9],
+  });
+
+function FitBounds({ pts }: { pts: LatLng[] }) {
   const map = useMap();
+  const key = pts.map((p) => `${p.lat.toFixed(5)},${p.lng.toFixed(5)}`).join("|");
   useEffect(() => {
     map.fitBounds(
-      [
-        [a.lat, a.lng],
-        [b.lat, b.lng],
-      ],
+      pts.map((p) => [p.lat, p.lng]) as [number, number][],
       { padding: [50, 50], maxZoom: 16 }
     );
-  }, [a.lat, a.lng, b.lat, b.lng, map]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, map]);
   return null;
 }
 
-export default function OrderRouteMapInner({ customer, collector, height = 240 }: Props) {
+export default function OrderRouteMapInner({ customer, collector, live, height = 240 }: Props) {
   return (
     <div
       className="relative isolate rounded-2xl overflow-hidden border border-ink-faint"
@@ -70,7 +84,8 @@ export default function OrderRouteMapInner({ customer, collector, height = 240 }
         />
         <Marker position={[customer.lat, customer.lng]} icon={makeIcon("#9fe870", "C")} />
         <Marker position={[collector.lat, collector.lng]} icon={makeIcon("#ffffff", "P")} />
-        <FitBounds a={customer} b={collector} />
+        {live && <Marker position={[live.lat, live.lng]} icon={liveIcon()} />}
+        <FitBounds pts={live ? [customer, collector, live] : [customer, collector]} />
       </MapContainer>
     </div>
   );
