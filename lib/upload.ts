@@ -17,6 +17,52 @@ export interface UploadResult {
 
 const MAX_BYTES = 5 * 1024 * 1024; // 5MB
 
+/**
+ * Perkecil & kompres gambar di browser sebelum upload (khusus avatar/foto kecil).
+ * Mencegah foto HP besar gagal/lambat, hasilnya jauh di bawah 5MB.
+ * JANGAN dipakai untuk foto KTP / foto sampah (butuh resolusi penuh utk verifikasi).
+ */
+export async function downscaleImage(
+  file: File,
+  maxDim = 512,
+  quality = 0.85
+): Promise<Blob> {
+  try {
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(fr.result as string);
+      fr.onerror = () => reject(new Error('Gagal membaca file.'));
+      fr.readAsDataURL(file);
+    });
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const i = new Image();
+      i.onload = () => resolve(i);
+      i.onerror = () => reject(new Error('Gagal memuat gambar.'));
+      i.src = dataUrl;
+    });
+
+    let { width, height } = img;
+    if (width > maxDim || height > maxDim) {
+      const scale = maxDim / Math.max(width, height);
+      width = Math.round(width * scale);
+      height = Math.round(height * scale);
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return file;
+    ctx.drawImage(img, 0, 0, width, height);
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, 'image/jpeg', quality)
+    );
+    return blob || file;
+  } catch {
+    // Kalau gagal kompres, pakai file asli (tetap dibatasi 5MB di uploadToCloudinary)
+    return file;
+  }
+}
+
 export async function uploadToCloudinary(file: File | Blob): Promise<UploadResult> {
   if (file.size > MAX_BYTES) {
     throw new Error('Foto terlalu besar. Maksimal 5MB.');

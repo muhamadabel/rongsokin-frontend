@@ -24,7 +24,7 @@ import {
 } from "@/hooks/useCollector";
 import { useAuthStore } from "@/store/authStore";
 import { DEFAULT_COORDS } from "@/lib/utils";
-import { uploadToCloudinary } from "@/lib/upload";
+import { uploadToCloudinary, downscaleImage } from "@/lib/upload";
 import toast from "react-hot-toast";
 
 export default function EditProfilePage() {
@@ -47,6 +47,8 @@ export default function EditProfilePage() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
+  // true bila avatar saat ini hanya preview lokal (blob, upload gagal) → JANGAN disimpan ke BE
+  const [avatarIsLocal, setAvatarIsLocal] = useState(false);
   const [shopName, setShopName] = useState("");
   const [description, setDescription] = useState("");
   const [radiusKm, setRadiusKm] = useState(5);
@@ -92,16 +94,36 @@ export default function EditProfilePage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Validasi: harus gambar & maksimal 5MB (cek file ASLI sebelum dikompres)
+    if (!file.type.startsWith("image/")) {
+      toast.error("File harus berupa gambar (JPG/PNG).");
+      e.target.value = "";
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Foto terlalu besar. Maksimal 5MB.");
+      e.target.value = "";
+      return;
+    }
+
     setIsUploading(true);
     try {
-      // Lewat helper → endpoint backend /upload (signed Cloudinary di server).
-      const { url, remote } = await uploadToCloudinary(file);
+      // Perkecil dulu (avatar kecil) → upload ke /upload (signed Cloudinary di server).
+      const small = await downscaleImage(file, 512);
+      const { url, remote } = await uploadToCloudinary(small);
       setAvatarUrl(url);
-      toast.success(remote ? "Foto profil diunggah!" : "Foto profil dipilih (Mode demo).");
+      setAvatarIsLocal(!remote);
+      if (remote) {
+        toast.success("Foto profil diunggah!");
+      } else {
+        // Upload gagal → hanya preview lokal, TIDAK akan disimpan ke server.
+        toast.error("Upload foto gagal — coba lagi. Foto belum tersimpan.");
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Gagal unggah foto. Coba lagi.");
     } finally {
       setIsUploading(false);
+      e.target.value = "";
     }
   };
 
@@ -131,7 +153,8 @@ export default function EditProfilePage() {
           {
             name,
             phone,
-            avatarUrl: avatarUrl || undefined,
+            // Jangan kirim URL blob lokal (upload gagal) — biar avatar lama tidak tertimpa data mati
+            avatarUrl: avatarIsLocal ? undefined : avatarUrl || undefined,
             lat: coords.lat,
             lng: coords.lng,
           },
