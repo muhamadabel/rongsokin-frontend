@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
+import { useNotifications } from "@/hooks/useNotifications";
 import { PageSkeleton } from "@/components/ui/Skeleton";
 
 export default function DashboardLayout({
@@ -15,6 +16,9 @@ export default function DashboardLayout({
   const initFromStorage = useAuthStore((state) => state.initFromStorage);
   const user = useAuthStore((state) => state.user);
   const [isChecking, setIsChecking] = useState(true);
+
+  // Notifikasi real-time (polling fallback) — pasang sekali utk seluruh dashboard
+  useNotifications();
 
   useEffect(() => {
     initFromStorage();

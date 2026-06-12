@@ -57,7 +57,7 @@ export const useCreateOrder = () => {
 // ── List & Detail ────────────────────────────────────────────────────────
 export const useOrdersList = (
   params: { status?: string; role?: string; limit?: number },
-  options?: { refetchInterval?: number }
+  options?: { refetchInterval?: number; refetchIntervalInBackground?: boolean }
 ) => {
   const token = useAuthStore((state) => state.token);
 
@@ -83,7 +83,9 @@ export const useOrdersList = (
     retry: (count, err) => !isMissingRoute(err) && count < 2,
     // Polling opsional (fallback real-time kalau WebSocket mati di hosting)
     refetchInterval: options?.refetchInterval,
-    refetchIntervalInBackground: false,
+    // Default false (hemat saat tab tak aktif). Khusus notifikasi → true supaya
+    // tetap berdenyut di background dan alert tetap muncul.
+    refetchIntervalInBackground: options?.refetchIntervalInBackground ?? false,
   });
 };
 

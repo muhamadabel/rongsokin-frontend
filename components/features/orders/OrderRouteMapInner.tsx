@@ -31,15 +31,13 @@ const makeIcon = (bg: string, label: string) =>
     iconAnchor: [15, 40],
   });
 
-// Marker live (pihak yang bergerak) — titik berdenyut
+// Marker live (pihak yang bergerak) — titik solid, tanpa animasi
 const liveIcon = () =>
   L.divIcon({
     className: "",
     html: `<div style="position:relative;width:18px;height:18px">
-      <span style="position:absolute;inset:0;border-radius:9999px;background:#9fe870;opacity:.45;animation:rdotpulse 1.4s ease-out infinite"></span>
-      <span style="position:absolute;inset:4px;border-radius:9999px;background:#16a34a;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)"></span>
-    </div>
-    <style>@keyframes rdotpulse{0%{transform:scale(.6);opacity:.6}100%{transform:scale(2.2);opacity:0}}</style>`,
+      <span style="position:absolute;inset:2px;border-radius:9999px;background:#16a34a;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)"></span>
+    </div>`,
     iconSize: [18, 18],
     iconAnchor: [9, 9],
   });

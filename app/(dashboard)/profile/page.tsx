@@ -8,6 +8,7 @@ import {
   Settings,
   MapPin,
   BookOpen,
+  Bell,
   LogOut,
   ChevronRight,
   ShieldAlert,
@@ -18,6 +19,7 @@ import { ProfileSkeleton } from "@/components/ui/Skeleton";
 import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
 import { useMe } from "@/hooks/useAuth";
 import { useOrdersList } from "@/hooks/useOrders";
+import { RatingSection } from "@/components/features/rating/RatingSection";
 import { useAuthStore } from "@/store/authStore";
 import { formatRupiah, getOrderTotalPrice } from "@/lib/utils";
 import toast from "react-hot-toast";
@@ -64,7 +66,10 @@ export default function ProfilePage() {
       { icon: User, label: "Edit Profil", href: "/profile/edit" },
       { icon: MapPin, label: "Alamat & Lokasi", href: "/profile/edit" },
     ],
-    [{ icon: BookOpen, label: "Cara Kerja", href: "/cara-kerja" }],
+    [
+      { icon: Bell, label: "Notifikasi", href: "/notifications" },
+      { icon: BookOpen, label: "Cara Kerja", href: "/cara-kerja" },
+    ],
   ];
 
   return (
@@ -132,6 +137,22 @@ export default function ProfilePage() {
             </div>
           </div>
         </header>
+
+        {/* PENILAIAN / RATING */}
+        <RatingSection
+          userId={me?.id}
+          fallbackAvg={me?.avgRating}
+          title={
+            me?.role === "COLLECTOR"
+              ? "Penilaian dari Customer"
+              : "Penilaian dari Pengepul"
+          }
+          emptyText={
+            me?.role === "COLLECTOR"
+              ? "Belum ada ulasan. Customer bisa menilai lapakmu setelah transaksi selesai."
+              : "Belum ada ulasan. Pengepul bisa menilaimu setelah transaksi selesai."
+          }
+        />
 
         {/* MENU GROUPS */}
         <section className="space-y-4">

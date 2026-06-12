@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { User } from '@/types';
+import { useNotificationStore } from '@/store/notificationStore';
 
 interface AuthStore {
   user: User | null;
@@ -24,6 +25,8 @@ export const useAuthStore = create<AuthStore>((set) => ({
       localStorage.removeItem('token');
       localStorage.removeItem('user');
     }
+    // Bersihkan notifikasi supaya tidak terbawa ke akun lain di device yang sama
+    useNotificationStore.getState().clearAll();
     set({ user: null, token: null });
   },
   initFromStorage: () => {
