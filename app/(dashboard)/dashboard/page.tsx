@@ -105,8 +105,12 @@ export default function CustomerDashboard() {
   const { coords, source: coordsSource, ready: coordsReady } = useUserCoords();
 
   const { data: nearbyCollectors, isLoading: isNearbyLoading } = useSearchCollectors(
-    { lat: coords.lat, lng: coords.lng, radius: 5 },
+    { lat: coords.lat, lng: coords.lng, radius: 50 },
     { enabled: coordsReady }
+  );
+  // Urut dari yang PALING DEKAT (tanpa batas 5km — biar tidak kosong kalau jauh)
+  const nearbySorted = [...(nearbyCollectors || [])].sort(
+    (a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity)
   );
 
   const activeOrder = orders?.find(
@@ -318,8 +322,8 @@ export default function CustomerDashboard() {
               [1, 2].map((i) => (
                 <div key={i} className="bg-surface-raised rounded-2xl p-4 h-20 animate-pulse" />
               ))
-            ) : nearbyCollectors && nearbyCollectors.length > 0 ? (
-              nearbyCollectors.slice(0, 3).map((collector) => (
+            ) : nearbySorted.length > 0 ? (
+              nearbySorted.slice(0, 3).map((collector) => (
                 <div
                   key={collector.id}
                   className="bg-surface-raised rounded-2xl p-4 flex items-center gap-3"
@@ -367,7 +371,7 @@ export default function CustomerDashboard() {
               ))
             ) : (
               <div className="bg-surface-raised rounded-2xl p-6 text-center text-xs text-ink-muted">
-                Belum ada pengepul di sekitarmu (radius 5km).
+                Belum ada pengepul aktif di sekitarmu.
               </div>
             )}
           </div>

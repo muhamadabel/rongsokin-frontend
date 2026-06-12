@@ -10,7 +10,7 @@ import Link from "next/link";
 import { useSearchCollectors, useCategoryTree } from "@/hooks/useDiscovery";
 import { useUserCoords } from "@/hooks/useUserCoords";
 import { useAuthStore } from "@/store/authStore";
-import { formatDistance } from "@/lib/utils";
+import { formatDistance, formatRupiah } from "@/lib/utils";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PageSkeleton } from "@/components/ui/Skeleton";
 
@@ -43,6 +43,7 @@ function SearchInner() {
   const { coords, ready: coordsReady } = useUserCoords();
   const [selectedMainId, setSelectedMainId] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<"distance" | "rating" | "price">("distance");
 
   const { mains } = useCategoryTree();
 
@@ -73,6 +74,27 @@ function SearchInner() {
         c.shopName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (c.description && c.description.toLowerCase().includes(searchQuery.toLowerCase()))
     ) || [];
+
+  // Urutkan sesuai pilihan. Default: terdekat. Tie-break selalu jarak terdekat.
+  const sortedCollectors = [...filteredCollectors].sort((a, b) => {
+    const dist = (a.distance ?? Infinity) - (b.distance ?? Infinity);
+    if (sortBy === "rating") {
+      const r = (b.avgRating ?? 0) - (a.avgRating ?? 0);
+      return r !== 0 ? r : dist;
+    }
+    if (sortBy === "price") {
+      // termahal dulu; pengepul tanpa data harga ditaruh di bawah
+      const p = (b.maxPrice ?? -1) - (a.maxPrice ?? -1);
+      return p !== 0 ? p : dist;
+    }
+    return dist;
+  });
+
+  const SORT_OPTIONS = [
+    { key: "distance", label: "Terdekat" },
+    { key: "rating", label: "Rating Tertinggi" },
+    { key: "price", label: "Harga Tertinggi" },
+  ] as const;
 
   return (
     <div className="min-h-screen bg-surface pb-24 md:pb-8 flex flex-col">
@@ -136,6 +158,31 @@ function SearchInner() {
           </div>
         </section>
 
+        {/* SORTING */}
+        <section className="space-y-2.5">
+          <h4 className="text-[11px] font-bold text-mute uppercase tracking-widest font-mono">
+            Urutkan
+          </h4>
+          <div className="flex overflow-x-auto no-scrollbar gap-2.5 py-1">
+            {SORT_OPTIONS.map((opt) => {
+              const isActive = sortBy === opt.key;
+              return (
+                <button
+                  key={opt.key}
+                  onClick={() => setSortBy(opt.key)}
+                  className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap border ${
+                    isActive
+                      ? "bg-ink text-surface border-ink"
+                      : "bg-surface-raised text-ink-muted border-ink-faint hover:border-ink"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
         {/* COLLECTORS LIST */}
         <section className="space-y-4">
           <h3 className="font-display font-extrabold text-base text-ink tracking-tight">
@@ -148,9 +195,9 @@ function SearchInner() {
                 <div key={i} className="bg-surface-raised rounded-2xl p-5 h-28 animate-pulse" />
               ))}
             </div>
-          ) : filteredCollectors.length > 0 ? (
+          ) : sortedCollectors.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredCollectors.map((collector) => (
+              {sortedCollectors.map((collector) => (
                 <Link
                   key={collector.id}
                   href={`/pengepul/${collector.id}`}
@@ -184,7 +231,13 @@ function SearchInner() {
                           </span>
                         </span>
                         <span className="text-ink-faint">•</span>
-                        <span className="text-status-success font-bold">Terima Jemput</span>
+                        {collector.maxPrice != null ? (
+                          <span className="text-brand-700 font-bold font-mono">
+                            s/d {formatRupiah(collector.maxPrice)}/kg
+                          </span>
+                        ) : (
+                          <span className="text-status-success font-bold">Terima Jemput</span>
+                        )}
                       </div>
                     </div>
                   </div>

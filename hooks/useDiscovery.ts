@@ -101,6 +101,8 @@ export const useSearchCollectors = (
           avgRating: c.avgRating != null ? Number(c.avgRating) : 0,
           ownerName: c.ownerName,
           distance: c.distance, // in meters
+          // Harga ambil tertinggi (utk sort "termahal"). undefined kalau BE belum kirim.
+          maxPrice: c.maxPrice != null ? Number(c.maxPrice) : undefined,
           isOpen: true,
           isVerified: Boolean(c.ownerVerified ?? c.isVerified),
         }));
