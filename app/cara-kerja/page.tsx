@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -15,11 +18,20 @@ import {
   ShieldCheck,
   MessageSquare,
   Recycle,
+  Store,
+  Tags,
+  Inbox,
+  Settings,
+  Coins,
 } from "lucide-react";
 import DesktopNav from "@/components/ui/DesktopNav";
 import BottomNav from "@/components/ui/BottomNav";
+import { useAuthStore } from "@/store/authStore";
 
-const steps = [
+type Item = { icon: React.ComponentType<{ size?: number }>; title: string; desc: string };
+
+// ── CUSTOMER (penjual) ─────────────────────────────────────────────────────
+const customerSteps: Item[] = [
   {
     icon: UserCheck,
     title: "Daftar & Verifikasi",
@@ -57,7 +69,7 @@ const steps = [
   },
 ];
 
-const benefits = [
+const customerBenefits: Item[] = [
   {
     icon: Wallet,
     title: "Cuan dari Sampah",
@@ -90,7 +102,96 @@ const benefits = [
   },
 ];
 
+// ── COLLECTOR (pengepul) ────────────────────────────────────────────────────
+const collectorSteps: Item[] = [
+  {
+    icon: UserCheck,
+    title: "Daftar & Verifikasi Lapak",
+    desc: "Buat akun pengepul lalu verifikasi KTP. 1 KTP = 1 akun demi ekosistem yang aman dan terpercaya.",
+  },
+  {
+    icon: Store,
+    title: "Atur Profil Lapak",
+    desc: "Lengkapi nama lapak, lokasi, dan radius jangkauan. Status Buka/Tutup bisa kamu ubah kapan saja.",
+  },
+  {
+    icon: Tags,
+    title: "Isi Katalog & Harga",
+    desc: "Pilih kategori yang kamu terima dan tentukan rentang harga per kg. Kamu yang pegang kendali harga.",
+  },
+  {
+    icon: Inbox,
+    title: "Terima Pesanan Real-time",
+    desc: "Saat lapak buka, setoran dari warga di sekitarmu masuk otomatis. Tinjau foto & estimasi, lalu Terima atau Tolak.",
+  },
+  {
+    icon: Navigation,
+    title: "Jemput atau Terima Antar",
+    desc: "Pick-up: navigasi ke lokasi customer dengan live tracking. Drop-off: customer mengantar langsung ke lapakmu.",
+  },
+  {
+    icon: Scale,
+    title: "Timbang & Validasi",
+    desc: "Timbang sampah, masukkan berat aktual & harga akhir per kategori. Kategori yang tidak kamu terima bisa ditandai tanpa membatalkan sisanya.",
+  },
+  {
+    icon: Wallet,
+    title: "Bayar di Tempat (COD)",
+    desc: "Bayar tunai/transfer langsung. Setelah customer konfirmasi, struk digital otomatis terbit.",
+  },
+  {
+    icon: Star,
+    title: "Bangun Reputasi",
+    desc: "Customer menilai lapakmu. Rating tinggi membuat lapakmu lebih dipercaya dan menarik lebih banyak setoran.",
+  },
+];
+
+const collectorBenefits: Item[] = [
+  {
+    icon: Inbox,
+    title: "Pasokan Rongsok Stabil",
+    desc: "Setoran warga sekitar masuk langsung ke lapakmu — tanpa perlu jemput bola.",
+  },
+  {
+    icon: Settings,
+    title: "Kendali Penuh",
+    desc: "Atur radius, jam buka, kategori, dan harga sesukamu, kapan pun.",
+  },
+  {
+    icon: Navigation,
+    title: "Real-time & Live Tracking",
+    desc: "Pesanan masuk seketika; navigasi ke lokasi customer langsung dari aplikasi.",
+  },
+  {
+    icon: Coins,
+    title: "Harga Kamu yang Tentukan",
+    desc: "Tetapkan rentang harga per kategori sendiri. Transparan, tanpa potongan tersembunyi.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Aman & Terverifikasi",
+    desc: "Verifikasi KTP + foto kamera-only menekan pesanan fiktif dan penipuan.",
+  },
+  {
+    icon: MapPin,
+    title: "Tampil ke Customer Terdekat",
+    desc: "Berbasis geolokasi — lapakmu otomatis muncul ke warga di sekitarmu.",
+  },
+];
+
 export default function CaraKerjaPage() {
+  const user = useAuthStore((s) => s.user);
+  const initFromStorage = useAuthStore((s) => s.initFromStorage);
+
+  useEffect(() => {
+    initFromStorage();
+  }, [initFromStorage]);
+
+  const isCollector = user?.role === "COLLECTOR";
+
+  const steps = isCollector ? collectorSteps : customerSteps;
+  const benefits = isCollector ? collectorBenefits : customerBenefits;
+
   return (
     <div className="min-h-screen bg-surface pb-24 md:pb-8">
       <DesktopNav />
@@ -115,14 +216,18 @@ export default function CaraKerjaPage() {
           />
           <div className="relative z-10">
             <span className="inline-flex items-center gap-1.5 bg-brand-500/15 text-brand-500 rounded-full px-3 py-1 text-[11px] font-extrabold uppercase tracking-wider">
-              <Recycle size={13} /> Marketplace Daur Ulang
+              {isCollector ? <Store size={13} /> : <Recycle size={13} />}
+              {isCollector ? "Untuk Pengepul" : "Marketplace Daur Ulang"}
             </span>
             <h2 className="font-display font-black text-2xl text-forest-ink tracking-tight mt-3 leading-tight">
-              Ubah sampahmu jadi cuan — mudah, transparan, berdampak.
+              {isCollector
+                ? "Kelola lapakmu, terima setoran, raup cuan dari rongsok warga."
+                : "Ubah sampahmu jadi cuan — mudah, transparan, berdampak."}
             </h2>
             <p className="text-sm text-forest-muted mt-2 leading-relaxed">
-              Rongsok.in menghubungkanmu dengan pengepul terdekat di Yogyakarta secara real-time.
-              Berikut alur lengkapnya dari daftar sampai transaksi selesai.
+              {isCollector
+                ? "Rongsok.in mengalirkan setoran dari warga Yogyakarta langsung ke lapakmu secara real-time. Berikut alur kerjanya, dari atur lapak sampai transaksi selesai."
+                : "Rongsok.in menghubungkanmu dengan pengepul terdekat di Yogyakarta secara real-time. Berikut alur lengkapnya dari daftar sampai transaksi selesai."}
             </p>
           </div>
         </section>
@@ -130,7 +235,7 @@ export default function CaraKerjaPage() {
         {/* ALUR TRANSAKSI */}
         <section>
           <h3 className="font-display font-extrabold text-base text-ink tracking-tight mb-4">
-            Alur Transaksi
+            {isCollector ? "Alur Kerja Pengepul" : "Alur Transaksi"}
           </h3>
           <ol className="relative space-y-5">
             {/* garis penghubung */}
@@ -159,7 +264,7 @@ export default function CaraKerjaPage() {
         {/* BENEFIT */}
         <section>
           <h3 className="font-display font-extrabold text-base text-ink tracking-tight mb-4">
-            Kenapa Rongsok.in?
+            {isCollector ? "Untung Jadi Pengepul Rongsok.in" : "Kenapa Rongsok.in?"}
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {benefits.map((b) => (
@@ -177,26 +282,50 @@ export default function CaraKerjaPage() {
         </section>
 
         {/* CTA */}
-        <section className="bg-brand-100 rounded-2xl p-6 text-center space-y-3">
-          <h3 className="font-display font-extrabold text-lg text-brand-800 tracking-tight">
-            Siap mulai daur ulang?
-          </h3>
-          <p className="text-xs text-brand-700 leading-relaxed max-w-sm mx-auto">
-            Jual sampahmu sekarang, atau pantau dampak ekologismu di papan peringkat.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-2 pt-1 max-w-sm mx-auto">
-            <Link href="/orders/new" className="flex-1">
-              <span className="w-full inline-flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-600 text-ink font-bold py-3 rounded-2xl transition-colors text-sm cursor-pointer">
-                Mulai Jual Sekarang <ArrowRight size={16} />
-              </span>
-            </Link>
-            <Link href="/eco" className="flex-1">
-              <span className="w-full inline-flex items-center justify-center gap-2 border border-brand-800 text-brand-800 hover:bg-brand-200 font-bold py-3 rounded-2xl transition-colors text-sm cursor-pointer">
-                <Leaf size={16} /> Dampak Ekologis
-              </span>
-            </Link>
-          </div>
-        </section>
+        {isCollector ? (
+          <section className="bg-brand-100 rounded-2xl p-6 text-center space-y-3">
+            <h3 className="font-display font-extrabold text-lg text-brand-800 tracking-tight">
+              Siap menerima setoran?
+            </h3>
+            <p className="text-xs text-brand-700 leading-relaxed max-w-sm mx-auto">
+              Pastikan lapakmu berstatus Buka dan katalog harga sudah terisi agar pesanan mulai
+              berdatangan.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2 pt-1 max-w-sm mx-auto">
+              <Link href="/collector" className="flex-1">
+                <span className="w-full inline-flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-600 text-ink font-bold py-3 rounded-2xl transition-colors text-sm cursor-pointer">
+                  <Store size={16} /> Dasbor Lapak
+                </span>
+              </Link>
+              <Link href="/collector#katalog" className="flex-1">
+                <span className="w-full inline-flex items-center justify-center gap-2 border border-brand-800 text-brand-800 hover:bg-brand-200 font-bold py-3 rounded-2xl transition-colors text-sm cursor-pointer">
+                  <Tags size={16} /> Atur Katalog & Harga
+                </span>
+              </Link>
+            </div>
+          </section>
+        ) : (
+          <section className="bg-brand-100 rounded-2xl p-6 text-center space-y-3">
+            <h3 className="font-display font-extrabold text-lg text-brand-800 tracking-tight">
+              Siap mulai daur ulang?
+            </h3>
+            <p className="text-xs text-brand-700 leading-relaxed max-w-sm mx-auto">
+              Jual sampahmu sekarang, atau pantau dampak ekologismu di papan peringkat.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2 pt-1 max-w-sm mx-auto">
+              <Link href="/orders/new" className="flex-1">
+                <span className="w-full inline-flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-600 text-ink font-bold py-3 rounded-2xl transition-colors text-sm cursor-pointer">
+                  Mulai Jual Sekarang <ArrowRight size={16} />
+                </span>
+              </Link>
+              <Link href="/eco" className="flex-1">
+                <span className="w-full inline-flex items-center justify-center gap-2 border border-brand-800 text-brand-800 hover:bg-brand-200 font-bold py-3 rounded-2xl transition-colors text-sm cursor-pointer">
+                  <Leaf size={16} /> Dampak Ekologis
+                </span>
+              </Link>
+            </div>
+          </section>
+        )}
       </main>
 
       <BottomNav />
