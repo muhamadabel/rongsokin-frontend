@@ -24,7 +24,7 @@ import {
 } from "@/hooks/useCollector";
 import { useAuthStore } from "@/store/authStore";
 import { DEFAULT_COORDS } from "@/lib/utils";
-import { uploadToCloudinary, downscaleImage } from "@/lib/upload";
+import { uploadToCloudinary, downscaleImage, downscaleToDataUrl } from "@/lib/upload";
 import toast from "react-hot-toast";
 
 export default function EditProfilePage() {
@@ -108,19 +108,22 @@ export default function EditProfilePage() {
 
     setIsUploading(true);
     try {
-      // Perkecil dulu (avatar kecil) → upload ke /upload (signed Cloudinary di server).
+      // Perkecil dulu (avatar kecil) → coba upload ke server (Cloudinary).
       const small = await downscaleImage(file, 512);
       const { url, remote } = await uploadToCloudinary(small);
-      setAvatarUrl(url);
-      setAvatarIsLocal(!remote);
       if (remote) {
+        setAvatarUrl(url);
         toast.success("Foto profil diunggah!");
       } else {
-        // Upload gagal → hanya preview lokal, TIDAK akan disimpan ke server.
-        toast.error("Upload foto gagal — coba lagi. Foto belum tersimpan.");
+        // Upload server gagal → simpan versi kecil sebagai data URL.
+        // Tetap PERSIST ke BE (tersimpan langsung di kolom avatarUrl), bukan blob mati.
+        const dataUrl = await downscaleToDataUrl(file, 256, 0.72);
+        setAvatarUrl(dataUrl);
+        toast.success("Foto profil disimpan.");
       }
+      setAvatarIsLocal(false); // dua-duanya bisa disimpan permanen
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Gagal unggah foto. Coba lagi.");
+      toast.error(err instanceof Error ? err.message : "Gagal memproses foto. Coba lagi.");
     } finally {
       setIsUploading(false);
       e.target.value = "";
