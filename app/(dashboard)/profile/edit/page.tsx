@@ -10,6 +10,7 @@ import {
   User as UserIcon,
   Store,
   Save,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -58,24 +59,46 @@ export default function EditProfilePage() {
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Guard "perubahan belum disimpan": tujuan navigasi yg tertunda (null = tak ada popup)
+  const [leaveTo, setLeaveTo] = useState<string | null>(null);
+
   // Hydrate SEKALI saja — biar refetch /auth/me (mis. pindah tab) tidak menimpa
   // perubahan yang sedang diketik/digeser user.
   const hydratedMe = useRef(false);
   const hydratedProfile = useRef(false);
+  // Nilai awal form (baseline) untuk deteksi perubahan (dirty)
+  const baseline = useRef<{
+    name: string;
+    phone: string;
+    avatarUrl: string;
+    lat: number;
+    lng: number;
+  } | null>(null);
+  const baselineProfile = useRef<{
+    shopName: string;
+    description: string;
+    radiusKm: number;
+    isOpen: boolean;
+  } | null>(null);
 
   useEffect(() => {
     if (me && !hydratedMe.current) {
       hydratedMe.current = true;
+      const lat = me.lat != null ? me.lat : DEFAULT_COORDS.lat;
+      const lng = me.lng != null ? me.lng : DEFAULT_COORDS.lng;
       setName(me.name || "");
       setPhone(me.phone || "");
       setAvatarUrl(me.avatarUrl || "");
       // Fallback default HARUS di efek yang sama — kalau dipisah jadi efek sendiri,
       // dua setCoords balapan di commit yang sama dan default menimpa lokasi tersimpan.
-      setCoords(
-        me.lat != null && me.lng != null
-          ? { lat: me.lat, lng: me.lng }
-          : DEFAULT_COORDS
-      );
+      setCoords({ lat, lng });
+      baseline.current = {
+        name: me.name || "",
+        phone: me.phone || "",
+        avatarUrl: me.avatarUrl || "",
+        lat,
+        lng,
+      };
     }
   }, [me]);
 
@@ -86,6 +109,12 @@ export default function EditProfilePage() {
       setDescription(profile.description || "");
       setRadiusKm(profile.radiusKm || 5);
       setIsOpen(profile.isOpen ?? true);
+      baselineProfile.current = {
+        shopName: profile.shopName || "",
+        description: profile.description || "",
+        radiusKm: profile.radiusKm || 5,
+        isOpen: profile.isOpen ?? true,
+      };
     }
   }, [profile]);
 
@@ -130,27 +159,42 @@ export default function EditProfilePage() {
     }
   };
 
-  // ── Submit ───────────────────────────────────────────────────────────────
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // ── Deteksi perubahan (dirty) ──────────────────────────────────────────────
+  const b = baseline.current;
+  const bp = baselineProfile.current;
+  const isDirty =
+    !!b &&
+    (name !== b.name ||
+      phone !== b.phone ||
+      avatarUrl !== b.avatarUrl ||
+      (!!coords &&
+        (Math.abs(coords.lat - b.lat) > 1e-7 ||
+          Math.abs(coords.lng - b.lng) > 1e-7)) ||
+      (isCollector &&
+        !!bp &&
+        (shopName !== bp.shopName ||
+          description !== bp.description ||
+          Number(radiusKm) !== Number(bp.radiusKm) ||
+          isOpen !== bp.isOpen)));
+
+  // ── Simpan ─────────────────────────────────────────────────────────────────
+  const doSave = async (): Promise<boolean> => {
     if (!coords) {
       toast.error("Lokasi belum diatur.");
-      return;
+      return false;
     }
     if (name.trim().length < 2) {
       toast.error("Nama minimal 2 karakter.");
-      return;
+      return false;
     }
     if (isCollector && shopName.trim().length < 3) {
       toast.error("Nama lapak minimal 3 karakter.");
-      return;
+      return false;
     }
 
     setIsSaving(true);
     try {
-      // 1) Update user umum (nama, phone, avatar) + LOKASI.
-      // Lokasi SELALU disimpan ke User.location untuk customer & collector —
-      // karena pencarian pengepul (discovery) membaca dari User.location.
+      // Lokasi SELALU disimpan ke User.location (discovery pengepul membaca dari sini).
       await new Promise<void>((resolve, reject) => {
         updateMe.mutate(
           {
@@ -161,38 +205,91 @@ export default function EditProfilePage() {
             lat: coords.lat,
             lng: coords.lng,
           },
-          {
-            onSuccess: () => resolve(),
-            onError: (err) => reject(err),
-          }
+          { onSuccess: () => resolve(), onError: (err) => reject(err) }
         );
       });
 
-      // 2) Kalau collector, update data lapak (lokasi sudah tersimpan di User.location di atas)
       if (isCollector) {
         await new Promise<void>((resolve, reject) => {
           updateCollector.mutate(
-            {
-              shopName,
-              description,
-              radiusKm,
-              isOpen,
-            },
-            {
-              onSuccess: () => resolve(),
-              onError: (err) => reject(err),
-            }
+            { shopName, description, radiusKm, isOpen },
+            { onSuccess: () => resolve(), onError: (err) => reject(err) }
           );
         });
       }
 
+      // Baseline = nilai tersimpan → form tidak lagi "dirty"
+      baseline.current = { name, phone, avatarUrl, lat: coords.lat, lng: coords.lng };
+      if (isCollector) {
+        baselineProfile.current = { shopName, description, radiusKm, isOpen };
+      }
       toast.success("Profil berhasil diperbarui!");
-      router.push("/profile");
+      return true;
     } catch (err) {
       const e = err as { response?: { data?: { message?: string } } };
       toast.error(e?.response?.data?.message || "Gagal menyimpan perubahan.");
+      return false;
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (await doSave()) router.push("/profile");
+  };
+
+  // ── Guard "perubahan belum disimpan" ───────────────────────────────────────
+  // (1) Cegat klik link apa pun (Batal, back, tab nav) di fase CAPTURE — sebelum
+  // handler Next/Link jalan — lalu tampilkan popup. Hanya aktif saat ada perubahan.
+  useEffect(() => {
+    if (!isDirty) return;
+    const onCapture = (e: MouseEvent) => {
+      if (e.defaultPrevented || e.button !== 0) return;
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return; // izinkan buka tab baru
+      const anchor = (e.target as HTMLElement)?.closest?.("a");
+      if (!anchor) return;
+      const href = anchor.getAttribute("href");
+      if (!href || anchor.target === "_blank") return;
+      if (
+        href.startsWith("http") ||
+        href.startsWith("#") ||
+        href.startsWith("mailto:") ||
+        href.startsWith("tel:") ||
+        href === "/profile/edit"
+      )
+        return;
+      e.preventDefault();
+      e.stopPropagation();
+      setLeaveTo(href);
+    };
+    document.addEventListener("click", onCapture, true);
+    return () => document.removeEventListener("click", onCapture, true);
+  }, [isDirty]);
+
+  // (2) Refresh / tutup tab → dialog bawaan browser
+  useEffect(() => {
+    if (!isDirty) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [isDirty]);
+
+  // ── Aksi popup ─────────────────────────────────────────────────────────────
+  const handleStay = () => setLeaveTo(null);
+  const handleDiscardLeave = () => {
+    const to = leaveTo;
+    setLeaveTo(null);
+    if (to) router.push(to); // router.push (bukan klik <a>) → tidak ikut tercegat
+  };
+  const handleSaveLeave = async () => {
+    const to = leaveTo;
+    if (await doSave()) {
+      setLeaveTo(null);
+      router.push(to || "/profile");
     }
   };
 
@@ -440,6 +537,60 @@ export default function EditProfilePage() {
       </main>
 
       <BottomNav />
+
+      {/* POPUP: perubahan belum disimpan */}
+      {leaveTo && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-ink/70 backdrop-blur-md">
+          <div className="w-full max-w-sm bg-surface-raised rounded-2xl p-6 shadow-2xl space-y-5">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center text-brand-800 shrink-0">
+                <AlertTriangle size={20} />
+              </div>
+              <div>
+                <h3 className="font-display font-extrabold text-base text-ink">
+                  Simpan perubahan?
+                </h3>
+                <p className="text-xs text-ink-muted leading-relaxed mt-1">
+                  Ada perubahan yang belum disimpan. Simpan dulu sebelum keluar?
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Button
+                onClick={handleSaveLeave}
+                disabled={isSaving}
+                className="w-full flex items-center justify-center gap-2"
+              >
+                {isSaving ? (
+                  <>
+                    <RefreshCw size={16} className="animate-spin" /> Menyimpan…
+                  </>
+                ) : (
+                  <>
+                    <Save size={16} /> Simpan &amp; Keluar
+                  </>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleDiscardLeave}
+                disabled={isSaving}
+                className="w-full"
+              >
+                Keluar Tanpa Simpan
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={handleStay}
+                disabled={isSaving}
+                className="w-full"
+              >
+                Batal
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
