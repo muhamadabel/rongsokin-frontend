@@ -24,7 +24,6 @@ import { ProfileEditSkeleton } from "@/components/ui/Skeleton";
 import { useMe, useUpdateMe } from "@/hooks/useAuth";
 import { useAuthStore } from "@/store/authStore";
 import { recognizeKtp } from "@/lib/ktpOcr";
-import { uploadToCloudinary } from "@/lib/upload";
 import toast from "react-hot-toast";
 
 type OcrStatus = "idle" | "scanning" | "done" | "failed";
@@ -43,8 +42,6 @@ export default function VerifyKtpPage() {
 
   const [showCamera, setShowCamera] = useState(true);
   const [ktpPreview, setKtpPreview] = useState("");
-  const [ktpUrl, setKtpUrl] = useState("");
-  const [uploadingKtp, setUploadingKtp] = useState(false);
   const [nik, setNik] = useState("");
   const [ktpName, setKtpName] = useState("");
   const [ocrStatus, setOcrStatus] = useState<OcrStatus>("idle");
@@ -62,19 +59,8 @@ export default function VerifyKtpPage() {
     setNik("");
     setKtpName("");
 
-    setUploadingKtp(true);
-    uploadToCloudinary(blob)
-      .then((r) => {
-        if (!r.remote) {
-          setKtpUrl("");
-          toast.error("Gagal mengunggah foto KTP ke server. Foto ulang.");
-          return;
-        }
-        setKtpUrl(r.url);
-      })
-      .catch(() => toast.error("Gagal mengunggah foto KTP. Ulangi foto."))
-      .finally(() => setUploadingKtp(false));
-
+    // PRIVASI: foto KTP TIDAK disimpan (tidak ke Cloudinary/DB). Hanya dibaca AI
+    // untuk ambil NIK & nama; yang tersimpan ke server cuma NIK + nama.
     try {
       const res = await recognizeKtp(blob);
       setNik(res.nik || "");
@@ -90,7 +76,6 @@ export default function VerifyKtpPage() {
   const retakeKtp = () => {
     setShowCamera(true);
     setKtpPreview("");
-    setKtpUrl("");
     setNik("");
     setKtpName("");
     setOcrStatus("idle");
@@ -100,13 +85,11 @@ export default function VerifyKtpPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!ktpPreview) return toast.error("Ambil foto KTP terlebih dahulu.");
-    if (uploadingKtp) return toast.error("Tunggu, foto KTP sedang diunggah…");
-    if (!ktpUrl) return toast.error("Foto KTP belum berhasil diunggah ke server. Foto ulang.");
     if (!/^\d{16}$/.test(nik)) return toast.error("NIK harus 16 digit. Foto ulang KTP.");
     if (ktpName.trim().length < 3) return toast.error("Nama sesuai KTP tidak valid.");
 
     updateMe.mutate(
-      { nik, ktpName: ktpName.trim(), ktpUrl },
+      { nik, ktpName: ktpName.trim() },
       {
         onSuccess: () => {
           toast.success("Identitas berhasil diverifikasi!");
@@ -281,15 +264,12 @@ export default function VerifyKtpPage() {
                     className="w-full"
                     disabled={
                       updateMe.isPending ||
-                      uploadingKtp ||
                       ocrStatus === "scanning" ||
                       !/^\d{16}$/.test(nik)
                     }
                   >
                     {updateMe.isPending
                       ? "Memproses…"
-                      : uploadingKtp
-                      ? "Mengunggah foto…"
                       : ocrStatus === "scanning"
                       ? "Membaca KTP…"
                       : !/^\d{16}$/.test(nik)

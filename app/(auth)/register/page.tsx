@@ -25,7 +25,6 @@ import { useRegister, useUpdateMe } from "@/hooks/useAuth";
 import { useUpdateCollectorProfile } from "@/hooks/useCollector";
 import LocationPicker from "@/components/features/profile/LocationPicker";
 import { recognizeKtp } from "@/lib/ktpOcr";
-import { uploadToCloudinary } from "@/lib/upload";
 import toast from "react-hot-toast";
 
 type OcrStatus = "idle" | "scanning" | "done" | "failed";
@@ -52,8 +51,6 @@ function RegisterForm() {
   // Step 3 — KYC (KTP)
   const [showCamera, setShowCamera] = useState(true);
   const [ktpPreview, setKtpPreview] = useState("");
-  const [ktpUrl, setKtpUrl] = useState("");
-  const [uploadingKtp, setUploadingKtp] = useState(false);
   const [nik, setNik] = useState("");
   const [ktpName, setKtpName] = useState("");
   const [ocrStatus, setOcrStatus] = useState<OcrStatus>("idle");
@@ -101,22 +98,9 @@ function RegisterForm() {
     setNik("");
     setKtpName("");
 
-    // Upload foto KTP ke server (paralel dengan OCR)
-    setUploadingKtp(true);
-    uploadToCloudinary(blob)
-      .then((r) => {
-        if (!r.remote) {
-          // Upload tidak sampai ke server (mis. jaringan) → jangan pakai blob lokal
-          // sebagai ktpUrl, supaya tidak ada akun "verified" dengan foto yang hilang.
-          setKtpUrl("");
-          toast.error("Gagal mengunggah foto KTP ke server. Foto ulang.");
-          return;
-        }
-        setKtpUrl(r.url);
-      })
-      .catch(() => toast.error("Gagal mengunggah foto KTP. Ulangi foto."))
-      .finally(() => setUploadingKtp(false));
-
+    // PRIVASI: foto KTP TIDAK disimpan ke mana pun (tidak ke Cloudinary, tidak ke DB).
+    // Foto hanya dibaca AI/OCR untuk mengambil NIK & nama, lalu dibuang. Yang
+    // tersimpan ke server hanyalah NIK + nama, bukan gambar atau URL KTP.
     // OCR NIK + Nama. NIK = kunci utama → status sukses kalau NIK terbaca.
     try {
       const res = await recognizeKtp(blob);
@@ -133,7 +117,6 @@ function RegisterForm() {
   const retakeKtp = () => {
     setShowCamera(true);
     setKtpPreview("");
-    setKtpUrl("");
     setNik("");
     setKtpName("");
     setOcrStatus("idle");
@@ -145,14 +128,6 @@ function RegisterForm() {
     e.preventDefault();
     if (!ktpPreview) {
       toast.error("Ambil foto KTP terlebih dahulu.");
-      return;
-    }
-    if (uploadingKtp) {
-      toast.error("Tunggu, foto KTP sedang diunggah…");
-      return;
-    }
-    if (!ktpUrl) {
-      toast.error("Foto KTP belum berhasil diunggah ke server. Foto ulang.");
       return;
     }
     if (!/^\d{16}$/.test(nik)) {
@@ -173,7 +148,6 @@ function RegisterForm() {
         role: role as "CUSTOMER" | "COLLECTOR",
         nik,
         ktpName: ktpName.trim(),
-        ktpUrl: ktpUrl || undefined,
       },
       {
         onSuccess: () => {
@@ -534,15 +508,12 @@ function RegisterForm() {
                       className="w-full"
                       disabled={
                         isRegistering ||
-                        uploadingKtp ||
                         ocrStatus === "scanning" ||
                         !/^\d{16}$/.test(nik)
                       }
                     >
                       {isRegistering
                         ? "Memproses…"
-                        : uploadingKtp
-                        ? "Mengunggah foto…"
                         : ocrStatus === "scanning"
                         ? "Membaca KTP…"
                         : !/^\d{16}$/.test(nik)
