@@ -18,6 +18,7 @@ import DesktopNav from "@/components/ui/DesktopNav";
 import { ProfileSkeleton } from "@/components/ui/Skeleton";
 import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
 import { useMe } from "@/hooks/useAuth";
+import { useCollectorProfile } from "@/hooks/useCollector";
 import { useOrdersList } from "@/hooks/useOrders";
 import { RatingSection } from "@/components/features/rating/RatingSection";
 import { useAuthStore } from "@/store/authStore";
@@ -34,6 +35,8 @@ export default function ProfilePage() {
   }, [initFromStorage]);
 
   const { data: me, isLoading: isMeLoading } = useMe();
+  const isCollector = me?.role === "COLLECTOR";
+  const { data: collectorProfile } = useCollectorProfile();
   const { data: orders, isLoading: isOrdersLoading } = useOrdersList({
     role: me?.role === "COLLECTOR" ? "collector" : "customer",
     limit: 100,
@@ -77,7 +80,16 @@ export default function ProfilePage() {
       <DesktopNav />
       <main className="flex-1 max-w-2xl w-full mx-auto px-4 md:px-0 py-5 md:py-8 space-y-5">
         {/* PROFILE SUMMARY */}
-        <header className="bg-surface-raised rounded-2xl p-6 flex flex-col items-center">
+        <header className="bg-surface-raised rounded-2xl overflow-hidden">
+          {isCollector && collectorProfile?.shopImageUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={collectorProfile.shopImageUrl}
+              alt="Sampul lapak"
+              className="w-full h-24 md:h-32 object-cover"
+            />
+          )}
+          <div className="p-6 flex flex-col items-center">
           <div className="w-24 h-24 rounded-full bg-brand-100 mb-4 relative overflow-hidden">
             {me?.avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -135,6 +147,7 @@ export default function ProfilePage() {
                 {totalTransactions} Kali
               </span>
             </div>
+          </div>
           </div>
         </header>
 

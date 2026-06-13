@@ -129,15 +129,32 @@ export default function PengepulDetailPage() {
 
         {/* PROFILE CARD */}
         <section className="bg-surface-raised md:rounded-2xl overflow-hidden">
-          <div className="h-28 md:h-40 bg-brand-100 relative">
+          <div className="h-28 md:h-40 bg-brand-100 relative overflow-hidden">
+            {collector.shopImageUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={collector.shopImageUrl}
+                alt={`Sampul ${collector.shopName}`}
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+            )}
             <button
               onClick={handleShare}
-              className="hidden md:flex absolute top-4 right-4 bg-surface-raised hover:bg-surface text-ink p-2.5 rounded-2xl gap-1.5 items-center text-xs font-bold transition-colors"
+              className="hidden md:flex absolute top-4 right-4 z-10 bg-surface-raised hover:bg-surface text-ink p-2.5 rounded-2xl gap-1.5 items-center text-xs font-bold transition-colors"
             >
               <Share2 size={16} /> Bagikan
             </button>
-            <div className="absolute -bottom-9 left-4 md:left-6 w-20 h-20 bg-surface-raised rounded-2xl border-4 border-surface-raised flex items-center justify-center text-ink">
-              <Archive size={32} />
+            <div className="absolute -bottom-9 left-4 md:left-6 z-10 w-20 h-20 bg-surface-raised rounded-2xl border-4 border-surface-raised overflow-hidden flex items-center justify-center text-ink">
+              {collector.user?.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={collector.user.avatarUrl}
+                  alt={collector.shopName}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <Archive size={32} />
+              )}
             </div>
           </div>
           <div className="px-4 md:px-6 pt-12 pb-5">

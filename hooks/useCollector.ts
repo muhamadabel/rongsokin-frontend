@@ -7,6 +7,7 @@ export interface SetupProfilePayload {
   shopName?: string;
   lapak_name?: string; // fallback
   description?: string;
+  shopImageUrl?: string; // foto sampul / latar lapak
   radiusKm?: number;
   radius_km?: number; // fallback
   isOpen?: boolean;
@@ -50,6 +51,7 @@ export const useUpdateCollectorProfile = () => {
         radiusKm: payload.radiusKm || payload.radius_km,
         isOpen: payload.isOpen !== undefined ? payload.isOpen : payload.is_open,
       };
+      if (payload.shopImageUrl !== undefined) formatted.shopImageUrl = payload.shopImageUrl;
       if (payload.lat !== undefined) formatted.lat = payload.lat;
       if (payload.lng !== undefined) formatted.lng = payload.lng;
 

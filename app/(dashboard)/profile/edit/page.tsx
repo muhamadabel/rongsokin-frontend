@@ -11,6 +11,7 @@ import {
   Store,
   Save,
   AlertTriangle,
+  Image as ImageIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -52,11 +53,13 @@ export default function EditProfilePage() {
   const [avatarIsLocal, setAvatarIsLocal] = useState(false);
   const [shopName, setShopName] = useState("");
   const [description, setDescription] = useState("");
+  const [shopImageUrl, setShopImageUrl] = useState(""); // foto sampul/latar lapak
   const [radiusKm, setRadiusKm] = useState(5);
   const [isOpen, setIsOpen] = useState(true);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   const [isUploading, setIsUploading] = useState(false);
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   // Guard "perubahan belum disimpan": tujuan navigasi yg tertunda (null = tak ada popup)
@@ -77,6 +80,7 @@ export default function EditProfilePage() {
   const baselineProfile = useRef<{
     shopName: string;
     description: string;
+    shopImageUrl: string;
     radiusKm: number;
     isOpen: boolean;
   } | null>(null);
@@ -107,11 +111,13 @@ export default function EditProfilePage() {
       hydratedProfile.current = true;
       setShopName(profile.shopName || "");
       setDescription(profile.description || "");
+      setShopImageUrl(profile.shopImageUrl || "");
       setRadiusKm(profile.radiusKm || 5);
       setIsOpen(profile.isOpen ?? true);
       baselineProfile.current = {
         shopName: profile.shopName || "",
         description: profile.description || "",
+        shopImageUrl: profile.shopImageUrl || "",
         radiusKm: profile.radiusKm || 5,
         isOpen: profile.isOpen ?? true,
       };
@@ -159,6 +165,44 @@ export default function EditProfilePage() {
     }
   };
 
+  // ── Upload foto sampul / latar lapak (collector) ───────────────────────────
+  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("File harus berupa gambar (JPG/PNG).");
+      e.target.value = "";
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Foto terlalu besar. Maksimal 5MB.");
+      e.target.value = "";
+      return;
+    }
+
+    setIsUploadingCover(true);
+    try {
+      // Sampul = banner lebar → maxDim lebih besar dari avatar (1280px)
+      const wide = await downscaleImage(file, 1280);
+      const { url, remote } = await uploadToCloudinary(wide);
+      if (remote) {
+        setShopImageUrl(url);
+        toast.success("Foto sampul lapak diunggah!");
+      } else {
+        // Upload server gagal → simpan versi kecil sebagai data URL (tetap persist).
+        const dataUrl = await downscaleToDataUrl(file, 720, 0.62);
+        setShopImageUrl(dataUrl);
+        toast.success("Foto sampul lapak disimpan.");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal memproses foto. Coba lagi.");
+    } finally {
+      setIsUploadingCover(false);
+      e.target.value = "";
+    }
+  };
+
   // ── Deteksi perubahan (dirty) ──────────────────────────────────────────────
   const b = baseline.current;
   const bp = baselineProfile.current;
@@ -174,6 +218,7 @@ export default function EditProfilePage() {
         !!bp &&
         (shopName !== bp.shopName ||
           description !== bp.description ||
+          shopImageUrl !== bp.shopImageUrl ||
           Number(radiusKm) !== Number(bp.radiusKm) ||
           isOpen !== bp.isOpen)));
 
@@ -212,7 +257,7 @@ export default function EditProfilePage() {
       if (isCollector) {
         await new Promise<void>((resolve, reject) => {
           updateCollector.mutate(
-            { shopName, description, radiusKm, isOpen },
+            { shopName, description, shopImageUrl, radiusKm, isOpen },
             { onSuccess: () => resolve(), onError: (err) => reject(err) }
           );
         });
@@ -221,7 +266,7 @@ export default function EditProfilePage() {
       // Baseline = nilai tersimpan → form tidak lagi "dirty"
       baseline.current = { name, phone, avatarUrl, lat: coords.lat, lng: coords.lng };
       if (isCollector) {
-        baselineProfile.current = { shopName, description, radiusKm, isOpen };
+        baselineProfile.current = { shopName, description, shopImageUrl, radiusKm, isOpen };
       }
       toast.success("Profil berhasil diperbarui!");
       return true;
@@ -431,6 +476,46 @@ export default function EditProfilePage() {
                 Data Lapak
               </h3>
 
+              {/* FOTO SAMPUL / LATAR LAPAK */}
+              <div>
+                <label className="text-[10px] font-bold text-mute uppercase tracking-widest mb-1.5 block">
+                  Foto Sampul Lapak
+                </label>
+                <div className="relative w-full aspect-[3/1] rounded-2xl overflow-hidden bg-brand-100 border border-ink-faint">
+                  {shopImageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={shopImageUrl}
+                      alt="Sampul lapak"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center text-ink-muted gap-1">
+                      <ImageIcon size={26} />
+                      <span className="text-[11px] font-semibold">Belum ada foto sampul</span>
+                    </div>
+                  )}
+                  <label className="absolute bottom-2 right-2 bg-brand-500 hover:bg-brand-600 text-ink rounded-full px-3 py-2 flex items-center gap-1.5 text-xs font-bold cursor-pointer border-2 border-surface-raised transition-colors">
+                    {isUploadingCover ? (
+                      <RefreshCw size={14} className="animate-spin" />
+                    ) : (
+                      <Camera size={14} />
+                    )}
+                    {shopImageUrl ? "Ganti" : "Tambah"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleCoverUpload}
+                      disabled={isUploadingCover}
+                    />
+                  </label>
+                </div>
+                <p className="text-[10px] text-ink-muted mt-1">
+                  Tampil sebagai latar di profil lapakmu. Pakai gambar lebar (mis. 1200×400). Maks 5MB.
+                </p>
+              </div>
+
               <div>
                 <label className="text-[10px] font-bold text-mute uppercase tracking-widest mb-1.5 block">
                   Nama Lapak
@@ -519,7 +604,13 @@ export default function EditProfilePage() {
             </Link>
             <Button
               type="submit"
-              disabled={isSaving || updateMe.isPending || updateCollector.isPending}
+              disabled={
+                isSaving ||
+                updateMe.isPending ||
+                updateCollector.isPending ||
+                isUploading ||
+                isUploadingCover
+              }
               className="flex-[2] flex items-center justify-center gap-2"
             >
               {isSaving ? (
