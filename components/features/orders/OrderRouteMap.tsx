@@ -19,7 +19,7 @@ interface LatLng {
 }
 
 export default function OrderRouteMap(props: {
-  customer: LatLng;
+  customer?: LatLng | null;
   collector: LatLng;
   live?: LatLng | null;
   height?: number;

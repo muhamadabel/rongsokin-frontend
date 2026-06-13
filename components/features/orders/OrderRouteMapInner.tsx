@@ -11,7 +11,8 @@ interface LatLng {
 }
 
 interface Props {
-  customer: LatLng;
+  /** Opsional: kalau null, peta hanya menampilkan 1 marker (lokasi collector) */
+  customer?: LatLng | null;
   collector: LatLng;
   /** Posisi live pihak yang sedang menuju lokasi (opsional) */
   live?: LatLng | null;
@@ -56,14 +57,16 @@ function FitBounds({ pts }: { pts: LatLng[] }) {
 }
 
 export default function OrderRouteMapInner({ customer, collector, live, height = 240 }: Props) {
+  const center = customer ?? collector;
+  const fitPts = [collector, ...(customer ? [customer] : []), ...(live ? [live] : [])];
   return (
     <div
       className="relative isolate rounded-2xl overflow-hidden border border-ink-faint"
       style={{ height }}
     >
       <MapContainer
-        center={[customer.lat, customer.lng]}
-        zoom={14}
+        center={[center.lat, center.lng]}
+        zoom={15}
         style={{ height: "100%", width: "100%" }}
         scrollWheelZoom={false}
         zoomControl={false}
@@ -73,17 +76,21 @@ export default function OrderRouteMapInner({ customer, collector, live, height =
           url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
           subdomains={["a", "b", "c", "d"]}
         />
-        <Polyline
-          positions={[
-            [customer.lat, customer.lng],
-            [collector.lat, collector.lng],
-          ]}
-          pathOptions={{ color: "#0e0f0c", weight: 3, dashArray: "6 8", opacity: 0.85 }}
-        />
-        <Marker position={[customer.lat, customer.lng]} icon={makeIcon("#9fe870", "C")} />
+        {customer && (
+          <Polyline
+            positions={[
+              [customer.lat, customer.lng],
+              [collector.lat, collector.lng],
+            ]}
+            pathOptions={{ color: "#0e0f0c", weight: 3, dashArray: "6 8", opacity: 0.85 }}
+          />
+        )}
+        {customer && (
+          <Marker position={[customer.lat, customer.lng]} icon={makeIcon("#9fe870", "C")} />
+        )}
         <Marker position={[collector.lat, collector.lng]} icon={makeIcon("#ffffff", "P")} />
         {live && <Marker position={[live.lat, live.lng]} icon={liveIcon()} />}
-        <FitBounds pts={live ? [customer, collector, live] : [customer, collector]} />
+        {fitPts.length > 1 && <FitBounds pts={fitPts} />}
       </MapContainer>
     </div>
   );

@@ -25,8 +25,10 @@ import BottomNav from "@/components/ui/BottomNav";
 import { PengepulDetailSkeleton } from "@/components/ui/Skeleton";
 import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
 import { useCollectorDetails, useWasteCategories } from "@/hooks/useDiscovery";
+import { useUserCoords } from "@/hooks/useUserCoords";
 import { useUserRatings } from "@/hooks/useRatings";
-import { formatRupiah, formatDate } from "@/lib/utils";
+import OrderRouteMap from "@/components/features/orders/OrderRouteMap";
+import { formatRupiah, formatDate, formatDistance, haversineMeters } from "@/lib/utils";
 import toast from "react-hot-toast";
 
 const categoryIcons: Record<string, any> = {
@@ -47,6 +49,7 @@ export default function PengepulDetailPage() {
 
   const collectorUserId = collector?.user?.id ?? (collector as { userId?: string } | undefined)?.userId;
   const { data: ratings, isLoading: isRatingsLoading } = useUserRatings(collectorUserId);
+  const { coords: userCoords, source: coordsSource } = useUserCoords();
 
   if (isCollectorLoading || isCategoriesLoading) {
     return <PengepulDetailSkeleton />;
@@ -83,6 +86,15 @@ export default function PengepulDetailPage() {
   const waLink = waNumber
     ? `https://wa.me/${waNumber.startsWith("0") ? "62" + waNumber.slice(1) : waNumber}`
     : "";
+
+  // Lokasi lapak (dari BE) + jarak dari lokasi customer (kalau lokasi customer asli)
+  const lapakCoords =
+    collector.user?.lat != null && collector.user?.lng != null
+      ? { lat: collector.user.lat, lng: collector.user.lng }
+      : null;
+  const coordsReal = coordsSource === "saved" || coordsSource === "gps";
+  const distMeters =
+    lapakCoords && coordsReal ? haversineMeters(userCoords, lapakCoords) : null;
 
   const handleShare = () => {
     if (typeof window !== "undefined") {
@@ -196,6 +208,28 @@ export default function PengepulDetailPage() {
             </div>
           </div>
         </section>
+
+        {/* LOKASI LAPAK + JARAK DARI CUSTOMER */}
+        {lapakCoords && (
+          <section className="bg-surface-raised mt-4 md:rounded-2xl p-4 md:p-6 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="font-display font-extrabold text-sm text-ink tracking-tight flex items-center gap-2">
+                <MapPin size={16} className="text-brand-700" /> Lokasi Lapak
+              </h3>
+              {distMeters != null && (
+                <span className="text-[11px] font-bold text-brand-700 font-mono">
+                  ± {formatDistance(distMeters)} dari lokasimu
+                </span>
+              )}
+            </div>
+            <OrderRouteMap collector={lapakCoords} customer={coordsReal ? userCoords : null} />
+            <p className="text-[11px] text-ink-muted leading-relaxed">
+              {coordsReal
+                ? "Titik perkiraan lokasi lapak; garis menunjukkan jarak dari lokasimu."
+                : "Titik perkiraan lokasi lapak. Lengkapi lokasimu (profil/GPS) untuk melihat jarak."}
+            </p>
+          </section>
+        )}
 
         {/* TABS */}
         <section className="bg-surface-raised mt-4 md:rounded-2xl">
