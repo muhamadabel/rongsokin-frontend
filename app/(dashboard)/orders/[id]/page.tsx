@@ -1120,6 +1120,7 @@ export default function OrderTrackingPage() {
           customerName={order.customer?.name || "Kawan Rongsok"}
           actualWeight={getOrderTotalActualWeight(order)}
           orderId={order.id}
+          avatarUrl={order.customer?.avatarUrl}
           onClose={() => {
             setShowEcoImpact(false);
             setEcoImpactSeen(true);

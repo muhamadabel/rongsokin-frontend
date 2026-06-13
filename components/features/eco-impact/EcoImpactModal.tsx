@@ -9,6 +9,8 @@ interface EcoImpactModalProps {
   customerName: string;
   actualWeight: number;
   orderId: string;
+  /** Foto profil pemilik akun (Cloudinary URL / data URL). Tampil di kartu. */
+  avatarUrl?: string;
   onClose: () => void;
   /** 'order' = dampak 1 pesanan (default); 'lifetime' = total kumulatif customer */
   variant?: "order" | "lifetime";
@@ -22,6 +24,7 @@ export default function EcoImpactModal({
   customerName,
   actualWeight,
   orderId,
+  avatarUrl,
   onClose,
   variant = "order",
   titleLabel = "Pahlawan Lingkungan",
@@ -140,14 +143,36 @@ export default function EcoImpactModal({
               </span>
             </div>
 
-            {/* BADGE ICON */}
+            {/* FOTO PROFIL PEMILIK AKUN + BADGE EKOLOGIS */}
             <div className="w-28 h-28 relative flex items-center justify-center bg-[#163300] rounded-full border-2 border-brand-400/30 p-2 z-10 shadow-lg shadow-[#0d2200]/50">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/eco_impact_badge.png"
-                alt="Badge"
-                className="w-full h-full object-contain"
-              />
+              {avatarUrl ? (
+                <>
+                  {/* crossOrigin: biar foto Cloudinary tidak men-taint canvas saat diunduh (toPng) */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={avatarUrl}
+                    crossOrigin="anonymous"
+                    alt={customerName}
+                    className="w-full h-full object-cover rounded-full"
+                  />
+                  {/* Badge eko jadi emblem kecil di pojok */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/eco_impact_badge.png"
+                    alt="Badge"
+                    className="absolute -bottom-1 -right-1 w-10 h-10 object-contain drop-shadow-md"
+                  />
+                </>
+              ) : (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/eco_impact_badge.png"
+                    alt="Badge"
+                    className="w-full h-full object-contain"
+                  />
+                </>
+              )}
             </div>
 
             {/* DETAIL DAMPAK EKOLOGIS */}

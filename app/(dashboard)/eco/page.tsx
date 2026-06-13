@@ -283,6 +283,7 @@ export default function EcoPage() {
           customerName={name}
           actualWeight={myKg}
           orderId={me?.id || user?.id || "eco"}
+          avatarUrl={me?.avatarUrl || user?.avatarUrl}
           variant="lifetime"
           titleLabel={`${tier.emoji} ${tier.label}`}
           closeLabel="Tutup"
