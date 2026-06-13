@@ -463,10 +463,12 @@ export default function EditProfilePage() {
                   </label>
                   <Input
                     type="number"
+                    inputMode="numeric"
                     min={1}
                     max={50}
-                    value={radiusKm}
-                    onChange={(e) => setRadiusKm(Number(e.target.value))}
+                    placeholder="5"
+                    value={radiusKm || ""}
+                    onChange={(e) => setRadiusKm(e.target.value === "" ? 0 : Number(e.target.value))}
                     required
                   />
                 </div>

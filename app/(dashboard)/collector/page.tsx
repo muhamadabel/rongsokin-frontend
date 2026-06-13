@@ -854,9 +854,11 @@ export default function CollectorDashboard() {
                           </label>
                           <input
                             type="number"
-                            value={data.minPrice}
+                            inputMode="numeric"
+                            value={data.minPrice || ""}
+                            placeholder="0"
                             onChange={(e) =>
-                              handleValChange(cat.id, "minPrice", Number(e.target.value))
+                              handleValChange(cat.id, "minPrice", e.target.value === "" ? 0 : Number(e.target.value))
                             }
                             disabled={!data.isActive}
                             className="w-full bg-surface-raised border border-ink rounded-md p-2 text-sm font-mono font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-50"
@@ -868,9 +870,11 @@ export default function CollectorDashboard() {
                           </label>
                           <input
                             type="number"
-                            value={data.maxPrice}
+                            inputMode="numeric"
+                            value={data.maxPrice || ""}
+                            placeholder="0"
                             onChange={(e) =>
-                              handleValChange(cat.id, "maxPrice", Number(e.target.value))
+                              handleValChange(cat.id, "maxPrice", e.target.value === "" ? 0 : Number(e.target.value))
                             }
                             disabled={!data.isActive}
                             className="w-full bg-surface-raised border border-ink rounded-md p-2 text-sm font-mono font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-50"
