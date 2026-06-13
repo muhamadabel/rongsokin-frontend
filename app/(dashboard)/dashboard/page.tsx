@@ -45,6 +45,7 @@ import {
 } from "lucide-react";
 import { iconForCategory } from "@/lib/categoryIcons";
 import { useAuthStore } from "@/store/authStore";
+import { useNotificationStore } from "@/store/notificationStore";
 import { useRouter } from "next/navigation";
 
 const mainIcon = (name: string): any => {
@@ -71,6 +72,8 @@ export default function CustomerDashboard() {
   const initFromStorage = useAuthStore((state) => state.initFromStorage);
   const token = useAuthStore((state) => state.token);
   const user = useAuthStore((state) => state.user);
+  const notifItems = useNotificationStore((s) => s.items);
+  const unreadCount = notifItems.filter((n) => n.userId === user?.id && !n.read).length;
 
   useEffect(() => {
     initFromStorage();
@@ -146,9 +149,18 @@ export default function CustomerDashboard() {
           <h1 className="font-display font-extrabold text-base text-ink">{firstName} 👋</h1>
         </div>
         <div className="flex items-center gap-2">
-          <button className="w-9 h-9 rounded-2xl bg-surface flex items-center justify-center text-ink-muted hover:text-ink transition-colors">
+          <Link
+            href="/notifications"
+            aria-label="Notifikasi"
+            className="relative w-9 h-9 rounded-2xl bg-surface flex items-center justify-center text-ink-muted hover:text-ink transition-colors"
+          >
             <Bell size={18} />
-          </button>
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 bg-status-error text-white text-[10px] font-bold rounded-full flex items-center justify-center border border-surface-raised">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
+          </Link>
           <button
             onClick={handleLogout}
             className="w-9 h-9 rounded-2xl bg-surface flex items-center justify-center text-ink-muted hover:text-status-error transition-colors"
@@ -328,6 +340,10 @@ export default function CustomerDashboard() {
                   key={collector.id}
                   className="bg-surface-raised rounded-2xl p-4 flex items-center gap-3"
                 >
+                  <Link
+                    href={`/pengepul/${collector.id}`}
+                    className="flex items-center gap-3 flex-1 min-w-0"
+                  >
                   <div className="w-11 h-11 bg-surface rounded-2xl flex items-center justify-center shrink-0 text-ink">
                     <Archive size={20} />
                   </div>
@@ -361,6 +377,7 @@ export default function CustomerDashboard() {
                       )}
                     </div>
                   </div>
+                  </Link>
                   <Link
                     href="/orders/new"
                     className="shrink-0 text-xs font-bold text-ink bg-brand-500 hover:bg-brand-600 rounded-2xl px-4 py-2 transition-colors"
