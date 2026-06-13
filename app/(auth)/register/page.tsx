@@ -19,6 +19,7 @@ import {
   Pencil,
   ScanLine,
   Camera,
+  Lock,
 } from "lucide-react";
 import { useRegister, useUpdateMe } from "@/hooks/useAuth";
 import { useUpdateCollectorProfile } from "@/hooks/useCollector";
@@ -480,24 +481,25 @@ function RegisterForm() {
                     </div>
                   )}
 
-                  {/* NIK — terisi otomatis dari OCR, BISA dikoreksi manual (OCR sering meleset) */}
+                  {/* NIK — HANYA dari foto KTP (OCR/AI), tidak bisa diketik manual (anti NIK palsu) */}
                   <div>
-                    <label className="text-xs font-bold text-ink uppercase tracking-wider mb-2 block">
-                      NIK
+                    <label className="text-xs font-bold text-ink uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                      NIK <Lock size={11} className="text-ink-muted" />
                     </label>
                     <Input
                       type="text"
                       inputMode="numeric"
-                      placeholder="16 digit NIK (otomatis / ketik manual)"
+                      placeholder="Otomatis dari foto KTP…"
                       value={nik}
-                      onChange={(e) => setNik(e.target.value.replace(/\D/g, "").slice(0, 16))}
+                      readOnly
+                      tabIndex={-1}
                       maxLength={16}
-                      className="font-mono tracking-wide"
+                      className="bg-surface cursor-not-allowed font-mono tracking-wide"
                       required
                     />
                     <p className="text-[11px] text-ink-muted mt-1">
-                      Terisi otomatis dari pindai KTP. Kalau salah atau kosong, ketik 16 digit NIK
-                      manual.
+                      NIK diisi otomatis hasil pindai KTP &amp; tidak bisa diketik manual. Kalau
+                      kosong/salah, foto ulang KTP.
                     </p>
                   </div>
 
