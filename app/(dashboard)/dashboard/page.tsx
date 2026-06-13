@@ -344,8 +344,17 @@ export default function CustomerDashboard() {
                     href={`/pengepul/${collector.id}`}
                     className="flex items-center gap-3 flex-1 min-w-0"
                   >
-                  <div className="w-11 h-11 bg-surface rounded-2xl flex items-center justify-center shrink-0 text-ink">
-                    <Archive size={20} />
+                  <div className="w-11 h-11 bg-surface rounded-2xl overflow-hidden flex items-center justify-center shrink-0 text-ink">
+                    {collector.avatarUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={collector.avatarUrl}
+                        alt={collector.shopName}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <Archive size={20} />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">

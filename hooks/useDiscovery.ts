@@ -100,6 +100,9 @@ export const useSearchCollectors = (
           priorityScore: c.priorityScore,
           avgRating: c.avgRating != null ? Number(c.avgRating) : 0,
           ownerName: c.ownerName,
+          // foto profil pengepul (avatar) & foto sampul lapak — utk kartu daftar
+          avatarUrl: c.avatarUrl || null,
+          shopImageUrl: c.shopImageUrl || null,
           distance: c.distance, // in meters
           // Harga ambil tertinggi (utk sort "termahal"). undefined kalau BE belum kirim.
           maxPrice: c.maxPrice != null ? Number(c.maxPrice) : undefined,

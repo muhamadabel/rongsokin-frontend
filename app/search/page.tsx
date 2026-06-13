@@ -204,8 +204,17 @@ function SearchInner() {
                   className="block bg-surface-raised p-5 rounded-2xl hover:bg-brand-100 transition-colors cursor-pointer group"
                 >
                   <div className="flex items-start gap-4">
-                    <div className="w-14 h-14 bg-surface group-hover:bg-brand-500 text-ink rounded-2xl flex items-center justify-center shrink-0 transition-colors">
-                      <Archive size={24} />
+                    <div className="w-14 h-14 bg-surface group-hover:bg-brand-500 text-ink rounded-2xl overflow-hidden flex items-center justify-center shrink-0 transition-colors">
+                      {collector.avatarUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={collector.avatarUrl}
+                          alt={collector.shopName}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <Archive size={24} />
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-start gap-2">
