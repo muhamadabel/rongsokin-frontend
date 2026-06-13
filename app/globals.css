@@ -65,6 +65,9 @@
 html {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  /* Tap responsif tanpa delay double-tap-zoom di mobile */
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
