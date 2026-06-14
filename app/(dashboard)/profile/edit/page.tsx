@@ -12,6 +12,8 @@ import {
   Save,
   AlertTriangle,
   Image as ImageIcon,
+  MapPin,
+  Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -26,6 +28,7 @@ import {
 } from "@/hooks/useCollector";
 import { useAuthStore } from "@/store/authStore";
 import { DEFAULT_COORDS } from "@/lib/utils";
+import type { AreaInfo } from "@/lib/geocode";
 import { uploadToCloudinary, downscaleImage, downscaleToDataUrl } from "@/lib/upload";
 import toast from "react-hot-toast";
 
@@ -56,7 +59,12 @@ export default function EditProfilePage() {
   const [shopImageUrl, setShopImageUrl] = useState(""); // foto sampul/latar lapak
   const [radiusKm, setRadiusKm] = useState(5);
   const [isOpen, setIsOpen] = useState(true);
+  const [operatingHours, setOperatingHours] = useState(""); // jam buka lapak (collector)
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [addressText, setAddressText] = useState(""); // deskripsi alamat tertulis
+  const [mapArea, setMapArea] = useState<AreaInfo | null>(null); // hasil reverse-geocode terbaru
+  // Teks alamat hasil auto-isi terakhir → untuk tahu apakah user sudah mengubahnya manual
+  const autoBaseRef = useRef("");
 
   const [isUploading, setIsUploading] = useState(false);
   const [isUploadingCover, setIsUploadingCover] = useState(false);
@@ -74,6 +82,7 @@ export default function EditProfilePage() {
     name: string;
     phone: string;
     avatarUrl: string;
+    addressText: string;
     lat: number;
     lng: number;
   } | null>(null);
@@ -83,6 +92,7 @@ export default function EditProfilePage() {
     shopImageUrl: string;
     radiusKm: number;
     isOpen: boolean;
+    operatingHours: string;
   } | null>(null);
 
   useEffect(() => {
@@ -93,6 +103,11 @@ export default function EditProfilePage() {
       setName(me.name || "");
       setPhone(me.phone || "");
       setAvatarUrl(me.avatarUrl || "");
+      setAddressText(me.addressText || "");
+      // autoBase sengaja dikosongkan: alamat tersimpan dianggap "manual" → tak ditimpa
+      // hasil reverse-geocode pertama saat halaman dibuka. (Geocode awal hanya mengisi
+      // bila field memang masih kosong.)
+      autoBaseRef.current = "";
       // Fallback default HARUS di efek yang sama — kalau dipisah jadi efek sendiri,
       // dua setCoords balapan di commit yang sama dan default menimpa lokasi tersimpan.
       setCoords({ lat, lng });
@@ -100,6 +115,7 @@ export default function EditProfilePage() {
         name: me.name || "",
         phone: me.phone || "",
         avatarUrl: me.avatarUrl || "",
+        addressText: me.addressText || "",
         lat,
         lng,
       };
@@ -114,12 +130,14 @@ export default function EditProfilePage() {
       setShopImageUrl(profile.shopImageUrl || "");
       setRadiusKm(profile.radiusKm || 5);
       setIsOpen(profile.isOpen ?? true);
+      setOperatingHours(profile.operatingHours || "");
       baselineProfile.current = {
         shopName: profile.shopName || "",
         description: profile.description || "",
         shopImageUrl: profile.shopImageUrl || "",
         radiusKm: profile.radiusKm || 5,
         isOpen: profile.isOpen ?? true,
+        operatingHours: profile.operatingHours || "",
       };
     }
   }, [profile]);
@@ -203,6 +221,25 @@ export default function EditProfilePage() {
     }
   };
 
+  // ── Auto-isi deskripsi alamat dari reverse-geocode ─────────────────────────
+  // Saat titik dipindah, isi otomatis alamat (jalan/daerah) SELAMA user belum
+  // mengetik manual. Begitu user mengubah teksnya, biarkan (tak ditimpa lagi).
+  const handleAreaResolved = (info: AreaInfo) => {
+    setMapArea(info);
+    setAddressText((prev) => {
+      if (prev && prev !== autoBaseRef.current) return prev; // sudah diubah manual
+      autoBaseRef.current = info.full;
+      return info.full;
+    });
+  };
+
+  // Tombol "Pakai alamat dari peta" — paksa isi ulang dari hasil geocode terbaru
+  const handleUseMapAddress = () => {
+    if (!mapArea) return;
+    autoBaseRef.current = mapArea.full;
+    setAddressText(mapArea.full);
+  };
+
   // ── Deteksi perubahan (dirty) ──────────────────────────────────────────────
   const b = baseline.current;
   const bp = baselineProfile.current;
@@ -211,6 +248,7 @@ export default function EditProfilePage() {
     (name !== b.name ||
       phone !== b.phone ||
       avatarUrl !== b.avatarUrl ||
+      addressText !== b.addressText ||
       (!!coords &&
         (Math.abs(coords.lat - b.lat) > 1e-7 ||
           Math.abs(coords.lng - b.lng) > 1e-7)) ||
@@ -220,7 +258,8 @@ export default function EditProfilePage() {
           description !== bp.description ||
           shopImageUrl !== bp.shopImageUrl ||
           Number(radiusKm) !== Number(bp.radiusKm) ||
-          isOpen !== bp.isOpen)));
+          isOpen !== bp.isOpen ||
+          operatingHours !== bp.operatingHours)));
 
   // ── Simpan ─────────────────────────────────────────────────────────────────
   const doSave = async (): Promise<boolean> => {
@@ -247,6 +286,7 @@ export default function EditProfilePage() {
             phone,
             // Jangan kirim URL blob lokal (upload gagal) — biar avatar lama tidak tertimpa data mati
             avatarUrl: avatarIsLocal ? undefined : avatarUrl || undefined,
+            addressText: addressText.trim(),
             lat: coords.lat,
             lng: coords.lng,
           },
@@ -257,16 +297,30 @@ export default function EditProfilePage() {
       if (isCollector) {
         await new Promise<void>((resolve, reject) => {
           updateCollector.mutate(
-            { shopName, description, shopImageUrl, radiusKm, isOpen },
+            { shopName, description, shopImageUrl, radiusKm, isOpen, operatingHours: operatingHours.trim() },
             { onSuccess: () => resolve(), onError: (err) => reject(err) }
           );
         });
       }
 
       // Baseline = nilai tersimpan → form tidak lagi "dirty"
-      baseline.current = { name, phone, avatarUrl, lat: coords.lat, lng: coords.lng };
+      baseline.current = {
+        name,
+        phone,
+        avatarUrl,
+        addressText: addressText.trim(),
+        lat: coords.lat,
+        lng: coords.lng,
+      };
       if (isCollector) {
-        baselineProfile.current = { shopName, description, shopImageUrl, radiusKm, isOpen };
+        baselineProfile.current = {
+          shopName,
+          description,
+          shopImageUrl,
+          radiusKm,
+          isOpen,
+          operatingHours: operatingHours.trim(),
+        };
       }
       toast.success("Profil berhasil diperbarui!");
       return true;
@@ -574,6 +628,24 @@ export default function EditProfilePage() {
                   </button>
                 </div>
               </div>
+
+              {/* JAM BUKA LAPAK (informatif saja) */}
+              <div>
+                <label className="text-[10px] font-bold text-mute uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+                  <Clock size={12} className="text-brand-700" /> Jam Buka Lapak
+                </label>
+                <Input
+                  type="text"
+                  value={operatingHours}
+                  onChange={(e) => setOperatingHours(e.target.value)}
+                  placeholder="Senin–Sabtu, 08.00–17.00"
+                  maxLength={120}
+                />
+                <p className="text-[10px] text-ink-muted mt-1">
+                  Tampil di profil lapak sebagai info untuk customer. Buka/tutup lapak tetap
+                  kamu atur manual lewat tombol status — tidak otomatis ikut jam ini.
+                </p>
+              </div>
             </section>
           )}
 
@@ -587,12 +659,43 @@ export default function EditProfilePage() {
               onChange={setCoords}
               label="Pilih Titik Lokasi"
               autoLocate={me?.lat == null || me?.lng == null}
+              onAreaResolved={handleAreaResolved}
               helperText={
                 isCollector
                   ? "Customer akan melihat lokasi ini saat mencari pengepul terdekat."
                   : "Lokasi default untuk pesananmu — bisa diubah saat membuat order."
               }
             />
+
+            {/* DESKRIPSI ALAMAT — auto dari titik + bisa ditambah manual */}
+            <div>
+              <div className="flex items-center justify-between gap-3 mb-1.5">
+                <label className="text-[10px] font-bold text-mute uppercase tracking-widest flex items-center gap-1.5">
+                  <MapPin size={12} className="text-brand-700" /> Deskripsi Alamat
+                </label>
+                {mapArea && (
+                  <button
+                    type="button"
+                    onClick={handleUseMapAddress}
+                    className="text-[10px] font-bold text-brand-700 hover:text-ink underline underline-offset-2"
+                  >
+                    Pakai alamat dari peta
+                  </button>
+                )}
+              </div>
+              <textarea
+                value={addressText}
+                onChange={(e) => setAddressText(e.target.value)}
+                placeholder="Jalan, kelurahan, kecamatan… + patokan (mis. rumah pagar hijau, sebelah warung)"
+                className="w-full rounded-md border border-ink bg-surface-raised px-4 py-3 text-sm font-body text-ink placeholder:text-mute focus:outline-none focus:ring-2 focus:ring-brand-500 min-h-[80px]"
+                maxLength={500}
+              />
+              <p className="text-[10px] text-ink-muted mt-1">
+                {isCollector
+                  ? "Terisi otomatis dari titik di peta. Tambahkan patokan lapak biar customer gampang menemukan."
+                  : "Terisi otomatis dari titik di peta. Tambahkan patokan rumah (warna, ciri, dekat apa) supaya pengepul mudah menemukan."}
+              </p>
+            </div>
           </section>
 
           {/* ACTIONS */}

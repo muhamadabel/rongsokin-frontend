@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import { MapPin, Crosshair, RefreshCw, Loader2 } from "lucide-react";
 import { DEFAULT_COORDS } from "@/lib/utils";
-import { reverseGeocode } from "@/lib/geocode";
+import { reverseGeocode, type AreaInfo } from "@/lib/geocode";
 import toast from "react-hot-toast";
 
 // Map butuh window → dynamic import dengan ssr:false
@@ -30,6 +30,8 @@ interface Props {
   height?: number;
   /** Otomatis minta izin GPS saat komponen muncul (mis. user belum punya lokasi tersimpan) */
   autoLocate?: boolean;
+  /** Dipanggil tiap reverse-geocode selesai — untuk auto-isi deskripsi alamat di parent */
+  onAreaResolved?: (info: AreaInfo) => void;
 }
 
 export default function LocationPicker({
@@ -39,6 +41,7 @@ export default function LocationPicker({
   helperText,
   height = 300,
   autoLocate = false,
+  onAreaResolved,
 }: Props) {
   const [isLocating, setIsLocating] = useState(false);
   const [areaName, setAreaName] = useState<string>("");
@@ -90,6 +93,12 @@ export default function LocationPicker({
 
   const current = value || DEFAULT_COORDS;
 
+  // Callback parent disimpan di ref → tak memicu efek ulang saat identitasnya berubah
+  const onAreaResolvedRef = useRef(onAreaResolved);
+  useEffect(() => {
+    onAreaResolvedRef.current = onAreaResolved;
+  });
+
   // Reverse-geocode (debounce) → nama daerah s.d. kecamatan tiap kali titik berubah
   const geocodeReq = useRef(0);
   useEffect(() => {
@@ -102,6 +111,7 @@ export default function LocationPicker({
       if (reqId !== geocodeReq.current) return; // hasil basi → abaikan
       setAreaName(info?.label || "");
       setAreaLoading(false);
+      if (info) onAreaResolvedRef.current?.(info);
     }, 700);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps

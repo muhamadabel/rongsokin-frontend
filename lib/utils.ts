@@ -30,6 +30,10 @@ export const formatDate = (iso: string): string =>
 // Koordinat default Yogyakarta (fallback jika GPS tidak tersedia)
 export const DEFAULT_COORDS = { lat: -7.7956, lng: 110.3695 }
 
+// Tautan Google Maps untuk satu titik koordinat (buka di app/peta)
+export const googleMapsLink = (lat: number, lng: number): string =>
+  `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`
+
 // Label satuan kategori
 export const unitLabel = (unit?: string): string => {
   switch (unit) {

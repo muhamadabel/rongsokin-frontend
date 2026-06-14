@@ -18,11 +18,31 @@ export const useOrderStore = create<OrderStore>((set) => ({
   setActiveOrders: (orders) => set({ activeOrders: orders }),
   addIncomingOrder: (order) =>
     set((state) => {
-      // Avoid duplicates
-      if (state.incomingOrders.some((o) => o.id === order.id)) {
-        return state;
+      const idx = state.incomingOrders.findIndex((o) => o.id === order.id);
+      if (idx === -1) {
+        return { incomingOrders: [order, ...state.incomingOrders] };
       }
-      return { incomingOrders: [order, ...state.incomingOrders] };
+      // Sudah ada (mis. dari socket) → GABUNG, bukan diabaikan. Data dari REST yang
+      // diperkaya (customer, koordinat, jarak, addressText) melengkapi versi parsial
+      // socket. Hanya field bermakna (non-kosong) yang menimpa, jadi event socket
+      // susulan yang minim tidak menghapus data yang sudah lengkap.
+      const existing = state.incomingOrders[idx];
+      const merged: Order = { ...existing };
+      (Object.keys(order) as (keyof Order)[]).forEach((k) => {
+        const v = order[k];
+        if (v === undefined || v === null || v === '') return;
+        if (k === 'customer' || k === 'collector') {
+          (merged as unknown as Record<string, unknown>)[k] = {
+            ...((existing[k] as object) || {}),
+            ...(v as object),
+          };
+        } else {
+          (merged as unknown as Record<string, unknown>)[k] = v as unknown;
+        }
+      });
+      const next = [...state.incomingOrders];
+      next[idx] = merged;
+      return { incomingOrders: next };
     }),
   removeIncomingOrder: (id) =>
     set((state) => ({

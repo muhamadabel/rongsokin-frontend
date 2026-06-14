@@ -12,6 +12,8 @@ export interface SetupProfilePayload {
   radius_km?: number; // fallback
   isOpen?: boolean;
   is_open?: boolean; // fallback
+  /** Jam buka lapak (teks bebas, informatif) */
+  operatingHours?: string;
   lat?: number;
   lng?: number;
 }
@@ -52,6 +54,7 @@ export const useUpdateCollectorProfile = () => {
         isOpen: payload.isOpen !== undefined ? payload.isOpen : payload.is_open,
       };
       if (payload.shopImageUrl !== undefined) formatted.shopImageUrl = payload.shopImageUrl;
+      if (payload.operatingHours !== undefined) formatted.operatingHours = payload.operatingHours;
       if (payload.lat !== undefined) formatted.lat = payload.lat;
       if (payload.lng !== undefined) formatted.lng = payload.lng;
 

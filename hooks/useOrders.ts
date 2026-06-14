@@ -21,6 +21,8 @@ export interface CreateOrderItemInput {
 export interface CreateOrderPayload {
   items: CreateOrderItemInput[];
   photoUrl?: string;
+  /** Deskripsi alamat jemput/antar (jalan, patokan) — opsional */
+  addressText?: string;
   lat: number;
   lng: number;
   method: 'PICKUP' | 'DROPOFF';
@@ -40,6 +42,10 @@ export const useCreateOrder = () => {
         lng: payload.lng,
         method: payload.method,
       };
+
+      if (payload.addressText) {
+        body.addressText = payload.addressText;
+      }
 
       if (payload.collectorId) {
         body.collectorId = payload.collectorId;

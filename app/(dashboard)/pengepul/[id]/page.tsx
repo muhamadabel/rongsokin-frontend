@@ -18,6 +18,7 @@ import {
   Monitor,
   Sparkles,
   AlertCircle,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import DesktopNav from "@/components/ui/DesktopNav";
@@ -28,7 +29,7 @@ import { useCollectorDetails, useWasteCategories } from "@/hooks/useDiscovery";
 import { useUserCoords } from "@/hooks/useUserCoords";
 import { useUserRatings } from "@/hooks/useRatings";
 import OrderRouteMap from "@/components/features/orders/OrderRouteMap";
-import { formatRupiah, formatDate, formatDistance, haversineMeters } from "@/lib/utils";
+import { formatRupiah, formatDate, formatDistance, haversineMeters, googleMapsLink } from "@/lib/utils";
 import toast from "react-hot-toast";
 
 const categoryIcons: Record<string, any> = {
@@ -240,6 +241,25 @@ export default function PengepulDetailPage() {
               )}
             </div>
             <OrderRouteMap collector={lapakCoords} customer={coordsReal ? userCoords : null} />
+
+            {collector.user?.addressText && (
+              <div className="flex items-start gap-2 text-xs text-ink-muted bg-surface rounded-2xl px-3.5 py-2.5">
+                <MapPin size={14} className="text-brand-700 shrink-0 mt-0.5" />
+                <span className="leading-relaxed">{collector.user.addressText}</span>
+              </div>
+            )}
+
+            <a
+              href={googleMapsLink(lapakCoords.lat, lapakCoords.lng)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block"
+            >
+              <Button variant="outline" className="w-full gap-2">
+                <ExternalLink size={16} /> Buka di Google Maps
+              </Button>
+            </a>
+
             <p className="text-[11px] text-ink-muted leading-relaxed">
               {coordsReal
                 ? "Titik perkiraan lokasi lapak; garis menunjukkan jarak dari lokasimu."
@@ -415,9 +435,42 @@ export default function PengepulDetailPage() {
                       {collector.radiusKm} Kilometer
                     </span>
                   </div>
+                  <div className="bg-surface p-4 rounded-2xl">
+                    <span className="text-mute font-bold uppercase tracking-wider text-[10px] flex items-center gap-1">
+                      <Clock size={11} /> Jam Buka
+                    </span>
+                    <span className="font-extrabold text-ink text-sm mt-0.5 block">
+                      {collector.operatingHours || "Belum ditentukan"}
+                    </span>
+                  </div>
+                  <div className="bg-surface p-4 rounded-2xl">
+                    <span className="text-mute font-bold uppercase tracking-wider text-[10px] flex items-center gap-1">
+                      <Clock size={11} /> Status Saat Ini
+                    </span>
+                    <span
+                      className={`font-extrabold text-sm mt-0.5 block ${
+                        collector.isOpen ? "text-status-success" : "text-status-error"
+                      }`}
+                    >
+                      {collector.isOpen ? "BUKA" : "TUTUP"}
+                    </span>
+                  </div>
                 </div>
+
+                {collector.user?.addressText && (
+                  <div className="bg-surface p-4 rounded-2xl">
+                    <span className="text-mute font-bold uppercase tracking-wider text-[10px] flex items-center gap-1 mb-1">
+                      <MapPin size={11} /> Alamat Lapak
+                    </span>
+                    <p className="text-sm text-ink leading-relaxed">
+                      {collector.user.addressText}
+                    </p>
+                  </div>
+                )}
+
                 <p className="text-xs text-ink-muted leading-relaxed">
-                  Lokasi presisi lapak dibagikan setelah transaksi dibuat.
+                  Jam buka di atas hanya informasi. Status BUKA/TUTUP diatur manual oleh
+                  pengepul, jadi bisa berbeda dengan jam tertera.
                 </p>
               </div>
             )}

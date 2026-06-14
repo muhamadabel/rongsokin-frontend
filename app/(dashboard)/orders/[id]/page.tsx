@@ -38,6 +38,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { OrderDetailSkeleton } from "@/components/ui/Skeleton";
 import { useAuthStore } from "@/store/authStore";
+import { confirmDialog } from "@/store/dialogStore";
 import { useOrderDetails, useUpdateOrderStatus } from "@/hooks/useOrders";
 import { getSocket } from "@/lib/socket";
 import {
@@ -375,8 +376,15 @@ export default function OrderTrackingPage() {
     );
   };
 
-  const handleCancelOrder = () => {
-    if (!window.confirm("Apakah Anda yakin ingin membatalkan pesanan ini?")) return;
+  const handleCancelOrder = async () => {
+    const ok = await confirmDialog({
+      title: "Batalkan pesanan?",
+      message: "Pesanan yang sudah dibatalkan tidak bisa dikembalikan. Yakin ingin membatalkan pesanan ini?",
+      confirmText: "Ya, batalkan",
+      cancelText: "Tidak",
+      tone: "danger",
+    });
+    if (!ok) return;
     updateOrderStatus.mutate(
       { action: "cancel" },
       {

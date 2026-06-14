@@ -65,6 +65,7 @@ export interface UpdateMePayload {
   name?: string;
   phone?: string;
   avatarUrl?: string;
+  addressText?: string;
   lat?: number;
   lng?: number;
   /** KYC menyusul (akun belum terverifikasi) */

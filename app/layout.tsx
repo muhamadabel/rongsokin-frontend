@@ -4,6 +4,7 @@ import { Toaster } from "react-hot-toast";
 import "./globals.css";
 
 import QueryProvider from "@/components/providers/QueryProvider";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 const fontDisplay = Manrope({
   variable: "--font-manrope",
@@ -50,6 +51,7 @@ export default function RootLayout({
         <QueryProvider>
           {children}
         </QueryProvider>
+        <ConfirmDialog />
         <Toaster
           position="top-center"
           toastOptions={{

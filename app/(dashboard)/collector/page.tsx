@@ -6,6 +6,7 @@ import Link from "next/link";
 import DesktopNav from "@/components/ui/DesktopNav";
 import BottomNav from "@/components/ui/BottomNav";
 import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
+import IncomingOrderModal from "@/components/features/collector/IncomingOrderModal";
 import {
   Store,
   Archive,
@@ -45,6 +46,7 @@ import { useCategoryTree } from "@/hooks/useDiscovery";
 import {
   formatRupiah,
   formatDate,
+  formatDistance,
   unitLabel,
   getOrderTotalEstWeight,
   getOrderTotalActualWeight,
@@ -68,10 +70,12 @@ const mainIcon = (name: string): any => {
 function IncomingOrderCard({
   order,
   onRemove,
+  onOpenDetail,
   canAccept = true,
 }: {
   order: Order;
   onRemove: (id: string) => void;
+  onOpenDetail: (order: Order) => void;
   canAccept?: boolean;
 }) {
   const router = useRouter();
@@ -131,7 +135,10 @@ function IncomingOrderCard({
     .padStart(2, "0")}`;
 
   return (
-    <div className="bg-surface rounded-2xl p-4">
+    <div
+      className="bg-surface rounded-2xl p-4 cursor-pointer hover:ring-2 hover:ring-brand-200 transition-shadow"
+      onClick={() => onOpenDetail(order)}
+    >
       <div className="flex justify-between items-start mb-3">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-surface-raised text-ink rounded-2xl flex items-center justify-center shrink-0">
@@ -196,14 +203,20 @@ function IncomingOrderCard({
       <div className="flex gap-2 pt-1">
         <Button
           variant="outline"
-          onClick={handleReject}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleReject();
+          }}
           className="flex-1 py-2 text-xs"
           disabled={updateOrderStatus.isPending}
         >
           <X size={14} /> Tolak
         </Button>
         <Button
-          onClick={handleAccept}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleAccept();
+          }}
           className="flex-1 py-2 text-xs"
           disabled={updateOrderStatus.isPending || !canAccept}
         >
@@ -215,7 +228,10 @@ function IncomingOrderCard({
       {showPhoto && order.photoUrl && (
         <div
           className="fixed inset-0 z-[100] bg-ink/90 flex items-center justify-center p-4"
-          onClick={() => setShowPhoto(false)}
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowPhoto(false);
+          }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -225,7 +241,10 @@ function IncomingOrderCard({
           />
           <button
             type="button"
-            onClick={() => setShowPhoto(false)}
+            onClick={(e) => {
+            e.stopPropagation();
+            setShowPhoto(false);
+          }}
             className="absolute top-4 right-4 w-10 h-10 rounded-full bg-surface-raised text-ink flex items-center justify-center"
             aria-label="Tutup"
           >
@@ -242,17 +261,23 @@ function RequestRow({
   order,
   index,
   onAccepted,
+  onOpenDetail,
   canAccept = true,
 }: {
   order: Order;
   index: number;
   onAccepted: (id: string) => void;
+  onOpenDetail: (order: Order) => void;
   canAccept?: boolean;
 }) {
   const router = useRouter();
   const [showPhoto, setShowPhoto] = useState(false);
   const updateOrderStatus = useUpdateOrderStatus(order.id);
-  const distance = `${((index + 1) * 0.8).toFixed(1)} km`;
+  // Jarak asli dari BE (km). Fallback estimasi berbasis urutan bila BE belum kirim.
+  const distance =
+    order.distanceKm != null
+      ? formatDistance(order.distanceKm * 1000)
+      : `~${((index + 1) * 0.8).toFixed(1)} km`;
 
   const handleAccept = () => {
     if (!canAccept) {
@@ -277,13 +302,19 @@ function RequestRow({
   const items = getOrderItems(order);
 
   return (
-    <tr className="hover:bg-surface transition-colors">
+    <tr
+      className="hover:bg-surface transition-colors cursor-pointer"
+      onClick={() => onOpenDetail(order)}
+    >
       <td className="p-3 font-bold text-ink">
         <div className="flex items-center gap-2">
           {order.photoUrl ? (
             <button
               type="button"
-              onClick={() => setShowPhoto(true)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowPhoto(true);
+              }}
               className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-ink-faint"
               aria-label="Lihat foto rongsok"
             >
@@ -306,7 +337,10 @@ function RequestRow({
         {showPhoto && order.photoUrl && (
           <div
             className="fixed inset-0 z-[100] bg-ink/90 flex items-center justify-center p-4"
-            onClick={() => setShowPhoto(false)}
+            onClick={(e) => {
+            e.stopPropagation();
+            setShowPhoto(false);
+          }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -316,7 +350,10 @@ function RequestRow({
             />
             <button
               type="button"
-              onClick={() => setShowPhoto(false)}
+              onClick={(e) => {
+            e.stopPropagation();
+            setShowPhoto(false);
+          }}
               className="absolute top-4 right-4 w-10 h-10 rounded-full bg-surface-raised text-ink flex items-center justify-center"
               aria-label="Tutup"
             >
@@ -352,7 +389,10 @@ function RequestRow({
       </td>
       <td className="p-3 text-right">
         <button
-          onClick={handleAccept}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleAccept();
+          }}
           disabled={updateOrderStatus.isPending || !canAccept}
           className="bg-brand-500 hover:bg-brand-600 text-ink font-bold text-[10px] px-3.5 py-2 rounded-2xl transition-all inline-flex items-center gap-1 cursor-pointer disabled:opacity-50"
         >
@@ -377,6 +417,10 @@ export default function CollectorDashboard() {
   const incomingOrders = useOrderStore((state) => state.incomingOrders);
   const removeIncomingOrder = useOrderStore((state) => state.removeIncomingOrder);
   const addIncomingOrder = useOrderStore((state) => state.addIncomingOrder);
+
+  // Detail pesanan masuk (modal) — disimpan by id supaya data ikut ter-update saat
+  // versi REST yang diperkaya (customer/koordinat) melengkapi entri socket.
+  const [detailOrderId, setDetailOrderId] = useState<string | null>(null);
 
   const { data: me } = useMe();
   const needsVerify = me?.isVerified === false; // hanya gate kalau eksplisit false
@@ -464,6 +508,11 @@ export default function CollectorDashboard() {
     label: `${getOrderCategoryLabel(o)} #${o.id.slice(-5).toUpperCase()}`,
     amount: getOrderTotalPrice(o),
   }));
+
+  // Order yang sedang dibuka detailnya (ambil versi terbaru dari antrean by id)
+  const detailOrder = detailOrderId
+    ? incomingOrders.find((o) => o.id === detailOrderId) ?? null
+    : null;
 
   const handleToggleOpen = () => {
     if (needsVerify) {
@@ -642,6 +691,7 @@ export default function CollectorDashboard() {
                         order={order}
                         index={idx}
                         onAccepted={removeIncomingOrder}
+                        onOpenDetail={(o) => setDetailOrderId(o.id)}
                         canAccept={!needsVerify}
                       />
                     ))
@@ -681,6 +731,7 @@ export default function CollectorDashboard() {
                     key={order.id}
                     order={order}
                     onRemove={removeIncomingOrder}
+                    onOpenDetail={(o) => setDetailOrderId(o.id)}
                     canAccept={!needsVerify}
                   />
                 ))
@@ -895,6 +946,18 @@ export default function CollectorDashboard() {
           )}
         </section>
       </main>
+
+      {detailOrder && (
+        <IncomingOrderModal
+          order={detailOrder}
+          canAccept={!needsVerify}
+          onClose={() => setDetailOrderId(null)}
+          onDone={(id) => {
+            removeIncomingOrder(id);
+            setDetailOrderId(null);
+          }}
+        />
+      )}
 
       <BottomNav />
     </div>

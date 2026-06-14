@@ -19,6 +19,7 @@ import {
   Check,
   Lock,
   ShieldCheck,
+  MapPin,
 } from "lucide-react";
 import { iconForCategory } from "@/lib/categoryIcons";
 import { Button } from "@/components/ui/Button";
@@ -28,6 +29,7 @@ import DesktopNav from "@/components/ui/DesktopNav";
 import BottomNav from "@/components/ui/BottomNav";
 import { PageSkeleton } from "@/components/ui/Skeleton";
 import { unitLabel } from "@/lib/utils";
+import type { AreaInfo } from "@/lib/geocode";
 import { uploadToCloudinary } from "@/lib/upload";
 import LocationPicker from "@/components/features/profile/LocationPicker";
 import { useCategoryTree } from "@/hooks/useDiscovery";
@@ -102,6 +104,9 @@ function OrderForm() {
   const [method, setMethod] = useState<"PICKUP" | "DROPOFF" | "">("");
   const [lat, setLat] = useState<number | null>(null);
   const [lng, setLng] = useState<number | null>(null);
+  const [addressText, setAddressText] = useState(""); // deskripsi alamat jemput/antar
+  const [mapArea, setMapArea] = useState<AreaInfo | null>(null);
+  const autoBaseRef = useRef("");
 
   const [isUploading, setIsUploading] = useState(false);
 
@@ -115,8 +120,26 @@ function OrderForm() {
       seededCoords.current = true;
       setLat(me.lat);
       setLng(me.lng);
+      // Seed deskripsi alamat dari profil; autoBase kosong agar geocode pertama tak menimpa
+      setAddressText(me.addressText || "");
+      autoBaseRef.current = "";
     }
   }, [me]);
+
+  // Auto-isi deskripsi alamat dari reverse-geocode (kecuali user sudah ubah manual)
+  const handleAreaResolved = (info: AreaInfo) => {
+    setMapArea(info);
+    setAddressText((prev) => {
+      if (prev && prev !== autoBaseRef.current) return prev;
+      autoBaseRef.current = info.full;
+      return info.full;
+    });
+  };
+  const handleUseMapAddress = () => {
+    if (!mapArea) return;
+    autoBaseRef.current = mapArea.full;
+    setAddressText(mapArea.full);
+  };
 
   // Pre-select dari URL (?category=) — id atau nama kategori
   useEffect(() => {
@@ -205,6 +228,7 @@ function OrderForm() {
           notes: it.notes?.trim() || undefined,
         })),
         photoUrl: photoUrl || undefined,
+        addressText: addressText.trim() || undefined,
         lat,
         lng,
         method: method as "PICKUP" | "DROPOFF",
@@ -634,9 +658,38 @@ function OrderForm() {
                     setLng(c.lng);
                   }}
                   autoLocate={me?.lat == null}
+                  onAreaResolved={handleAreaResolved}
                   label={method === "PICKUP" ? "Titik Penjemputan" : "Lokasimu"}
                   helperText="Geser peta untuk menandai titik tepat. Tombol GPS butuh koneksi HTTPS (jalan di situs live)."
                 />
+
+                {/* DESKRIPSI ALAMAT — auto dari titik, bisa ditambah patokan manual */}
+                <div className="mt-3">
+                  <div className="flex items-center justify-between gap-3 mb-1.5">
+                    <label className="text-[10px] font-bold text-mute uppercase tracking-widest flex items-center gap-1.5">
+                      <MapPin size={12} className="text-brand-700" /> Deskripsi Alamat
+                    </label>
+                    {mapArea && (
+                      <button
+                        type="button"
+                        onClick={handleUseMapAddress}
+                        className="text-[10px] font-bold text-brand-700 hover:text-ink underline underline-offset-2"
+                      >
+                        Pakai alamat dari peta
+                      </button>
+                    )}
+                  </div>
+                  <textarea
+                    value={addressText}
+                    onChange={(e) => setAddressText(e.target.value)}
+                    placeholder="Jalan, kelurahan… + patokan (mis. rumah pagar hijau, dekat masjid)"
+                    className="w-full rounded-md border border-ink bg-surface-raised px-4 py-3 text-sm font-body text-ink placeholder:text-mute focus:outline-none focus:ring-2 focus:ring-brand-500 min-h-[72px]"
+                    maxLength={500}
+                  />
+                  <p className="text-[10px] text-ink-muted mt-1">
+                    Membantu pengepul menemukan lokasimu dengan tepat.
+                  </p>
+                </div>
               </div>
 
               <div className="flex gap-3 pt-2">
@@ -730,6 +783,17 @@ function OrderForm() {
                       {lat?.toFixed(4)}, {lng?.toFixed(4)}
                     </span>
                   </div>
+
+                  {addressText.trim() && (
+                    <div className="px-5 py-4">
+                      <span className="text-xs font-bold text-mute uppercase tracking-wider block mb-1">
+                        Alamat
+                      </span>
+                      <p className="text-xs text-ink-muted leading-relaxed">
+                        {addressText.trim()}
+                      </p>
+                    </div>
+                  )}
 
                   <div className="px-5 py-4 flex items-center justify-between">
                     <span className="text-xs font-bold text-mute uppercase tracking-wider">
