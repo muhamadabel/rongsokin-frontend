@@ -449,34 +449,61 @@ def build_document():
         "Berikut adalah visualisasi antarmuka pengguna (UI/UX) dari halaman-halaman utama aplikasi Rongsok.in pada resolusi desktop:"
     )
     
-    # UI Pages list
+    # UI Pages list with detailed descriptions and new images
     ui_pages = [
-        ("1. Halaman Beranda / Landing Page (Customer View)",
-         "../public/screenshots/1_landing_page.png"),
-        ("2. Halaman Pendaftaran & Masuk (Login & Register)",
-         "../public/screenshots/2_register_login.png"),
-        ("3. Dasbor Pelanggan (Customer Dashboard)",
-         "../public/screenshots/3_customer_dashboard.png"),
-        ("4. Formulir Pembuatan Pesanan Baru (New Order Wizard)",
-         "../public/screenshots/4_new_order_form.png"),
-        ("5. Dasbor Pengepul dengan Peta Geospasial Yogyakarta (Collector Dashboard)",
-         "../public/screenshots/5_collector_dashboard.png"),
-        ("6. Dompet E-Wallet & Modal Tarik Saldo (Collector Wallet)",
-         "../public/screenshots/6_collector_cod_stats.png"),
-        ("7. Konsol Verifikasi KYC Admin (Admin Verification Panel)",
-         "../public/screenshots/7_ktp_ocr_verify.png"),
-        ("8. Pelacakan Pesanan Waktu Nyata & Struk Digital (Order Track & Digital Receipt)",
-         "../public/screenshots/8_order_receipt.png")
+        {
+            "title": "Halaman Beranda / Landing Page (Customer View)",
+            "desc": "Halaman beranda platform Rongsok.in menyajikan kalkulator estimasi pendapatan langsung dari sampah daur ulang berdasarkan kategori (Plastik, Kardus, Logam, Kaca). Pengguna dapat melihat statistik sistem (jumlah transaksi, jumlah pengepul, dan jumlah kategori) serta daftar kategori sampah daur ulang utama.",
+            "path": "gambar/ 01-beranda.png"
+        },
+        {
+            "title": "Dasbor Pelanggan (Customer Dashboard)",
+            "desc": "Menampilkan ringkasan akun pelanggan termasuk total berat sampah terdaur ulang, total pendapatan, spanduk peringkat dampak ekologis, akses cepat \"Jual Cepat per Kategori\", lokasi pengepul terdekat (seperti Lapak Jan Yogyakarta) lengkap dengan tombol \"Jual\", serta riwayat setoran terakhir.",
+            "path": "gambar/02-dashboard customer.png"
+        },
+        {
+            "title": "Formulir Pembuatan Pesanan Baru (New Order Wizard)",
+            "desc": "Alur pengisian detail sampah yang akan dijual, di mana pelanggan dapat menginput rincian item (kategori, jumlah, satuan) dan mengunggah foto tumpukan rongsok secara langsung. Formulir menggunakan visualisasi progress bar multi-langkah (multi-step wizard).",
+            "path": "gambar/03-membuat pesanan.png"
+        },
+        {
+            "title": "Halaman Pelacakan & Status Pesanan Customer",
+            "desc": "Menampilkan status real-time perjalanan pesanan (Menunggu, Diterima, Sampai, Timbang, Selesai). Pelanggan dapat melihat ID Transaksi, tanggal masuk, detail item, foto sampah yang diunggah, metode penyerahan, serta opsi untuk membatalkan pesanan jika diperlukan.",
+            "path": "gambar/03-menunggu pengepul .png"
+        },
+        {
+            "title": "Dasbor Pengepul dengan Antrean Order Masuk",
+            "desc": "Dasbor pengepul menampilkan toggle status buka/tutup lapak secara dinamis. Pengepul dapat melihat permintaan jemput terdekat dalam radius layanan mereka dan meninjau antrean masuk (lengkap dengan foto sampah asli dari pelanggan) untuk diambil atau ditolak langsung.",
+            "path": "gambar/04-tampilan dashboard pengepul (ada order).png"
+        },
+        {
+            "title": "Validasi Timbangan & Persetujuan Transaksi",
+            "desc": "Halaman pelacakan pada sisi Customer ketika status pesanan memasuki tahap penimbangan lapangan (tahap ke-4). Halaman ini menampilkan rute peta real-time, detail rincian harga aktual dari pengepul, tombol hubungi pengepul via WhatsApp, serta tombol \"Setujui & Selesaikan\" untuk mengesahkan transaksi.",
+            "path": "gambar/05-kesepakatan transaksi.png"
+        },
+        {
+            "title": "Modal Apresiasi Dampak Ekologis (Eco Impact Card)",
+            "desc": "Kartu apresiasi dampak ekologis berbentuk modal pop-up interaktif pasca penyelesaian transaksi. Kartu ini menampilkan kontribusi daur ulang (misalnya 1.0 kg sampah) beserta konversi reduksi emisi karbon yang setara jarak tempuh motor (5.0 km), tombol \"Unduh Gambar\" untuk menyimpan kartu berformat PNG, serta tombol lanjut untuk memberikan rating pengepul.",
+            "path": "gambar/06-eco impact card.png"
+        }
     ]
     
-    for idx, (title, img_path) in enumerate(ui_pages, 1):
-        # Add Image first (centered)
+    for idx, page in enumerate(ui_pages, 1):
+        # Add Heading 3 for each subsection
+        add_heading_3(doc, f"4.3.{idx} {page['title']}")
+        
+        # Add description paragraph
+        p_desc = doc.add_paragraph()
+        p_desc.add_run(page['desc'])
+        
+        # Add Image (centered)
         p_img = doc.add_paragraph()
         p_img.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
         p_img.paragraph_format.space_before = Pt(12)
         p_img.paragraph_format.space_after = Pt(6)
         run_img = p_img.add_run()
         
+        img_path = page['path']
         # Resolve path
         if os.path.exists(img_path):
             run_img.add_picture(img_path, width=Cm(14.0))
@@ -490,8 +517,7 @@ def build_document():
                 run_img.font.color.rgb = RGBColor(0xFF, 0, 0)
                 
         # Add Caption below (centered)
-        clean_title = title.split('. ')[1]
-        fig_title = f"Gambar 4.{idx} {clean_title}"
+        fig_title = f"Gambar 4.{idx} {page['title']}"
         p_title = doc.add_paragraph()
         p_title.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
         p_title.paragraph_format.space_before = Pt(4)

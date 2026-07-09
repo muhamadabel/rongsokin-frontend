@@ -276,64 +276,47 @@ Sisi klien Rongsok.in diimplementasikan menggunakan Next.js 14+ App Router denga
 Berikut adalah uraian dan gambar representasi dari hasil implementasi komponen-komponen antarmuka premium yang telah berhasil dikembangkan:
 
 #### 1. Halaman Beranda / Landing Page (Customer View)
-Halaman awal yang menyajikan visi misi platform, katalog kategori sampah interaktif, serta menampilkan daftar pengepul terdekat yang terintegrasi secara dinamis melalui kueri geospasial API. Pencarian pengepul terdekat memprioritaskan pengepul berstatus *Premium* dan diurutkan berdasarkan skor prioritas (*priorityScore*).
+Halaman beranda platform Rongsok.in menyajikan kalkulator estimasi pendapatan langsung dari sampah daur ulang berdasarkan kategori (Plastik, Kardus, Logam, Kaca). Pengguna dapat melihat statistik sistem (jumlah transaksi, jumlah pengepul, dan jumlah kategori) serta daftar kategori sampah daur ulang utama.
 
 *(Gambar Implementasi Halaman Beranda Rongsok.in)*
-![Halaman Beranda](/C:/Users/muham/.gemini/antigravity/brain/1af67c66-9638-45ca-8844-b4b3ad640753/media__1779792198490.png)
+![Halaman Beranda](gambar/%2001-beranda.png)
 
-#### 2. Dasbor Pengguna (Customer Dashboard)
-Menampilkan rangkuman status order aktif dalam bentuk *action card* dinamis, daftar pengepul terdekat dalam radius 50 kilometer, dan riwayat pesanan daur ulang terakhir. Dilengkapi dengan navigasi bawah (*Bottom Navigation Bar*) yang ramah untuk perangkat seluler.
+#### 2. Dasbor Pelanggan (Customer Dashboard)
+Menampilkan ringkasan akun pelanggan termasuk total berat sampah terdaur ulang, total pendapatan, spanduk peringkat dampak ekologis, akses cepat "Jual Cepat per Kategori", lokasi pengepul terdekat (seperti Lapak Jan Yogyakarta) lengkap dengan tombol "Jual", serta riwayat setoran terakhir.
 
 *(Gambar Dasbor Customer)*
-![Dasbor Customer](/C:/Users/muham/.gemini/antigravity/brain/1af67c66-9638-45ca-8844-b4b3ad640753/media__1779792467659.png)
+![Dasbor Customer](gambar/02-dashboard%20customer.png)
 
-#### 3. Form Pembuatan Pesanan Baru (`/orders/new`)
-Formulir pembuatan pesanan dirancang dalam 6 tahapan terstruktur (*multi-step wizard*) guna memberikan pengalaman pengguna yang intuitif:
-1. Pemilihan Kategori Sampah (Kardus, Kertas, Plastik, Logam, Elektronik).
-2. Estimasi Berat Awal (Input angka kilogram).
-3. Pengunggahan Foto Kondisi Sampah (Pemuatan berkas asinkron langsung ke Cloudinary Storage).
-4. Pemilihan Metode Penyerahan (Penjemputan / *Pick-up* atau Antar Sendiri / *Drop-off*).
-5. Konfirmasi Lokasi Koordinat (Deteksi presisi via browser Geolocation API).
-6. Pratinjau (*Review*) Ringkasan dan Pengiriman Formulir.
+#### 3. Formulir Pembuatan Pesanan Baru (New Order Wizard)
+Alur pengisian detail sampah yang akan dijual, di mana pelanggan dapat menginput rincian item (kategori, jumlah, satuan) dan mengunggah foto tumpukan rongsok secara langsung. Formulir menggunakan visualisasi progress bar multi-langkah (*multi-step wizard*).
 
-*(Gambar Form Multi-step Order)*
-![Form Pembuatan Pesanan](/C:/Users/muham/.gemini/antigravity/brain/1af67c66-9638-45ca-8844-b4b3ad640753/media__1779792590577.png)
+*(Gambar Form Pembuatan Pesanan)*
+![Form Pembuatan Pesanan](gambar/03-membuat%20pesanan.png)
 
-#### 4. Halaman Dasbor Pengepul & Peta Geospasial Yogyakarta (`/collector/dashboard`)
-Halaman dasbor pengepul dirancang dengan gaya futuristik premium bertema gelap (*dark mode*) yang menyajikan fungsionalitas operasional harian pengepul secara terpusat:
-- **Peta Interaktif Yogyakarta SVG Grid**: Peta vektor presisi yang membagi peta administrasi Yogyakarta (Sleman, Bantul, dan Kota Yogyakarta) lengkap dengan rute jalan utama dan indikator penanda (*pulsating marker pin*) berwarna hijau-kuning untuk pesanan masuk.
-- **Drawer Peninjauan Pesanan**: Saat pengepul mengetuk penanda pesanan di peta, laci informasi (*drawer*) akan meluncur keluar dari bawah layar yang menampilkan jenis kategori sampah, estimasi berat, estimasi pendapatan berdasarkan katalog harga pengepul, dan metode penyerahan.
-- **Aksi Cepat Pengambilan Order**: Tombol "Ambil Pesanan" akan mengirimkan permintaan asinkron ke server untuk mengubah status pesanan menjadi `CONFIRMED` dan mengikat pengepul tersebut secara instan.
+#### 4. Halaman Pelacakan & Status Pesanan Customer
+Menampilkan status real-time perjalanan pesanan (Menunggu, Diterima, Sampai, Timbang, Selesai). Pelanggan dapat melihat ID Transaksi, tanggal masuk, detail item, foto sampah yang diunggah, metode penyerahan, serta opsi untuk membatalkan pesanan jika diperlukan.
 
-*(Gambar Dasbor Pengepul dengan Peta SVG DIY)*
-![Dasbor Pengepul](/C:/Users/muham/.gemini/antigravity/brain/1af67c66-9638-45ca-8844-b4b3ad640753/media__1779794478139.png)
+*(Gambar Status Pesanan)*
+![Status Pesanan](gambar/03-menunggu%20pengepul%20.png)
 
-#### 5. Dompet E-Wallet Mitra Pengepul
-Fungsionalitas manajemen keuangan internal pengepul untuk menampung pendapatan hasil penjualan sampah daur ulang:
-- **Kartu Saldo Glassmorphic**: Kartu saldo dengan warna gradasi premium yang menampilkan saldo aktual pengepul, total pendapatan kotor, dan riwayat mutasi transaksi keuangan secara langsung (dimulai dari Rp 0 untuk pendaftar baru).
-- **Modal "Tarik Saldo" Interaktif**: Modal *pop-up* dengan animasi halus yang memandu pengepul memilih bank penampung (BCA, Mandiri, BNI, BRI), memasukkan nomor rekening, memasukkan nominal penarikan dengan pintasan harga cepat (Rp 50.000, Rp 100.000, Rp 200.000), serta mensimulasikan pencairan dana secara aman dengan respons validasi visual yang cepat.
+#### 5. Dasbor Pengepul dengan Antrean Order Masuk
+Dasbor pengepul menampilkan toggle status buka/tutup lapak secara dinamis. Pengepul dapat melihat permintaan jemput terdekat dalam radius layanan mereka dan meninjau antrean masuk (lengkap dengan foto sampah asli dari pelanggan) untuk diambil atau ditolak langsung.
 
-*(Gambar Modal Tarik Saldo Dompet Pengepul)*
-![Dompet Mitra Pengepul](/C:/Users/muham/.gemini/antigravity/brain/1af67c66-9638-45ca-8844-b4b3ad640753/media__1779795512313.png)
+*(Gambar Dasbor Pengepul)*
+![Dasbor Pengepul](gambar/04-tampilan%20dashboard%20pengepul%20%28ada%20order%29.png)
 
-#### 6. Konsol Verifikasi Admin KYC (`/admin`)
-Halaman khusus pengawasan operasional bagi staf internal Rongsok.in yang dilengkapi dengan konsol verifikasi KYC (*Know Your Customer*) yang ketat untuk meninjau data pengepul yang baru mendaftar:
-- **Pratinjau Dokumen KTP & SIUP**: Mengaktifkan modal visual berkualitas tinggi yang menampilkan cetakan HTML kartu identitas KTP dan dokumen perizinan usaha SIUP (Surat Izin Usaha Perdagangan) yang diunggah pengepul.
-- **Indikator Kecocokan Wajah Spasial**: Menampilkan skor pemindaian kecocokan wajah biometrik (simulasi pencocokan wajah selfie dengan foto KTP sebesar 98% akurasi).
-- **Aksi Cepat Verifikasi**: Admin dapat menyetujui atau menolak akun secara instan langsung dari modal pratinjau berkas untuk meminimalisasi akun palsu dalam sistem.
+#### 6. Validasi Timbangan & Persetujuan Transaksi
+Halaman pelacakan pada sisi Customer ketika status pesanan memasuki tahap penimbangan lapangan (tahap ke-4). Halaman ini menampilkan rute peta real-time, detail rincian harga aktual dari pengepul, tombol hubungi pengepul via WhatsApp, serta tombol "Setujui & Selesaikan" untuk mengesahkan transaksi.
 
-*(Gambar Konsol Verifikasi Admin KYC)*
-![Konsol Verifikasi Admin KYC](/C:/Users/muham/.gemini/antigravity/brain/1af67c66-9638-45ca-8844-b4b3ad640753/media__1780026543870.png)
+*(Gambar Persetujuan Transaksi)*
+![Persetujuan Transaksi](gambar/05-kesepakatan%20transaksi.png)
 
-#### 7. Pelacakan Pesanan Waktu Nyata (`/orders/[id]`)
-Alur pelacakan siklus hidup pesanan dinamis bagi Customer yang diperbarui secara langsung melalui WebSockets Socket.IO:
-- **Status PENDING**: Menampilkan animasi pemuatan memutar dengan pesan *"Menunggu konfirmasi pengepul terdekat..."*.
-- **Status CONFIRMED & IN_PROGRESS**: Menyajikan informasi kontak pengepul yang bertugas lengkap dengan tombol pintas komunikasi langsung via WhatsApp Web (`wa.me/`).
-- **Status AWAITING_CONFIRMATION**: Menampilkan kartu validasi rincian berat aktual, harga per kg yang disepakati, dan total pembayaran hasil timbangan lapangan. Customer harus menekan tombol **"Setuju & Selesaikan Transaksi"** untuk menyelesaikan proses order secara sah.
-- **Status COMPLETED & Digital Receipt**: Mengunci transaksi secara permanen, menerbitkan Struk Digital lengkap dengan visual foto bukti timbangan, serta memicu pop-up **Mutual Rating** otomatis agar pengguna dapat memberikan skor rating (1-5) dan ulasan kepada pengepul terkait.
-- **Status CANCELLED**: Menampilkan kartu pemberitahuan bahwa pesanan telah dibatalkan beserta catatan alasan pembatalan.
+#### 7. Modal Apresiasi Dampak Ekologis (Eco Impact Card)
+Kartu apresiasi dampak ekologis berbentuk modal pop-up interaktif pasca penyelesaian transaksi. Kartu ini menampilkan kontribusi daur ulang (misalnya 1.0 kg sampah) beserta konversi reduksi emisi karbon yang setara jarak tempuh motor (5.0 km), tombol "Unduh Gambar" untuk menyimpan kartu berformat PNG, serta tombol lanjut untuk memberikan rating pengepul.
 
----
+*(Gambar Modal Dampak Ekologis Rongsok.in)*
+![Dampak Ekologis](gambar/06-eco%20impact%20card.png)
+
 
 ## 4.2 Hasil Pengujian Sistem
 
