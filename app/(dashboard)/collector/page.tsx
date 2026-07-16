@@ -74,18 +74,23 @@ function IncomingOrderCard({
   canAccept?: boolean;
 }) {
   const router = useRouter();
-  const [timeLeft, setTimeLeft] = useState(900);
   const [showPhoto, setShowPhoto] = useState(false);
   const updateOrderStatus = useUpdateOrderStatus(order.id);
 
+  // Sisa waktu tawaran DIHITUNG dari order.createdAt — bukan reset ke 15:00 tiap
+  // refresh. Expiry 15 menit sejak order dibuat; kalau lewat, tampil 00:00 (tak
+  // auto-hapus supaya tak flicker dengan polling PENDING yang re-add order).
+  const OFFER_TTL = 900; // detik (15 menit)
+  const computeLeft = () =>
+    Math.max(0, Math.ceil(OFFER_TTL - (Date.now() - new Date(order.createdAt).getTime()) / 1000));
+  const [timeLeft, setTimeLeft] = useState(computeLeft);
+
   useEffect(() => {
-    if (timeLeft <= 0) {
-      onRemove(order.id);
-      return;
-    }
-    const timer = setInterval(() => setTimeLeft((prev) => prev - 1), 1000);
+    setTimeLeft(computeLeft());
+    const timer = setInterval(() => setTimeLeft(computeLeft()), 1000);
     return () => clearInterval(timer);
-  }, [timeLeft, order.id, onRemove]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order.createdAt]);
 
   const handleAccept = () => {
     if (!canAccept) {

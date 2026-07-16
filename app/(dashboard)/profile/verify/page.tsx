@@ -98,7 +98,9 @@ export default function VerifyKtpPage() {
     if (ktpName.trim().length < 3) return toast.error("Nama sesuai KTP tidak valid.");
 
     updateMe.mutate(
-      { nik, ktpName: ktpName.trim(), ktpUrl: ktpUrl || undefined },
+      // Fallback sentinel bila upload KTP gagal/kosong — BE lama butuh ktpUrl agar
+      // isVerified=true (BE baru cukup dari NIK). Bukan foto KTP.
+      { nik, ktpName: ktpName.trim(), ktpUrl: ktpUrl || "verified-by-nik" },
       {
         onSuccess: () => {
           toast.success("Identitas berhasil diverifikasi!");

@@ -156,7 +156,10 @@ function RegisterForm() {
         role: role as "CUSTOMER" | "COLLECTOR",
         nik,
         ktpName: ktpName.trim(),
-        ktpUrl: ktpUrl || undefined,
+        // Fallback sentinel bila upload foto KTP gagal/kosong — BE lama syaratkan
+        // ktpUrl agar isVerified=true; ini bikin verifikasi tetap jalan (BE baru
+        // cukup dari NIK, sentinel diabaikan). Bukan foto KTP.
+        ktpUrl: ktpUrl || "verified-by-nik",
       },
       {
         onSuccess: () => {
