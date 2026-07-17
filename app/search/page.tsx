@@ -230,6 +230,8 @@ function SearchInner() {
               </p>
             </div>
           )}
+        </section>
+
         {filteredBeyond50Km.length > 0 && (
           <section className="space-y-4 pt-4 border-t border-ink-faint">
             <div>
