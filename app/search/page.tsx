@@ -44,14 +44,14 @@ function SearchInner() {
 
   const { mains } = useCategoryTree();
 
-  // Default ke induk pertama; atau dari ?category= (nama induk dari landing)
+  // Default ke "Semua" atau dari ?category= (nama induk dari landing)
   useEffect(() => {
     if (mains.length === 0) return;
     const param = searchParams.get("category");
     const byName = param
       ? mains.find((m) => m.name.toLowerCase() === param.toLowerCase())
       : null;
-    setSelectedMainId((prev) => prev || byName?.id || mains[0].id);
+    setSelectedMainId((prev) => prev || byName?.id || "");
 
     const q = searchParams.get("q");
     if (q) {
@@ -144,6 +144,16 @@ function SearchInner() {
             Pilih Kategori Sampah
           </h4>
           <div className="flex overflow-x-auto no-scrollbar gap-2.5 py-1">
+            <button
+              onClick={() => setSelectedMainId("")}
+              className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap border ${
+                selectedMainId === ""
+                  ? "bg-brand-500 text-ink border-brand-500"
+                  : "bg-surface-raised text-ink-muted border-ink-faint hover:border-ink"
+              }`}
+            >
+              Semua
+            </button>
             {mains.map((cat) => {
               const isActive = selectedMainId === cat.id;
               return (
