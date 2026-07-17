@@ -92,69 +92,92 @@ export default function EcoPage() {
 
         {/* HERO — dampak kumulatif kamu (kartu polaritas gelap) */}
         <section className="bg-ink rounded-2xl p-6 text-forest-ink relative overflow-hidden">
+          {/* Background Glows */}
           <div
-            className="absolute -top-16 -right-16 w-44 h-44 rounded-full"
-            style={{ background: "radial-gradient(circle, rgba(159,232,112,0.18), transparent 70%)" }}
+            className="absolute -top-16 -right-16 w-56 h-56 rounded-full opacity-40 pointer-events-none"
+            style={{ background: "radial-gradient(circle, rgba(159,232,112,0.25), transparent 70%)" }}
           />
-          <div className="relative z-10">
-            <div className="flex items-center justify-between gap-3">
-              <span className="inline-flex items-center gap-1.5 bg-brand-500/15 text-brand-500 rounded-full px-3 py-1 text-[11px] font-extrabold uppercase tracking-wider">
-                {tier.emoji} {tier.label}
-              </span>
-              {myRank != null && (
-                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-forest-muted font-mono">
-                  <Trophy size={13} className="text-brand-500" /> Peringkat #{myRank}
+          <div
+            className="absolute -bottom-16 -left-16 w-56 h-56 rounded-full opacity-30 pointer-events-none"
+            style={{ background: "radial-gradient(circle, rgba(159,232,112,0.15), transparent 70%)" }}
+          />
+          <div className="relative z-10 flex flex-col sm:flex-row gap-6 items-center sm:items-start justify-between">
+            <div className="flex-1 w-full space-y-4">
+              <div className="flex items-center justify-between sm:justify-start gap-3">
+                <span className="inline-flex items-center gap-1.5 bg-brand-500/15 text-brand-500 rounded-full px-3 py-1 text-[11px] font-extrabold uppercase tracking-wider">
+                  {tier.label}
                 </span>
+                {myRank != null && (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-forest-muted font-mono">
+                    <Trophy size={13} className="text-brand-500" /> Peringkat #{myRank}
+                  </span>
+                )}
+              </div>
+
+              <div>
+                <span className="text-[11px] font-bold text-forest-muted uppercase tracking-widest font-mono">
+                  Total kamu daur ulang
+                </span>
+                <div className="flex items-baseline gap-2 mt-0.5">
+                  <span className="font-display font-black text-5xl text-brand-500 tracking-tight font-mono">
+                    {myKg.toFixed(1)}
+                  </span>
+                  <span className="text-lg font-bold text-forest-ink">kg</span>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2.5 bg-surface-raised/5 border border-brand-500/15 rounded-2xl p-3">
+                <Route size={16} className="text-brand-500 shrink-0 mt-0.5" />
+                <p className="text-xs text-forest-muted leading-relaxed">
+                  Setara mencegah emisi karbon dari perjalanan motor sejauh{" "}
+                  <span className="font-mono font-extrabold text-forest-ink">
+                    {myKm.toFixed(0)} km
+                  </span>
+                  . Terima kasih sudah menjaga bumi! 🌏
+                </p>
+              </div>
+
+              {/* Progress ke tier berikutnya */}
+              {tier.next != null && (
+                <div>
+                  <div className="flex justify-between text-[10px] font-bold text-forest-muted uppercase tracking-wider mb-1.5">
+                    <span>Menuju tier berikutnya</span>
+                    <span className="font-mono">{toNext.toFixed(1)} kg lagi</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-surface-raised/10 overflow-hidden">
+                    <div
+                      className="h-full bg-brand-500 rounded-full transition-all"
+                      style={{ width: `${Math.min(100, (myKg / tier.next) * 100)}%` }}
+                    />
+                  </div>
+                </div>
               )}
             </div>
 
-            <div className="mt-5">
-              <span className="text-[11px] font-bold text-forest-muted uppercase tracking-widest font-mono">
-                Total kamu daur ulang
+            {/* Large Tier Badge Emblem */}
+            <div className="flex flex-col items-center justify-center shrink-0">
+              <div className="relative group w-28 h-28 rounded-full bg-brand-500/10 border border-brand-500/30 flex items-center justify-center p-3 shadow-lg shadow-brand-500/10">
+                <div className="absolute inset-0 rounded-full bg-brand-500/20 blur-md opacity-70 group-hover:opacity-100 transition-opacity" />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={tier.badge}
+                  alt={tier.label}
+                  className="w-full h-full object-contain relative z-10 drop-shadow-[0_4px_12px_rgba(159,232,112,0.3)] transition-transform duration-300 group-hover:scale-110"
+                />
+              </div>
+              <span className="text-[10px] font-bold text-brand-400 mt-2 font-mono uppercase tracking-widest">
+                Tier Badge
               </span>
-              <div className="flex items-baseline gap-2 mt-1">
-                <span className="font-display font-black text-5xl text-brand-500 tracking-tight font-mono">
-                  {myKg.toFixed(1)}
-                </span>
-                <span className="text-lg font-bold text-forest-ink">kg</span>
-              </div>
             </div>
-
-            <div className="mt-4 flex items-start gap-2.5 bg-surface-raised/5 border border-brand-500/15 rounded-2xl p-3">
-              <Route size={16} className="text-brand-500 shrink-0 mt-0.5" />
-              <p className="text-xs text-forest-muted leading-relaxed">
-                Setara mencegah emisi karbon dari perjalanan motor sejauh{" "}
-                <span className="font-mono font-extrabold text-forest-ink">
-                  {myKm.toFixed(0)} km
-                </span>
-                . Terima kasih sudah menjaga bumi! 🌏
-              </p>
-            </div>
-
-            {/* Progress ke tier berikutnya */}
-            {tier.next != null && (
-              <div className="mt-4">
-                <div className="flex justify-between text-[10px] font-bold text-forest-muted uppercase tracking-wider mb-1.5">
-                  <span>Menuju tier berikutnya</span>
-                  <span className="font-mono">{toNext.toFixed(1)} kg lagi</span>
-                </div>
-                <div className="h-2 rounded-full bg-surface-raised/10 overflow-hidden">
-                  <div
-                    className="h-full bg-brand-500 rounded-full transition-all"
-                    style={{ width: `${Math.min(100, (myKg / tier.next) * 100)}%` }}
-                  />
-                </div>
-              </div>
-            )}
-
-            <button
-              onClick={() => setShowShare(true)}
-              disabled={myKg <= 0}
-              className="mt-5 w-full bg-brand-500 hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed text-ink font-bold py-3 rounded-2xl flex items-center justify-center gap-2 transition-colors text-sm cursor-pointer"
-            >
-              <Share2 size={16} /> Bagikan Pencapaianmu
-            </button>
           </div>
+
+          <button
+            onClick={() => setShowShare(true)}
+            disabled={myKg <= 0}
+            className="relative z-10 mt-5 w-full bg-brand-500 hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed text-ink font-bold py-3 rounded-2xl flex items-center justify-center gap-2 transition-colors text-sm cursor-pointer"
+          >
+            <Share2 size={16} /> Bagikan Pencapaianmu
+          </button>
         </section>
 
         {/* LEADERBOARD */}
@@ -285,7 +308,7 @@ export default function EcoPage() {
           orderId={me?.id || user?.id || "eco"}
           avatarUrl={me?.avatarUrl || user?.avatarUrl}
           variant="lifetime"
-          titleLabel={`${tier.emoji} ${tier.label}`}
+          titleLabel={tier.label}
           closeLabel="Tutup"
           onClose={() => setShowShare(false)}
         />

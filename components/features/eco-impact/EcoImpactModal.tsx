@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { toPng } from "html-to-image";
 import { Sparkles, Download, ArrowRight, ShieldCheck } from "lucide-react";
 import toast from "react-hot-toast";
+import { ecoTier } from "@/lib/eco";
 
 interface EcoImpactModalProps {
   customerName: string;
@@ -18,6 +19,8 @@ interface EcoImpactModalProps {
   titleLabel?: string;
   /** Label tombol tutup. Default "Lanjut Beri Rating". */
   closeLabel?: string;
+  /** Berat total kumulatif (lifetime) untuk menghitung tier/badge yang tepat */
+  lifetimeWeight?: number;
 }
 
 export default function EcoImpactModal({
@@ -29,7 +32,11 @@ export default function EcoImpactModal({
   variant = "order",
   titleLabel = "Pahlawan Lingkungan",
   closeLabel = "Lanjut Beri Rating",
+  lifetimeWeight,
 }: EcoImpactModalProps) {
+  const computedTier = ecoTier(lifetimeWeight !== undefined ? lifetimeWeight : actualWeight);
+  const resolvedBadge = computedTier.badge;
+  const resolvedTitle = titleLabel === "Pahlawan Lingkungan" ? computedTier.label : titleLabel;
   const periodText = variant === "lifetime" ? "sampah sampai hari ini" : "sampah hari ini";
   const [isDownloading, setIsDownloading] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -158,7 +165,7 @@ export default function EcoImpactModal({
                   {/* Badge eko jadi emblem kecil di pojok */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src="/eco_impact_badge.png"
+                    src={resolvedBadge}
                     alt="Badge"
                     className="absolute -bottom-1 -right-1 w-10 h-10 object-contain drop-shadow-md"
                   />
@@ -167,7 +174,7 @@ export default function EcoImpactModal({
                 <>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src="/eco_impact_badge.png"
+                    src={resolvedBadge}
                     alt="Badge"
                     className="w-full h-full object-contain"
                   />
@@ -182,7 +189,7 @@ export default function EcoImpactModal({
                   {customerName}
                 </h4>
                 <p className="text-[10px] text-brand-200 mt-0.5 uppercase tracking-widest font-mono flex items-center justify-center gap-1">
-                  <ShieldCheck size={11} className="text-brand-400" /> {titleLabel}
+                  <ShieldCheck size={11} className="text-brand-400" /> {resolvedTitle}
                 </p>
               </div>
 

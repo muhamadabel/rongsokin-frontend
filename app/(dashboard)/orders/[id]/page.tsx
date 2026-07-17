@@ -59,6 +59,7 @@ import EcoImpactModal from "@/components/features/eco-impact/EcoImpactModal";
 import OrderRouteMap from "@/components/features/orders/OrderRouteMap";
 import { useLiveTracking } from "@/hooks/useLiveTracking";
 import { useUserRatings } from "@/hooks/useRatings";
+import { useEcoLeaderboard } from "@/hooks/useEco";
 
 export default function OrderTrackingPage() {
   const { id } = useParams() as { id: string };
@@ -73,6 +74,7 @@ export default function OrderTrackingPage() {
 
   const { data: order, isLoading, refetch } = useOrderDetails(id);
   const updateOrderStatus = useUpdateOrderStatus(id);
+  const { data: ecoData } = useEcoLeaderboard();
 
   const statusFlow = ["PENDING", "CONFIRMED", "IN_PROGRESS", "AWAITING_CONFIRMATION", "COMPLETED"];
   const currentStepIdx = statusFlow.indexOf(order?.status || "PENDING");
@@ -1129,6 +1131,7 @@ export default function OrderTrackingPage() {
           actualWeight={getOrderTotalActualWeight(order)}
           orderId={order.id}
           avatarUrl={order.customer?.avatarUrl}
+          lifetimeWeight={ecoData?.me?.totalKg || undefined}
           onClose={() => {
             setShowEcoImpact(false);
             setEcoImpactSeen(true);

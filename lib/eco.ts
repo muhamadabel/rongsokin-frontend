@@ -10,6 +10,7 @@ export const co2KmFromKg = (kg: number): number => kg * CO2_KM_PER_KG;
 export interface EcoTier {
   label: string;
   emoji: string;
+  badge: string;
   /** Ambang minimum kg untuk tier ini */
   min: number;
   /** kg untuk naik ke tier berikutnya; null kalau sudah tertinggi */
@@ -17,10 +18,10 @@ export interface EcoTier {
 }
 
 const TIERS: EcoTier[] = [
-  { label: "Pemula Hijau", emoji: "🌱", min: 0, next: 10 },
-  { label: "Pejuang Daur Ulang", emoji: "♻️", min: 10, next: 50 },
-  { label: "Pahlawan Lingkungan", emoji: "🌿", min: 50, next: 100 },
-  { label: "Legenda Bumi", emoji: "🌍", min: 100, next: null },
+  { label: "Pemula Hijau", emoji: "🌱", badge: "/badge/pemula-hijau.png", min: 0, next: 10 },
+  { label: "Pejuang Daur Ulang", emoji: "♻️", badge: "/badge/pejuang-daur-ulang.png", min: 10, next: 50 },
+  { label: "Pahlawan Lingkungan", emoji: "🌿", badge: "/badge/pahlawan-lingkungan.png", min: 50, next: 100 },
+  { label: "Legenda Bumi", emoji: "🌍", badge: "/badge/legenda-bumi.png", min: 100, next: null },
 ];
 
 /** Tier gamifikasi berdasarkan total kg yang sudah didaur ulang. */
