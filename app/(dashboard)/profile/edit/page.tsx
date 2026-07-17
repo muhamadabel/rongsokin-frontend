@@ -225,10 +225,10 @@ export default function EditProfilePage() {
 
       <main className="max-w-2xl mx-auto px-4 md:px-0 py-5 md:py-8 space-y-5">
         {/* Desktop heading + back */}
-        <div className="hidden md:flex flex-col gap-2 mb-2">
+        <div className="hidden md:flex flex-col mb-4">
           <Link
             href="/profile"
-            className="flex items-center gap-1.5 text-sm font-semibold text-ink-muted hover:text-ink transition-colors w-fit"
+            className="flex items-center gap-1.5 text-sm font-semibold text-ink-muted hover:text-ink transition-colors w-fit mb-4"
           >
             <ArrowLeft size={16} /> Kembali
           </Link>
