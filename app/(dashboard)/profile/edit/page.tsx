@@ -225,16 +225,19 @@ export default function EditProfilePage() {
 
       <main className="max-w-2xl mx-auto px-4 md:px-0 py-5 md:py-8 space-y-5">
         {/* Desktop heading + back */}
-        <div className="hidden md:flex flex-col mb-4">
+        <div className="hidden md:flex flex-col mb-6">
           <Link
             href="/profile"
-            className="flex items-center gap-1.5 text-sm font-semibold text-ink-muted hover:text-ink transition-colors w-fit mb-4"
+            className="flex items-center gap-1.5 text-sm font-semibold text-ink-muted hover:text-ink transition-colors w-fit mb-6"
           >
             <ArrowLeft size={16} /> Kembali
           </Link>
           <h1 className="font-display text-3xl font-extrabold tracking-tight text-ink">
             Edit Profil
           </h1>
+          <p className="text-sm text-ink-muted mt-1.5">
+            Perbarui foto, informasi pribadi, dan detail operasional lapakmu di sini.
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -283,7 +286,7 @@ export default function EditProfilePage() {
                 <label className="text-[10px] font-bold text-mute uppercase tracking-widest block">
                   Foto Sampul / Banner Lapak
                 </label>
-                <div className="relative w-full h-32 md:h-40 rounded-xl border border-dashed border-ink-faint bg-brand-100 overflow-hidden transition-all hover:bg-brand-100/80">
+                <div className="relative w-full h-32 md:h-40 rounded-xl border-2 border-dashed border-ink-faint bg-brand-100 overflow-hidden transition-all hover:bg-brand-100/80">
                   <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer">
                     <input
                       type="file"
