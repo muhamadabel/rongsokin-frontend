@@ -283,23 +283,8 @@ export default function EditProfilePage() {
                 <label className="text-[10px] font-bold text-mute uppercase tracking-widest block">
                   Foto Sampul / Banner Lapak
                 </label>
-                <div className="relative w-full h-32 md:h-40 rounded-xl bg-brand-100 overflow-hidden flex items-center justify-center border border-ink-faint">
-                  {shopImageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={shopImageUrl} alt="Sampul" className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="flex flex-col items-center gap-1 text-ink-muted">
-                      <Store size={28} />
-                      <span className="text-xs font-semibold">Gunakan warna brand default</span>
-                    </div>
-                  )}
-                  <label className="absolute bottom-3 right-3 bg-surface-raised hover:bg-surface text-ink px-3 py-1.5 rounded-xl border border-ink-faint flex items-center gap-1 text-xs font-bold cursor-pointer transition-colors shadow-sm">
-                    {isUploadingBanner ? (
-                      <RefreshCw size={12} className="animate-spin" />
-                    ) : (
-                      <Camera size={12} />
-                    )}
-                    {shopImageUrl ? "Ubah Banner" : "Unggah Banner"}
+                <div className="relative w-full h-32 md:h-40 rounded-xl border border-dashed border-ink-faint bg-brand-100 overflow-hidden transition-all hover:bg-brand-100/80">
+                  <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer">
                     <input
                       type="file"
                       accept="image/*"
@@ -307,12 +292,28 @@ export default function EditProfilePage() {
                       onChange={handleBannerUpload}
                       disabled={isUploadingBanner}
                     />
+                    {isUploadingBanner ? (
+                      <RefreshCw size={24} className="animate-spin text-ink-muted" />
+                    ) : shopImageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={shopImageUrl} alt="Sampul" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="flex flex-col items-center gap-1.5 text-ink-muted">
+                        <Camera size={24} />
+                        <span className="text-xs font-bold">Unggah gambar banner</span>
+                      </div>
+                    )}
                   </label>
-                  {shopImageUrl && (
+                  
+                  {shopImageUrl && !isUploadingBanner && (
                     <button
                       type="button"
-                      onClick={() => setShopImageUrl("")}
-                      className="absolute bottom-3 left-3 bg-surface-raised text-ink border border-ink hover:bg-surface-sunken px-3 py-1.5 rounded-xl flex items-center gap-1 text-xs font-bold cursor-pointer transition-colors"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setShopImageUrl("");
+                      }}
+                      className="absolute bottom-3 left-3 bg-status-error/10 hover:bg-status-error/20 text-status-error px-3 py-1.5 rounded-xl border border-status-error/20 flex items-center gap-1 text-xs font-bold cursor-pointer transition-colors z-10"
                     >
                       Hapus
                     </button>
