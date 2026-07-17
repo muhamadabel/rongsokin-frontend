@@ -75,15 +75,31 @@ function SearchInner() {
     lat: coords.lat,
     lng: coords.lng,
     categoryId: selectedMainId || undefined,
-    radius: 50,
+    radius: 500, // Ambil hingga radius 500km agar pengepul jauh tetap terdeteksi
   });
 
-  const filteredCollectors =
-    collectors?.filter(
+  const within50Km = collectors?.filter(
+    (c) => c.distance != null && c.distance <= 50000
+  ) || [];
+
+  const beyond50Km = collectors?.filter(
+    (c) => c.distance != null && c.distance > 50000
+  ) || [];
+
+  const filteredCollectors = within50Km.filter(
+    (c) =>
+      c.shopName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (c.description && c.description.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  const filteredBeyond50Km = beyond50Km
+    .filter(
       (c) =>
         c.shopName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (c.description && c.description.toLowerCase().includes(searchQuery.toLowerCase()))
-    ) || [];
+    )
+    .sort((a, b) => a.distance - b.distance)
+    .slice(0, 4);
 
   return (
     <div className="min-h-screen bg-surface pb-24 md:pb-8 flex flex-col">
@@ -214,7 +230,60 @@ function SearchInner() {
               </p>
             </div>
           )}
-        </section>
+        {filteredBeyond50Km.length > 0 && (
+          <section className="space-y-4 pt-4 border-t border-ink-faint">
+            <div>
+              <h3 className="font-display font-extrabold text-base text-ink tracking-tight flex items-center gap-2">
+                Pengepul Terdekat (Lebih dari 50 km)
+              </h3>
+              <p className="text-xs text-ink-muted mt-0.5">
+                Mitra pengepul di luar jangkauan radius pencarian standar (50 km).
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredBeyond50Km.map((collector) => (
+                <Link
+                  key={collector.id}
+                  href={`/pengepul/${collector.id}`}
+                  className="block bg-surface-raised p-5 rounded-2xl hover:bg-brand-100 transition-colors cursor-pointer group"
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="w-14 h-14 bg-surface group-hover:bg-brand-500 text-ink rounded-2xl flex items-center justify-center shrink-0 transition-colors">
+                      <Archive size={24} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-start gap-2">
+                        <h4 className="font-bold text-sm text-ink truncate">
+                          {collector.shopName}
+                        </h4>
+                        {collector.isVerified && <VerifiedBadge size="xs" className="mt-0.5" />}
+                      </div>
+                      <p className="text-[11px] text-ink-muted mt-1 flex items-center gap-1">
+                        <MapPin size={12} className="text-brand-700 shrink-0" />
+                        <span className="font-mono text-status-error font-bold">
+                          {collector.distance != null
+                            ? `${formatDistance(collector.distance)} (Lebih dari 50 km)`
+                            : "Lebih dari 50 km"}{" "}
+                        </span>
+                      </p>
+                      <div className="flex items-center gap-2 mt-3 text-[11px] font-bold text-ink-muted border-t border-dashed border-ink-faint pt-2.5">
+                        <span className="flex items-center gap-0.5">
+                          <Star size={12} className="fill-status-warning text-status-warning" />
+                          <span className="font-mono">
+                            {collector.avgRating > 0 ? collector.avgRating.toFixed(1) : "Baru"}
+                          </span>
+                        </span>
+                        <span className="text-ink-faint">•</span>
+                        <span className="text-status-success font-bold">Terima Jemput</span>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
       </main>
 
       <BottomNav />
