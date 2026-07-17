@@ -16,6 +16,7 @@ import {
   getOrderCategoryLabel,
 } from "@/lib/utils";
 import { useSocket } from "@/hooks/useSocket";
+import RadiusPicker, { RADIUS_MIN_KM, RADIUS_MAX_KM } from "@/components/features/discovery/RadiusPicker";
 import DesktopNav from "@/components/ui/DesktopNav";
 import BottomNav from "@/components/ui/BottomNav";
 import { Button } from "@/components/ui/Button";
@@ -107,11 +108,36 @@ export default function CustomerDashboard() {
     }
   }, []);
 
+  // Radius pencarian dipilih customer sendiri & diingat antar kunjungan.
+  const [radiusKm, setRadiusKm] = useState(5);
+  useEffect(() => {
+    try {
+      const saved = Number(localStorage.getItem("rongsokin:searchRadiusKm"));
+      if (saved >= RADIUS_MIN_KM && saved <= RADIUS_MAX_KM) setRadiusKm(saved);
+    } catch {
+      /* localStorage diblokir → pakai default */
+    }
+  }, []);
+  const handleRadiusChange = (km: number) => {
+    setRadiusKm(km);
+    try {
+      localStorage.setItem("rongsokin:searchRadiusKm", String(km));
+    } catch {
+      /* abaikan */
+    }
+  };
+
   const { data: nearbyCollectors, isLoading: isNearbyLoading } = useSearchCollectors({
     lat: coords.lat,
     lng: coords.lng,
-    radius: 5,
+    radius: radiusKm,
+    // Jangan biarkan kosong: kalau tak ada dalam jangkauan, tampilkan terdekat di luar.
+    fallbackWhenEmpty: true,
   });
+
+  // Kalau hasilnya dari luar jangkauan, hook menandai outOfRange (maks 5, urut terdekat)
+  const hasOutOfRange = !!nearbyCollectors?.some((c) => c.outOfRange);
+  const inRangeCount = nearbyCollectors?.filter((c) => !c.outOfRange).length ?? 0;
 
   const activeOrder = orders?.find(
     (o) => o.status !== "COMPLETED" && o.status !== "CANCELLED"
@@ -289,16 +315,34 @@ export default function CustomerDashboard() {
             </span>
           </div>
 
+          <RadiusPicker
+            value={radiusKm}
+            onChange={handleRadiusChange}
+            center={coords}
+            hint={
+              isNearbyLoading
+                ? "Mencari pengepul…"
+                : hasOutOfRange
+                ? `Tidak ada pengepul dalam ${radiusKm} km — menampilkan ${
+                    nearbyCollectors?.length ?? 0
+                  } terdekat di luar jangkauan.`
+                : inRangeCount > 0
+                ? `${inRangeCount} pengepul dalam jangkauan ${radiusKm} km.`
+                : "Belum ada pengepul terdaftar."
+            }
+          />
+
           <div className="space-y-2">
             {isNearbyLoading ? (
               [1, 2].map((i) => (
                 <div key={i} className="bg-surface-raised rounded-2xl p-4 h-20 animate-pulse" />
               ))
             ) : nearbyCollectors && nearbyCollectors.length > 0 ? (
-              nearbyCollectors.slice(0, 3).map((collector) => (
+              nearbyCollectors.map((collector) => (
                 <div
                   key={collector.id}
-                  className="bg-surface-raised rounded-2xl p-4 flex items-center gap-3"
+                  onClick={() => router.push(`/pengepul/${collector.id}`)}
+                  className="bg-surface-raised rounded-2xl p-4 flex items-center gap-3 cursor-pointer border border-transparent transition-all duration-150 hover:bg-brand-100 hover:border-ink hover:shadow-lg hover:-translate-y-0.5"
                 >
                   <div className="w-11 h-11 bg-surface rounded-2xl flex items-center justify-center shrink-0 text-ink">
                     <Archive size={20} />
@@ -309,9 +353,15 @@ export default function CustomerDashboard() {
                         {collector.shopName}
                       </h3>
                       {collector.isVerified && <VerifiedBadge size="xs" />}
-                      <span className="text-[9px] font-bold text-brand-800 bg-brand-100 rounded-full px-1.5 py-0.5 shrink-0">
-                        Buka
-                      </span>
+                      {collector.outOfRange ? (
+                        <span className="text-[9px] font-bold text-ink-muted bg-surface-sunken border border-ink-faint rounded-full px-1.5 py-0.5 shrink-0 whitespace-nowrap">
+                          Di luar jangkauan
+                        </span>
+                      ) : (
+                        <span className="text-[9px] font-bold text-brand-800 bg-brand-100 rounded-full px-1.5 py-0.5 shrink-0">
+                          Buka
+                        </span>
+                      )}
                     </div>
                     <p className="text-[11px] text-ink-muted truncate">
                       {collector.description || "Mitra Pengepul Rongsok.in"}
@@ -335,6 +385,7 @@ export default function CustomerDashboard() {
                   </div>
                   <Link
                     href="/orders/new"
+                    onClick={(e) => e.stopPropagation()} // jangan ikut buka profil lapak
                     className="shrink-0 text-xs font-bold text-ink bg-brand-500 hover:bg-brand-600 rounded-2xl px-4 py-2 transition-colors"
                   >
                     Jual
@@ -343,7 +394,7 @@ export default function CustomerDashboard() {
               ))
             ) : (
               <div className="bg-surface-raised rounded-2xl p-6 text-center text-xs text-ink-muted">
-                Belum ada pengepul di sekitarmu (radius 5km).
+                Belum ada pengepul terdaftar di area ini.
               </div>
             )}
           </div>
