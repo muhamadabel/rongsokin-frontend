@@ -1,4 +1,4 @@
-import { BadgeCheck } from "lucide-react";
+import { BadgeCheck } from "flowbite-react-icons/solid";
 
 interface Props {
   /** xs = ikon kecil saja, sm/md = pill dengan label */
@@ -19,7 +19,7 @@ export function VerifiedBadge({
   className = "",
 }: Props) {
   if (size === "xs" || !showLabel) {
-    const px = size === "md" ? 18 : size === "xs" ? 14 : 16;
+    const px = size === "md" ? 22 : size === "xs" ? 18 : 20;
     return (
       <BadgeCheck
         size={px}
@@ -29,7 +29,7 @@ export function VerifiedBadge({
     );
   }
 
-  const iconPx = size === "md" ? 14 : 12;
+  const iconPx = size === "md" ? 18 : 16;
   const pad = size === "md" ? "px-2.5 py-1 text-xs" : "px-2 py-0.5 text-[10px]";
   return (
     <span
