@@ -23,11 +23,13 @@ export interface CollectorSearchResult {
   priorityScore: number;
   avgRating: number;
   ownerName?: string;
-  /** Jarak dari titik pencarian, dalam meter */
+  /** URL foto sampul lapak (opsional) */
+  shopImageUrl?: string | null;
+  /** URL foto profil kolektor (opsional) */
+  avatarUrl?: string | null;
   distance: number;
   isOpen: boolean;
   isVerified: boolean;
-  /** true = berada di luar radius pilihan customer (hasil fallback) */
   outOfRange: boolean;
 }
 
@@ -119,6 +121,8 @@ export const useSearchCollectors = (params: SearchQueryParams) => {
           priorityScore: c.priorityScore,
           avgRating: c.avgRating != null ? Number(c.avgRating) : 0,
           ownerName: c.ownerName,
+          shopImageUrl: c.shopImageUrl || null, // photo banner di halaman detil
+          avatarUrl: c.avatarUrl || null,      // foto profil kolektor
           distance: Number(c.distance), // in meters
           isOpen: true,
           isVerified: Boolean(c.ownerVerified ?? c.isVerified),
