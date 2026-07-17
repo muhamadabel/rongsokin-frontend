@@ -51,6 +51,7 @@ import {
 } from "@/lib/utils";
 import toast from "react-hot-toast";
 import api from "@/lib/axios";
+import EcoImpactModal from "@/components/features/eco-impact/EcoImpactModal";
 import OrderRouteMap from "@/components/features/orders/OrderRouteMap";
 import { useLiveTracking } from "@/hooks/useLiveTracking";
 import { useUserRatings } from "@/hooks/useRatings";
