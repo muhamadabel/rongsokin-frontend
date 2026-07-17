@@ -156,7 +156,7 @@ export default function OrdersPage() {
               <Link
                 href={`/orders/${order.id}`}
                 key={order.id}
-                className={`block bg-surface-raised rounded-2xl p-4 hover:bg-brand-100 transition-colors cursor-pointer group ${
+                className={`block bg-surface-raised rounded-2xl p-4 cursor-pointer group border border-transparent transition-all duration-150 hover:bg-brand-100 hover:border-ink hover:shadow-lg hover:-translate-y-0.5 ${
                   isCancelled ? "opacity-70" : ""
                 }`}
               >

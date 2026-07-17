@@ -10,6 +10,14 @@ interface EcoImpactModalProps {
   actualWeight: number;
   orderId: string;
   onClose: () => void;
+  /** Foto profil pemilik akun — tampil di kartu yang dibagikan */
+  avatarUrl?: string;
+  /** "order" = dampak 1 transaksi (default) · "lifetime" = akumulasi total */
+  variant?: "order" | "lifetime";
+  /** Label di bawah nama (default: "Pahlawan Lingkungan") */
+  titleLabel?: string;
+  /** Teks tombol tutup (default: "Lanjut Beri Rating") */
+  closeLabel?: string;
 }
 
 export default function EcoImpactModal({
@@ -17,6 +25,10 @@ export default function EcoImpactModal({
   actualWeight,
   orderId,
   onClose,
+  avatarUrl,
+  variant = "order",
+  titleLabel,
+  closeLabel,
 }: EcoImpactModalProps) {
   const [isDownloading, setIsDownloading] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -114,12 +126,19 @@ export default function EcoImpactModal({
             </div>
 
             {/* ICON BADGE */}
-            <div className="w-28 h-28 relative flex items-center justify-center bg-[#163300] rounded-full border-2 border-brand-400/30 p-2 z-10 shadow-lg shadow-[#0d2200]/50">
+            <div className="w-28 h-28 relative flex items-center justify-center bg-[#163300] rounded-full border-2 border-brand-400/30 p-2 z-10 shadow-lg shadow-[#0d2200]/50 overflow-hidden">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/eco_impact_badge.png"
-                alt="Badge"
-                className="w-full h-full object-contain"
+                // Pakai foto profil pemilik akun kalau ada. crossOrigin wajib supaya
+                // html-to-image tidak "tainted" saat merender gambar remote (Cloudinary).
+                src={avatarUrl || "/eco_impact_badge.png"}
+                crossOrigin={avatarUrl ? "anonymous" : undefined}
+                alt={avatarUrl ? customerName : "Badge"}
+                className={
+                  avatarUrl
+                    ? "w-full h-full object-cover rounded-full"
+                    : "w-full h-full object-contain"
+                }
               />
             </div>
 
@@ -130,7 +149,8 @@ export default function EcoImpactModal({
                   {customerName}
                 </h4>
                 <p className="text-[10px] text-brand-200 mt-0.5 uppercase tracking-widest font-mono flex items-center justify-center gap-1">
-                  <ShieldCheck size={11} className="text-brand-400" /> Pahlawan Lingkungan
+                  <ShieldCheck size={11} className="text-brand-400" />{" "}
+                  {titleLabel || "Pahlawan Lingkungan"}
                 </p>
               </div>
 
@@ -141,7 +161,7 @@ export default function EcoImpactModal({
                 <span className="font-mono text-white font-extrabold text-sm border-b border-brand-400 pb-0.5">
                   {actualWeight.toFixed(1)} kg
                 </span>{" "}
-                sampah hari ini. Dampaknya setara dengan mengurangi emisi karbon dari perjalanan motor sejauh{" "}
+                {variant === "lifetime" ? "sampah sejauh ini" : "sampah hari ini"}. Dampaknya setara dengan mengurangi emisi karbon dari perjalanan motor sejauh{" "}
                 <span className="font-mono text-brand-400 font-extrabold text-sm border-b border-brand-400 pb-0.5">
                   {carbonKm.toFixed(1)} km
                 </span>
@@ -172,8 +192,8 @@ export default function EcoImpactModal({
             onClick={onClose}
             className="w-full border border-ink-faint hover:bg-surface-sunken text-ink-muted font-bold py-3.5 px-6 rounded-2xl flex items-center justify-center gap-1.5 transition-all active:scale-[0.98] cursor-pointer text-sm"
           >
-            Lanjut Beri Rating
-            <ArrowRight size={16} />
+            {closeLabel || "Lanjut Beri Rating"}
+            {!closeLabel && <ArrowRight size={16} />}
           </button>
         </div>
       </div>

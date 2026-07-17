@@ -122,6 +122,13 @@ export interface Order {
   customer?: User;
   collector?: User;
   receipt?: Receipt;
+
+  /** Koordinat kedua pihak (di-parse BE dari User.location/PostGIS) untuk peta rute
+   *  antar/jemput & deteksi "sudah sampai". null bila pihak terkait belum set lokasi. */
+  customerLat?: number | null;
+  customerLng?: number | null;
+  collectorLat?: number | null;
+  collectorLng?: number | null;
 }
 
 export interface OrderCollector {

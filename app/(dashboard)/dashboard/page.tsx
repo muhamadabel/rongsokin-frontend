@@ -376,7 +376,7 @@ export default function CustomerDashboard() {
                   <Link
                     key={order.id}
                     href={`/orders/${order.id}`}
-                    className="bg-surface-raised rounded-2xl p-4 flex items-center gap-3 hover:bg-brand-100 transition-colors"
+                    className="bg-surface-raised rounded-2xl p-4 flex items-center gap-3 border border-transparent transition-all duration-150 hover:bg-brand-100 hover:border-ink hover:shadow-lg hover:-translate-y-0.5"
                   >
                     <div className="w-9 h-9 bg-surface rounded-2xl flex items-center justify-center shrink-0">
                       {order.status === "COMPLETED" ? (

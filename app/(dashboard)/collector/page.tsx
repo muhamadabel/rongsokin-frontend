@@ -380,6 +380,7 @@ export default function CollectorDashboard() {
 
   const incomingOrders = useOrderStore((state) => state.incomingOrders);
   const removeIncomingOrder = useOrderStore((state) => state.removeIncomingOrder);
+  const addIncomingOrder = useOrderStore((state) => state.addIncomingOrder);
 
   // Antrean KADALUWARSA: tawaran order PENDING hanya berlaku 15 menit sejak dibuat.
   // Difilter saat render (bukan dihapus dari store) supaya polling PENDING yang
@@ -403,6 +404,19 @@ export default function CollectorDashboard() {
     role: "collector",
     limit: 100,
   });
+
+  // Antrean TIDAK boleh cuma mengandalkan socket: kalau halaman di-refresh (atau
+  // order masuk sebelum dashboard dibuka), event socket sudah lewat & store kosong.
+  // Tarik ulang order PENDING yang di-broadcast ke pengepul ini lewat REST — ini
+  // juga sumber createdAt ASLI (payload socket cuma punya waktu event tiba),
+  // supaya countdown 15 menit akurat & tidak mulai ulang tiap refresh.
+  const { data: pendingBroadcast } = useOrdersList(
+    { role: "collector", status: "PENDING", limit: 100 },
+    { refetchInterval: 8000 }
+  );
+  useEffect(() => {
+    pendingBroadcast?.forEach((o) => addIncomingOrder(o));
+  }, [pendingBroadcast, addIncomingOrder]);
 
   const updateProfile = useUpdateCollectorProfile();
   const updateCatalogs = useUpdateCatalogs();

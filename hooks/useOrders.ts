@@ -55,7 +55,12 @@ export const useCreateOrder = () => {
 };
 
 // ── List & Detail ────────────────────────────────────────────────────────
-export const useOrdersList = (params: { status?: string; role?: string; limit?: number }) => {
+export const useOrdersList = (
+  params: { status?: string; role?: string; limit?: number },
+  /** Polling opsional — dipakai antrean pengepul & notifikasi agar sinkron real-time
+   *  walau WebSocket mati. refetchIntervalInBackground: tetap polling saat tab tak aktif. */
+  options?: { refetchInterval?: number; refetchIntervalInBackground?: boolean }
+) => {
   const token = useAuthStore((state) => state.token);
 
   return useQuery({
@@ -78,6 +83,8 @@ export const useOrdersList = (params: { status?: string; role?: string; limit?: 
     },
     enabled: !!token,
     retry: (count, err) => !isMissingRoute(err) && count < 2,
+    refetchInterval: options?.refetchInterval,
+    refetchIntervalInBackground: options?.refetchIntervalInBackground ?? false,
   });
 };
 

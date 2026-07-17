@@ -6,6 +6,24 @@ export const formatRupiah = (amount: number): string =>
 export const formatDistance = (meters: number): string =>
   meters < 1000 ? `${Math.round(meters)} m` : `${(meters / 1000).toFixed(1)} km`
 
+// Jarak garis lurus (meter) antara dua koordinat — Haversine.
+// Dipakai useLiveTracking (deteksi "sudah sampai") & tampilan jarak lapak.
+export const haversineMeters = (
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number }
+): number => {
+  const R = 6371000 // radius bumi (m)
+  const toRad = (d: number) => (d * Math.PI) / 180
+  const dLat = toRad(b.lat - a.lat)
+  const dLng = toRad(b.lng - a.lng)
+  const lat1 = toRad(a.lat)
+  const lat2 = toRad(b.lat)
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2
+  return 2 * R * Math.asin(Math.sqrt(h))
+}
+
 // Format tanggal Indonesia
 export const formatDate = (iso: string): string =>
   new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(iso))

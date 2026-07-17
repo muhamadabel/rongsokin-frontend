@@ -84,11 +84,11 @@ export default function OrderTrackingPage() {
 
   const [showEcoImpact, setShowEcoImpact] = useState(false);
 
-  // Modal perayaan (Eco Impact + rating) hanya muncul SEKALI — saat order baru
-  // selesai. Ditandai persisten di localStorage per order+user, supaya membuka
-  // lagi riwayat order yang sudah COMPLETED tidak memunculkannya berulang.
-  const celebrateKey = user?.id && id ? `rongsokin:orderCelebrated:${id}:${user.id}` : "";
-  const celebrateChecked = useRef(false);
+  // Modal perayaan (Eco Impact + rating) HANYA muncul saat order benar-benar BARU
+  // selesai — yaitu statusnya BERUBAH jadi COMPLETED sewaktu halaman ini terbuka.
+  // Membuka order yang statusnya SUDAH COMPLETED dari riwayat tidak memunculkan
+  // apa pun (dulu dipicu dari status saja, jadi selalu nongol & mengganggu).
+  const prevStatusRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!token || !id) return;
@@ -112,27 +112,21 @@ export default function OrderTrackingPage() {
   }, [token, id, refetch]);
 
   useEffect(() => {
-    if (order?.status !== "COMPLETED" || !celebrateKey) return;
-    if (celebrateChecked.current) return; // cukup sekali per mount
-    celebrateChecked.current = true;
+    const status = order?.status;
+    if (!status) return;
+    const prev = prevStatusRef.current;
+    prevStatusRef.current = status;
 
-    let alreadyCelebrated = false;
-    try {
-      alreadyCelebrated = localStorage.getItem(celebrateKey) === "1";
-    } catch {
-      /* localStorage diblokir → jangan sampai modal ikut gagal */
-    }
-    if (alreadyCelebrated) return; // sudah pernah tampil saat order ini selesai
-    try {
-      localStorage.setItem(celebrateKey, "1");
-    } catch {
-      /* abaikan */
-    }
+    // Render pertama (termasuk saat membuka order lama dari riwayat) → jangan
+    // munculkan apa pun; kita belum tahu ini "baru selesai" atau memang sudah lama.
+    if (prev === null) return;
+    if (status !== "COMPLETED" || prev === "COMPLETED") return;
 
+    // Transisi → COMPLETED = order baru saja selesai.
     // Customer: Eco Impact dulu, rating menyusul saat modal eco ditutup.
     if (user?.role === "CUSTOMER") setShowEcoImpact(true);
     else setShowRating(true);
-  }, [order?.status, celebrateKey, user?.role]);
+  }, [order?.status, user?.role]);
 
   if (isLoading) {
     return <OrderDetailSkeleton />;
