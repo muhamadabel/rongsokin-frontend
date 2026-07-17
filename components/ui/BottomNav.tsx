@@ -53,10 +53,10 @@ export default function BottomNav() {
 
     navItems = [
       homeItem,
+      { href: "/orders", label: "Riwayat", icon: Clock },
       { href: token ? "/orders/new" : "/login", label: "Jual", icon: Plus, isCenter: true },
       // Item ini konsisten dgn DesktopNav customer yang sudah punya Eco.
       { href: "/eco", label: "Eco", icon: Leaf },
-      { href: "/orders", label: "Pesanan", icon: Clock },
       { href: "/profile", label: "Profil", icon: User },
     ];
   }

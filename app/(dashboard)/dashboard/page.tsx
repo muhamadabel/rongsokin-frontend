@@ -195,7 +195,7 @@ export default function CustomerDashboard() {
         </div>
 
         {/* SEARCH BAR (Redirects to /search?q=...) */}
-        <div className="w-full max-w-xl">
+        <div className="w-full max-w-xl md:hidden">
           <form
             onSubmit={(e) => {
               e.preventDefault();
