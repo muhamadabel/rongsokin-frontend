@@ -11,6 +11,7 @@ import {
   Store,
   LayoutDashboard,
   ShieldCheck,
+  Leaf,
 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 
@@ -54,13 +55,15 @@ export default function BottomNav() {
       homeItem,
       { href: "/search", label: "Cari", icon: Search },
       { href: token ? "/orders/new" : "/login", label: "Jual", icon: Plus, isCenter: true },
+      // Item ini konsisten dgn DesktopNav customer yang sudah punya Eco.
+      { href: "/eco", label: "Eco", icon: Leaf },
       { href: "/orders", label: "Pesanan", icon: Clock },
       { href: "/profile", label: "Profil", icon: User },
     ];
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-surface-raised border-t border-ink-faint px-6 py-2 flex justify-between items-center z-50 md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 bg-surface-raised border-t border-ink-faint px-3 py-2 flex justify-between items-center z-50 md:hidden">
       {navItems.map((item) => {
         const isActive =
           pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
