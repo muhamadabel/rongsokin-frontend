@@ -74,7 +74,7 @@ export default function ProfilePage() {
     ],
     [
       { icon: HelpCircle, label: "Pusat Bantuan", soon: true },
-      { icon: FileText, label: "Syarat & Ketentuan", toast: "Syarat & Ketentuan Rongsok.in" },
+      { icon: FileText, label: "Syarat & Ketentuan", soon: true },
     ],
   ];
 

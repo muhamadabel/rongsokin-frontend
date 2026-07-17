@@ -52,6 +52,11 @@ function SearchInner() {
       ? mains.find((m) => m.name.toLowerCase() === param.toLowerCase())
       : null;
     setSelectedMainId((prev) => prev || byName?.id || mains[0].id);
+
+    const q = searchParams.get("q");
+    if (q) {
+      setSearchQuery(q);
+    }
   }, [mains, searchParams]);
 
   useEffect(() => {

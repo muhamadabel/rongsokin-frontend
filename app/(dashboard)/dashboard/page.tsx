@@ -22,6 +22,7 @@ import BottomNav from "@/components/ui/BottomNav";
 import { Button } from "@/components/ui/Button";
 import { DashboardSkeleton } from "@/components/ui/Skeleton";
 import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
+import { Input } from "@/components/ui/Input";
 import {
   Archive,
   RefreshCw,
@@ -41,6 +42,7 @@ import {
   ChevronRight,
   Bell,
   Plus,
+  Search,
 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { useRouter } from "next/navigation";
@@ -190,6 +192,32 @@ export default function CustomerDashboard() {
           <h1 className="font-display text-3xl font-extrabold tracking-tight text-ink">
             {firstName} 👋
           </h1>
+        </div>
+
+        {/* SEARCH BAR (Redirects to /search?q=...) */}
+        <div className="w-full max-w-xl">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const q = (e.currentTarget.elements.namedItem("search") as HTMLInputElement).value;
+              router.push(`/search?q=${encodeURIComponent(q)}`);
+            }}
+            className="relative"
+          >
+            <Input
+              name="search"
+              type="text"
+              placeholder="Cari nama lapak pengepul…"
+              className="pl-11 pr-20 h-11 bg-surface-raised border border-ink-faint rounded-2xl w-full"
+            />
+            <Search className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-mute" />
+            <button
+              type="submit"
+              className="absolute right-2 top-1/2 -translate-y-1/2 bg-ink text-white font-bold text-xs px-4 py-2 rounded-xl hover:opacity-90 transition-opacity cursor-pointer"
+            >
+              Cari
+            </button>
+          </form>
         </div>
 
         {/* ACTIVE ORDER ALERT */}
