@@ -9,7 +9,32 @@ export interface SearchQueryParams {
   categoryId?: string;
   category?: string; // name to match
   radius?: number;
+  /**
+   * Kalau TIDAK ada pengepul dalam radius, tetap tampilkan pengepul terdekat
+   * di LUAR radius (maks 5, urut terdekat) & tandai outOfRange = true.
+   */
+  fallbackWhenEmpty?: boolean;
 }
+
+export interface CollectorSearchResult {
+  id: string;
+  shopName: string;
+  description?: string;
+  priorityScore: number;
+  avgRating: number;
+  ownerName?: string;
+  /** Jarak dari titik pencarian, dalam meter */
+  distance: number;
+  isOpen: boolean;
+  isVerified: boolean;
+  /** true = berada di luar radius pilihan customer (hasil fallback) */
+  outOfRange: boolean;
+}
+
+/** Radius sapu-jagat saat tak ada pengepul dalam jangkauan (km) */
+const FALLBACK_RADIUS_KM = 1000;
+/** Maksimal pengepul di luar jangkauan yang ditampilkan */
+const FALLBACK_LIMIT = 5;
 
 export const useWasteCategories = () => {
   return useQuery({
@@ -63,7 +88,7 @@ export const useSearchCollectors = (params: SearchQueryParams) => {
 
   return useQuery({
     queryKey: ['collectors', params, categories],
-    queryFn: async () => {
+    queryFn: async (): Promise<CollectorSearchResult[]> => {
       let activeCategoryId = params.categoryId;
 
       // Map category name (e.g. 'kardus') to categoryId if needed
@@ -74,17 +99,14 @@ export const useSearchCollectors = (params: SearchQueryParams) => {
         if (found) activeCategoryId = found.id;
       }
 
-      const queryParams: Record<string, any> = {
-        lat: params.lat,
-        lng: params.lng,
-        radius: params.radius || 5,
-      };
+      const fetchWithin = async (radiusKm: number) => {
+        const queryParams: Record<string, any> = {
+          lat: params.lat,
+          lng: params.lng,
+          radius: radiusKm,
+        };
+        if (activeCategoryId) queryParams.categoryId = activeCategoryId;
 
-      if (activeCategoryId) {
-        queryParams.categoryId = activeCategoryId;
-      }
-
-      try {
         const res = await api.get<{ status: string; data: any[] }>('/discovery/search', {
           params: queryParams,
         });
@@ -97,10 +119,30 @@ export const useSearchCollectors = (params: SearchQueryParams) => {
           priorityScore: c.priorityScore,
           avgRating: c.avgRating != null ? Number(c.avgRating) : 0,
           ownerName: c.ownerName,
-          distance: c.distance, // in meters
+          distance: Number(c.distance), // in meters
           isOpen: true,
           isVerified: Boolean(c.ownerVerified ?? c.isVerified),
         }));
+      };
+
+      const radius = params.radius || 5;
+
+      try {
+        const inRange = await fetchWithin(radius);
+
+        // Ada yang masuk jangkauan → tampilkan semuanya (urutan dari BE:
+        // premium dulu, lalu terdekat).
+        if (inRange.length > 0 || !params.fallbackWhenEmpty) {
+          return inRange.map((c) => ({ ...c, outOfRange: false }));
+        }
+
+        // Kosong → jangan biarkan layar hampa: ambil pengepul terdekat di LUAR
+        // jangkauan, urut dari yang paling dekat, dibatasi FALLBACK_LIMIT.
+        const wider = await fetchWithin(FALLBACK_RADIUS_KM);
+        return wider
+          .sort((a, b) => a.distance - b.distance)
+          .slice(0, FALLBACK_LIMIT)
+          .map((c) => ({ ...c, outOfRange: true }));
       } catch (err) {
         // BE lama: search butuh auth + categoryId → kalau gagal, anggap kosong
         // (begitu BE baru deploy: publik + opsional categoryId, otomatis jalan)

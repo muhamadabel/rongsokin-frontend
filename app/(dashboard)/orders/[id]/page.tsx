@@ -26,8 +26,6 @@ import {
   Download,
 } from "lucide-react";
 
-import EcoImpactModal from "@/components/features/eco-impact/EcoImpactModal";
-
 const categoryIcons: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
   Kardus: Archive,
   Plastik: RefreshCw,
