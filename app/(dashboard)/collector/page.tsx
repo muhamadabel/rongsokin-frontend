@@ -27,6 +27,7 @@ import {
   Eye,
   ShieldAlert,
   ImageOff,
+  Handshake,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { CollectorSkeleton } from "@/components/ui/Skeleton";
@@ -571,9 +572,6 @@ export default function CollectorDashboard() {
               </div>
               <div className="flex items-center gap-2">
                 <span className="relative flex h-3 w-3">
-                  {profile?.isOpen && (
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-500 opacity-75"></span>
-                  )}
                   <span
                     className={`relative inline-flex rounded-full h-3 w-3 ${
                       profile?.isOpen ? "bg-brand-500" : "bg-ink-faint"
@@ -691,20 +689,24 @@ export default function CollectorDashboard() {
 
         {/* PAYMENT INFO + HISTORY + STATS */}
         <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* COD INFO (dark polarity card) */}
-          <div className="bg-ink rounded-2xl p-5 text-forest-ink flex flex-col justify-between gap-4">
-            <div className="flex justify-between items-center">
-              <span className="text-[10px] font-bold text-forest-muted uppercase tracking-widest font-mono">
+          {/* COD INFO (redesigned card) */}
+          <div className="bg-surface-raised border border-ink-faint rounded-2xl p-5 flex flex-col justify-between min-h-[220px]">
+            <div className="flex justify-between items-center mb-1">
+              <span className="text-[10px] font-bold text-mute uppercase tracking-widest font-mono">
                 Metode Pembayaran
               </span>
-              <CreditCard className="text-brand-500" size={16} />
-            </div>
-            <div>
-              <span className="bg-brand-500/15 text-brand-500 rounded-full px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-wider inline-flex items-center gap-1">
-                🤝 Manual (COD)
+              <span className="bg-brand-500 text-ink rounded-full px-2.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider">
+                Aktif
               </span>
-              <p className="text-[11px] text-forest-muted leading-relaxed mt-3">
-                Pembayaran tunai / transfer langsung ke penjual setelah timbangan disepakati.
+            </div>
+            
+            <div className="flex-1 flex flex-col items-center justify-center my-3 text-center">
+              <Handshake size={44} className="text-brand-600 mb-3 shrink-0" />
+              <h5 className="font-display font-extrabold text-base text-ink leading-tight">
+                Cash on Delivery (COD)
+              </h5>
+              <p className="text-[11px] text-ink-muted leading-relaxed mt-2 max-w-[180px]">
+                Pembayaran tunai / transfer langsung di tempat setelah berat timbangan disepakati bersama.
               </p>
             </div>
           </div>
@@ -781,10 +783,14 @@ export default function CollectorDashboard() {
         </section>
 
         {/* CATALOG MANAGER (COLLAPSIBLE) */}
-        <section className="bg-surface-raised rounded-2xl overflow-hidden">
+        <section className={`bg-surface-raised rounded-2xl overflow-hidden border border-transparent transition-all duration-150 ${
+          !isCatalogExpanded ? "hover:bg-brand-100 hover:border-ink hover:shadow-lg hover:-translate-y-0.5" : ""
+        }`}>
           <button
             onClick={() => setIsCatalogExpanded(!isCatalogExpanded)}
-            className="w-full p-5 flex items-center justify-between cursor-pointer hover:bg-surface transition-colors text-left"
+            className={`w-full p-5 flex items-center justify-between cursor-pointer text-left ${
+              isCatalogExpanded ? "hover:bg-brand-100 transition-colors" : ""
+            }`}
           >
             <h3 className="font-display font-extrabold text-lg text-ink tracking-tight">
               Manajemen Katalog
