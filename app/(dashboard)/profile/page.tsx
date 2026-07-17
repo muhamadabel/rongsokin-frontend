@@ -63,16 +63,17 @@ export default function ProfilePage() {
     label: string;
     href?: string;
     toast?: string;
+    soon?: boolean;
   }
 
   const menuGroups: MenuItem[][] = [
     [
       { icon: User, label: "Edit Profil", href: "/profile/edit" },
       { icon: MapPin, label: "Alamat & Lokasi", href: "/profile/edit" },
-      { icon: CreditCard, label: "Rekening & E-Wallet", toast: "Fitur Rekening segera hadir!" },
+      { icon: CreditCard, label: "Rekening & E-Wallet", soon: true },
     ],
     [
-      { icon: HelpCircle, label: "Pusat Bantuan", toast: "Fitur Pusat Bantuan segera hadir!" },
+      { icon: HelpCircle, label: "Pusat Bantuan", soon: true },
       { icon: FileText, label: "Syarat & Ketentuan", toast: "Syarat & Ketentuan Rongsok.in" },
     ],
   ];
@@ -162,9 +163,11 @@ export default function ProfilePage() {
           {menuGroups.map((group, gi) => (
             <div key={gi} className="bg-surface-raised rounded-2xl overflow-hidden">
               {group.map((item, ii) => {
-                const baseCls = `w-full p-4 flex items-center justify-between cursor-pointer hover:bg-brand-100 group transition-colors text-left ${
-                  ii < group.length - 1 ? "border-b border-ink-faint" : ""
-                }`;
+                const baseCls = `w-full p-4 flex items-center justify-between group transition-colors text-left ${
+                  item.soon
+                    ? "cursor-not-allowed opacity-60"
+                    : "cursor-pointer hover:bg-brand-100"
+                } ${ii < group.length - 1 ? "border-b border-ink-faint" : ""}`;
                 const inner = (
                   <>
                     <div className="flex items-center gap-4">
@@ -173,11 +176,20 @@ export default function ProfilePage() {
                         className="text-ink-muted group-hover:text-ink transition-colors"
                       />
                       <span className="text-sm font-bold text-ink">{item.label}</span>
+                      {item.soon && (
+                        <span className="text-[9px] font-extrabold text-ink-muted bg-surface-sunken border border-ink-faint rounded-full px-1.5 py-0.5 shrink-0">
+                          Segera Hadir
+                        </span>
+                      )}
                     </div>
-                    <ChevronRight
-                      size={18}
-                      className="text-ink-faint group-hover:text-ink transition-colors"
-                    />
+                    {item.soon ? (
+                      <span className="text-[10px] font-bold text-ink-faint">Soon</span>
+                    ) : (
+                      <ChevronRight
+                        size={18}
+                        className="text-ink-faint group-hover:text-ink transition-colors"
+                      />
+                    )}
                   </>
                 );
                 if (item.href) {
@@ -190,6 +202,7 @@ export default function ProfilePage() {
                 return (
                   <button
                     key={item.label}
+                    disabled={item.soon}
                     onClick={() => item.toast && toast.success(item.toast)}
                     className={baseCls}
                   >
