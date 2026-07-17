@@ -117,7 +117,7 @@ export default function PengepulDetailPage() {
 
         {/* PROFILE CARD */}
         <section className="bg-surface-raised md:rounded-2xl overflow-hidden">
-          <div className="h-28 md:h-40 bg-brand-100 relative overflow-hidden">
+          <div className="h-28 md:h-40 bg-brand-100 relative">
             {collector.shopImageUrl && (
               // eslint-disable-next-line @next/next/no-img-element
               <img

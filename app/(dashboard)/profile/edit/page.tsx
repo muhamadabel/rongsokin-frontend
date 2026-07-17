@@ -50,9 +50,11 @@ export default function EditProfilePage() {
   const [shopName, setShopName] = useState("");
   const [description, setDescription] = useState("");
   const [isOpen, setIsOpen] = useState(true);
+  const [shopImageUrl, setShopImageUrl] = useState("");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   const [isUploading, setIsUploading] = useState(false);
+  const [isUploadingBanner, setIsUploadingBanner] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   // Hydrate SEKALI saja — biar refetch /auth/me (mis. pindah tab) tidak menimpa
@@ -82,6 +84,7 @@ export default function EditProfilePage() {
       setShopName(profile.shopName || "");
       setDescription(profile.description || "");
       setIsOpen(profile.isOpen ?? true);
+      setShopImageUrl(profile.shopImageUrl || "");
     }
   }, [profile]);
 
@@ -103,6 +106,27 @@ export default function EditProfilePage() {
       toast.error(err.message || "Gagal unggah foto. Coba lagi.");
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  // ── Upload banner ────────────────────────────────────────────────────────
+  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingBanner(true);
+    try {
+      const { url, remote } = await uploadToCloudinary(file);
+      setShopImageUrl(url);
+      if (remote) {
+        toast.success("Foto sampul diunggah!");
+      } else {
+        toast.success("Foto sampul dipilih (Mode demo).");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Gagal unggah foto sampul. Coba lagi.");
+    } finally {
+      setIsUploadingBanner(false);
     }
   };
 
@@ -151,6 +175,7 @@ export default function EditProfilePage() {
               shopName,
               description,
               isOpen,
+              shopImageUrl,
             },
             {
               onSuccess: () => resolve(),
@@ -319,6 +344,50 @@ export default function EditProfilePage() {
                   placeholder="UD Jaya Abadi"
                   required
                 />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold text-mute uppercase tracking-widest mb-1.5 block">
+                  Foto Sampul / Banner Lapak
+                </label>
+                <div className="relative w-full h-32 md:h-40 rounded-xl bg-brand-100 overflow-hidden flex items-center justify-center border border-ink-faint">
+                  {shopImageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={shopImageUrl} alt="Sampul" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="flex flex-col items-center gap-1 text-ink-muted">
+                      <Store size={28} />
+                      <span className="text-xs font-semibold">Gunakan warna brand default</span>
+                    </div>
+                  )}
+                  <label className="absolute bottom-3 right-3 bg-surface-raised hover:bg-surface text-ink px-3 py-1.5 rounded-xl border border-ink-faint flex items-center gap-1 text-xs font-bold cursor-pointer transition-colors shadow-sm">
+                    {isUploadingBanner ? (
+                      <RefreshCw size={12} className="animate-spin" />
+                    ) : (
+                      <Camera size={12} />
+                    )}
+                    {shopImageUrl ? "Ubah Banner" : "Unggah Banner"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleBannerUpload}
+                      disabled={isUploadingBanner}
+                    />
+                  </label>
+                  {shopImageUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setShopImageUrl("")}
+                      className="absolute bottom-3 left-3 bg-status-error/10 hover:bg-status-error/20 text-status-error px-3 py-1.5 rounded-xl border border-status-error/20 flex items-center gap-1 text-xs font-bold cursor-pointer transition-colors"
+                    >
+                      Hapus
+                    </button>
+                  )}
+                </div>
+                <p className="text-[10px] text-ink-muted mt-1">
+                  Maksimal 5MB. Jika tidak diunggah, akan menggunakan warna default.
+                </p>
               </div>
 
               <div>

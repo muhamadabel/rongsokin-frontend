@@ -19,6 +19,7 @@ import DesktopNav from "@/components/ui/DesktopNav";
 import { ProfileSkeleton } from "@/components/ui/Skeleton";
 import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
 import { useMe } from "@/hooks/useAuth";
+import { useCollectorProfile } from "@/hooks/useCollector";
 import { useOrdersList } from "@/hooks/useOrders";
 import { useAuthStore } from "@/store/authStore";
 import { formatRupiah, getOrderTotalPrice } from "@/lib/utils";
@@ -34,6 +35,8 @@ export default function ProfilePage() {
   }, [initFromStorage]);
 
   const { data: me, isLoading: isMeLoading } = useMe();
+  const isCollector = me?.role === "COLLECTOR";
+  const { data: collectorProfile } = useCollectorProfile();
   const { data: orders, isLoading: isOrdersLoading } = useOrdersList({
     role: me?.role === "COLLECTOR" ? "collector" : "customer",
     limit: 100,
@@ -79,63 +82,77 @@ export default function ProfilePage() {
       <DesktopNav />
       <main className="flex-1 max-w-2xl w-full mx-auto px-4 md:px-0 py-5 md:py-8 space-y-5">
         {/* PROFILE SUMMARY */}
-        <header className="bg-surface-raised rounded-2xl p-6 flex flex-col items-center">
-          <div className="w-24 h-24 rounded-full bg-brand-100 mb-4 relative overflow-visible">
-            {me?.avatarUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={me.avatarUrl}
-                alt={me.name || "Avatar"}
-                className="w-full h-full object-cover rounded-full"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-ink rounded-full">
-                <User size={40} />
-              </div>
-            )}
-            <Link
-              href="/profile/edit"
-              className="absolute -bottom-1 -right-1 bg-brand-500 text-ink p-2 rounded-full border-2 border-surface-raised hover:bg-brand-600 transition-colors z-10"
-              aria-label="Edit profil"
-            >
-              <Settings size={14} />
-            </Link>
-          </div>
-          <div className="flex items-center gap-2">
-            <h2 className="font-display font-extrabold text-lg text-ink">
-              {me?.name || "User Rongsok.in"}
-            </h2>
-            {me?.isVerified && <VerifiedBadge size="xs" />}
-          </div>
-          <p className="text-xs font-semibold text-mute uppercase tracking-widest mt-1">
-            {me?.phone || me?.email || "Tidak ada kontak"}
-          </p>
-          {me && !me.isVerified && (
-            <Link
-              href="/profile/verify"
-              className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-ink bg-brand-100 border border-brand-200 rounded-full px-3 py-1.5 hover:bg-brand-200 transition-colors"
-            >
-              <ShieldAlert size={13} className="text-brand-700" />
-              Verifikasi KTP sekarang
-            </Link>
-          )}
-
-          <div className="mt-6 w-full max-w-sm grid grid-cols-2 gap-3">
-            <div className="bg-surface p-4 rounded-2xl text-center">
-              <span className="block text-[10px] font-bold text-mute uppercase tracking-widest mb-1">
-                {me?.role === "COLLECTOR" ? "Total Keluar" : "Total Cuan"}
-              </span>
-              <span className="font-extrabold text-ink font-mono text-base">
-                {formatRupiah(totalCuan)}
-              </span>
+        <header className="bg-surface-raised rounded-2xl overflow-hidden flex flex-col">
+          {isCollector && (
+            <div className="w-full h-24 md:h-32 bg-brand-100 relative overflow-hidden">
+              {collectorProfile?.shopImageUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={collectorProfile.shopImageUrl}
+                  alt="Sampul lapak"
+                  className="w-full h-full object-cover"
+                />
+              )}
             </div>
-            <div className="bg-surface p-4 rounded-2xl text-center">
-              <span className="block text-[10px] font-bold text-mute uppercase tracking-widest mb-1">
-                Transaksi
-              </span>
-              <span className="font-extrabold text-ink font-mono text-base">
-                {totalTransactions} Kali
-              </span>
+          )}
+          <div className="p-6 flex flex-col items-center">
+            <div className={`w-24 h-24 rounded-full bg-brand-100 mb-4 relative overflow-visible ${isCollector ? "-mt-16 border-4 border-surface-raised z-10" : ""}`}>
+              {me?.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={me.avatarUrl}
+                  alt={me.name || "Avatar"}
+                  className="w-full h-full object-cover rounded-full"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-ink rounded-full">
+                  <User size={40} />
+                </div>
+              )}
+              <Link
+                href="/profile/edit"
+                className="absolute -bottom-1 -right-1 bg-brand-500 text-ink p-2 rounded-full border-2 border-surface-raised hover:bg-brand-600 transition-colors z-10"
+                aria-label="Edit profil"
+              >
+                <Settings size={14} />
+              </Link>
+            </div>
+            <div className="flex items-center gap-2">
+              <h2 className="font-display font-extrabold text-lg text-ink">
+                {me?.name || "User Rongsok.in"}
+              </h2>
+              {me?.isVerified && <VerifiedBadge size="xs" />}
+            </div>
+            <p className="text-xs font-semibold text-mute uppercase tracking-widest mt-1">
+              {me?.phone || me?.email || "Tidak ada kontak"}
+            </p>
+            {me && !me.isVerified && (
+              <Link
+                href="/profile/verify"
+                className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-ink bg-brand-100 border border-brand-200 rounded-full px-3 py-1.5 hover:bg-brand-200 transition-colors"
+              >
+                <ShieldAlert size={13} className="text-brand-700" />
+                Verifikasi KTP sekarang
+              </Link>
+            )}
+
+            <div className="mt-6 w-full max-w-sm grid grid-cols-2 gap-3">
+              <div className="bg-surface p-4 rounded-2xl text-center">
+                <span className="block text-[10px] font-bold text-mute uppercase tracking-widest mb-1">
+                  {me?.role === "COLLECTOR" ? "Total Keluar" : "Total Cuan"}
+                </span>
+                <span className="font-extrabold text-ink font-mono text-base">
+                  {formatRupiah(totalCuan)}
+                </span>
+              </div>
+              <div className="bg-surface p-4 rounded-2xl text-center">
+                <span className="block text-[10px] font-bold text-mute uppercase tracking-widest mb-1">
+                  Transaksi
+                </span>
+                <span className="font-extrabold text-ink font-mono text-base">
+                  {totalTransactions} Kali
+                </span>
+              </div>
             </div>
           </div>
         </header>
