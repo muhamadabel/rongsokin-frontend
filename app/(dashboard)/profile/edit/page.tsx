@@ -239,43 +239,91 @@ export default function EditProfilePage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* AVATAR */}
-          <section className="bg-surface-raised rounded-2xl p-6 flex items-center gap-5">
-            <div className="relative shrink-0">
-              <div className="w-20 h-20 rounded-full bg-brand-100 overflow-hidden flex items-center justify-center text-ink">
-                {avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-                ) : (
-                  <UserIcon size={36} />
-                )}
+          {/* AVATAR & BANNER */}
+          <section className="bg-surface-raised rounded-2xl p-6 space-y-6">
+            <div className="flex items-center gap-5">
+              <div className="relative shrink-0">
+                <div className="w-20 h-20 rounded-full bg-brand-100 overflow-hidden flex items-center justify-center text-ink">
+                  {avatarUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    <UserIcon size={36} />
+                  )}
+                </div>
+                <label className="absolute -bottom-1 -right-1 w-8 h-8 bg-brand-500 hover:bg-brand-600 rounded-full flex items-center justify-center cursor-pointer border-4 border-surface-raised">
+                  {isUploading ? (
+                    <RefreshCw size={14} className="text-ink animate-spin" />
+                  ) : (
+                    <Camera size={14} className="text-ink" />
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleAvatarUpload}
+                    disabled={isUploading}
+                  />
+                </label>
               </div>
-              <label className="absolute -bottom-1 -right-1 w-8 h-8 bg-brand-500 hover:bg-brand-600 rounded-full flex items-center justify-center cursor-pointer border-4 border-surface-raised">
-                {isUploading ? (
-                  <RefreshCw size={14} className="text-ink animate-spin" />
-                ) : (
-                  <Camera size={14} className="text-ink" />
-                )}
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleAvatarUpload}
-                  disabled={isUploading}
-                />
-              </label>
+              <div className="min-w-0">
+                <h3 className="font-display font-extrabold text-base text-ink truncate">
+                  {name || "Profilmu"}
+                </h3>
+                <p className="text-xs text-mute mt-0.5">
+                  {isCollector ? "Akun Pengepul" : "Akun Customer"}
+                </p>
+                <p className="text-[10px] text-ink-muted mt-1">
+                  Klik kamera untuk ganti foto. Maks 5MB.
+                </p>
+              </div>
             </div>
-            <div className="min-w-0">
-              <h3 className="font-display font-extrabold text-base text-ink truncate">
-                {name || "Profilmu"}
-              </h3>
-              <p className="text-xs text-mute mt-0.5">
-                {isCollector ? "Akun Pengepul" : "Akun Customer"}
-              </p>
-              <p className="text-[10px] text-ink-muted mt-1">
-                Klik kamera untuk ganti foto. Maks 5MB.
-              </p>
-            </div>
+
+            {isCollector && (
+              <div className="border-t border-ink-faint pt-5 space-y-3">
+                <label className="text-[10px] font-bold text-mute uppercase tracking-widest block">
+                  Foto Sampul / Banner Lapak
+                </label>
+                <div className="relative w-full h-32 md:h-40 rounded-xl bg-brand-100 overflow-hidden flex items-center justify-center border border-ink-faint">
+                  {shopImageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={shopImageUrl} alt="Sampul" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="flex flex-col items-center gap-1 text-ink-muted">
+                      <Store size={28} />
+                      <span className="text-xs font-semibold">Gunakan warna brand default</span>
+                    </div>
+                  )}
+                  <label className="absolute bottom-3 right-3 bg-surface-raised hover:bg-surface text-ink px-3 py-1.5 rounded-xl border border-ink-faint flex items-center gap-1 text-xs font-bold cursor-pointer transition-colors shadow-sm">
+                    {isUploadingBanner ? (
+                      <RefreshCw size={12} className="animate-spin" />
+                    ) : (
+                      <Camera size={12} />
+                    )}
+                    {shopImageUrl ? "Ubah Banner" : "Unggah Banner"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleBannerUpload}
+                      disabled={isUploadingBanner}
+                    />
+                  </label>
+                  {shopImageUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setShopImageUrl("")}
+                      className="absolute bottom-3 left-3 bg-status-error/10 hover:bg-status-error/20 text-status-error px-3 py-1.5 rounded-xl border border-status-error/20 flex items-center gap-1 text-xs font-bold cursor-pointer transition-colors"
+                    >
+                      Hapus
+                    </button>
+                  )}
+                </div>
+                <p className="text-[10px] text-ink-muted mt-1">
+                  Maksimal 5MB. Jika tidak diunggah, akan menggunakan warna default.
+                </p>
+              </div>
+            )}
           </section>
 
           {/* DATA PRIBADI */}
@@ -344,50 +392,6 @@ export default function EditProfilePage() {
                   placeholder="UD Jaya Abadi"
                   required
                 />
-              </div>
-
-              <div>
-                <label className="text-[10px] font-bold text-mute uppercase tracking-widest mb-1.5 block">
-                  Foto Sampul / Banner Lapak
-                </label>
-                <div className="relative w-full h-32 md:h-40 rounded-xl bg-brand-100 overflow-hidden flex items-center justify-center border border-ink-faint">
-                  {shopImageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={shopImageUrl} alt="Sampul" className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="flex flex-col items-center gap-1 text-ink-muted">
-                      <Store size={28} />
-                      <span className="text-xs font-semibold">Gunakan warna brand default</span>
-                    </div>
-                  )}
-                  <label className="absolute bottom-3 right-3 bg-surface-raised hover:bg-surface text-ink px-3 py-1.5 rounded-xl border border-ink-faint flex items-center gap-1 text-xs font-bold cursor-pointer transition-colors shadow-sm">
-                    {isUploadingBanner ? (
-                      <RefreshCw size={12} className="animate-spin" />
-                    ) : (
-                      <Camera size={12} />
-                    )}
-                    {shopImageUrl ? "Ubah Banner" : "Unggah Banner"}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleBannerUpload}
-                      disabled={isUploadingBanner}
-                    />
-                  </label>
-                  {shopImageUrl && (
-                    <button
-                      type="button"
-                      onClick={() => setShopImageUrl("")}
-                      className="absolute bottom-3 left-3 bg-status-error/10 hover:bg-status-error/20 text-status-error px-3 py-1.5 rounded-xl border border-status-error/20 flex items-center gap-1 text-xs font-bold cursor-pointer transition-colors"
-                    >
-                      Hapus
-                    </button>
-                  )}
-                </div>
-                <p className="text-[10px] text-ink-muted mt-1">
-                  Maksimal 5MB. Jika tidak diunggah, akan menggunakan warna default.
-                </p>
               </div>
 
               <div>
