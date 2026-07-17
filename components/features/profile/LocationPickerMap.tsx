@@ -65,9 +65,7 @@ export default function LocationPickerMap({ value, onChange, height = 300 }: Pro
       {/* Pin tetap di tengah — geser peta di bawahnya */}
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center z-[500]">
         <div className="flex flex-col items-center -translate-y-3">
-          <div className="w-7 h-7 rounded-full bg-brand-500 border-[3px] border-ink shadow-lg flex items-center justify-center text-ink text-sm font-black">
-            📍
-          </div>
+          <div className="w-7 h-7 rounded-full bg-brand-500 border-[3px] border-ink shadow-lg" />
           {/* tangkai + bayangan titik pusat */}
           <div className="w-0.5 h-3 bg-ink/70 -mt-0.5" />
           <div className="w-2.5 h-1 rounded-full bg-ink/30 blur-[1px]" />
