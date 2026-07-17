@@ -298,8 +298,13 @@ export default function EditProfilePage() {
                     {isUploadingBanner ? (
                       <RefreshCw size={24} className="animate-spin text-ink-muted" />
                     ) : shopImageUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={shopImageUrl} alt="Sampul" className="w-full h-full object-cover" />
+                      <>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={shopImageUrl} alt="Sampul" className="w-full h-full object-cover" />
+                        <span className="absolute bottom-3 right-3 bg-surface-raised/90 hover:bg-surface-raised text-ink px-3 py-1.5 rounded-xl border border-ink-faint flex items-center gap-1 text-xs font-bold cursor-pointer transition-colors shadow-sm">
+                          Upload banner baru
+                        </span>
+                      </>
                     ) : (
                       <div className="flex flex-col items-center gap-1.5 text-ink-muted">
                         <Camera size={24} />
