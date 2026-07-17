@@ -56,7 +56,9 @@ export const useSocket = () => {
         customerId: '',
         method: payload.method,
         status: 'PENDING',
-        createdAt: new Date().toISOString(),
+        // Pakai createdAt ASLI dari BE supaya countdown 15 menit akurat sejak awal.
+        // Fallback ke waktu event tiba hanya kalau BE lama belum mengirimnya.
+        createdAt: payload.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         items,
         // Foto live tumpukan rongsok (anti pesanan fiktif) — pengepul wajib lihat
