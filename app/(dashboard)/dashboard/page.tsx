@@ -208,12 +208,12 @@ export default function CustomerDashboard() {
               name="search"
               type="text"
               placeholder="Cari nama lapak pengepul…"
-              className="pl-11 pr-20 h-11 bg-surface-raised border border-ink-faint rounded-2xl w-full"
+              className="pl-11 pr-20 h-11 bg-surface-raised border border-ink-faint rounded-full w-full"
             />
             <Search className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-mute" />
             <button
               type="submit"
-              className="absolute right-2 top-1/2 -translate-y-1/2 bg-ink text-white font-bold text-xs px-4 py-2 rounded-xl hover:opacity-90 transition-opacity cursor-pointer"
+              className="absolute right-2 top-1/2 -translate-y-1/2 bg-ink text-white font-bold text-xs px-4 py-2 rounded-full hover:opacity-90 transition-opacity cursor-pointer"
             >
               Cari
             </button>
@@ -372,8 +372,12 @@ export default function CustomerDashboard() {
                   onClick={() => router.push(`/pengepul/${collector.id}`)}
                   className="bg-surface-raised rounded-2xl p-4 flex items-center gap-3 cursor-pointer border border-transparent transition-all duration-150 hover:bg-brand-100 hover:border-ink hover:shadow-lg hover:-translate-y-0.5"
                 >
-                  <div className="w-11 h-11 bg-surface rounded-2xl flex items-center justify-center shrink-0 text-ink">
-                    <Archive size={20} />
+                  <div className="w-11 h-11 bg-surface rounded-2xl flex items-center justify-center shrink-0 text-ink overflow-hidden">
+                    {collector.avatarUrl ? (
+                      <img src={collector.avatarUrl} alt={collector.shopName} className="w-full h-full object-cover" />
+                    ) : (
+                      <Archive size={20} />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
