@@ -104,11 +104,8 @@ export default function EcoPage() {
           <div className="relative z-10 flex flex-col sm:flex-row gap-6 items-center sm:items-start justify-between">
             <div className="flex-1 w-full space-y-4">
               <div className="flex items-center justify-between sm:justify-start gap-3">
-                <span className="inline-flex items-center gap-1.5 bg-brand-500/15 text-brand-500 rounded-full px-3 py-1 text-[11px] font-extrabold uppercase tracking-wider">
-                  {tier.label}
-                </span>
                 {myRank != null && (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-forest-muted font-mono">
+                  <span className="inline-flex items-center gap-1 bg-brand-500/15 text-brand-500 rounded-full px-3 py-1 text-[11px] font-extrabold uppercase tracking-wider font-mono">
                     <Trophy size={13} className="text-brand-500" /> Peringkat #{myRank}
                   </span>
                 )}
@@ -165,8 +162,8 @@ export default function EcoPage() {
                   className="w-full h-full object-contain relative z-10 drop-shadow-[0_4px_12px_rgba(159,232,112,0.3)] transition-transform duration-300 group-hover:scale-110"
                 />
               </div>
-              <span className="text-[10px] font-bold text-brand-400 mt-2 font-mono uppercase tracking-widest">
-                Tier Badge
+              <span className="text-[11px] font-extrabold text-brand-400 mt-2 font-mono uppercase tracking-wider text-center">
+                {tier.label}
               </span>
             </div>
           </div>
