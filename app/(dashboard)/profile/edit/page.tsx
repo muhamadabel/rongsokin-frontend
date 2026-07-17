@@ -321,7 +321,7 @@ export default function EditProfilePage() {
                         e.stopPropagation();
                         setShopImageUrl("");
                       }}
-                      className="absolute bottom-3 left-3 bg-status-error/10 hover:bg-status-error/20 text-status-error px-3 py-1.5 rounded-xl border border-status-error/20 flex items-center gap-1 text-xs font-bold cursor-pointer transition-colors z-10"
+                      className="absolute bottom-3 left-3 bg-status-error hover:brightness-95 text-white border border-transparent px-3 py-1.5 rounded-xl flex items-center gap-1 text-xs font-bold cursor-pointer transition-colors z-10"
                     >
                       Hapus
                     </button>
