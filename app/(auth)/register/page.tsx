@@ -62,7 +62,6 @@ function RegisterForm() {
   // Step 4 — Profil lapak (collector)
   const [shopName, setShopName] = useState("");
   const [description, setDescription] = useState("");
-  const [radiusKm, setRadiusKm] = useState(5);
   const [collectorLat, setCollectorLat] = useState(-7.7956);
   const [collectorLng, setCollectorLng] = useState(110.3695);
   const [gpsDetected, setGpsDetected] = useState(false);
@@ -198,7 +197,8 @@ function RegisterForm() {
       return;
     }
     setupProfile(
-      { shopName, description, radiusKm, isOpen: true, lat: collectorLat, lng: collectorLng },
+      // Tanpa radius: jangkauan pengepul unlimited, pesanan jauh tinggal ditolak.
+      { shopName, description, isOpen: true, lat: collectorLat, lng: collectorLng },
       {
         onSuccess: () => {
           toast.success("Profil lapak berhasil dikonfigurasi!");
@@ -553,19 +553,6 @@ function RegisterForm() {
                   placeholder="Deskripsi singkat lapak Anda…"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="text-xs font-bold text-ink uppercase tracking-wider mb-2 block">
-                  Radius Operasional (km)
-                </label>
-                <Input
-                  type="number"
-                  min="1"
-                  max="50"
-                  value={radiusKm}
-                  onChange={(e) => setRadiusKm(Number(e.target.value))}
-                  required
                 />
               </div>
               <div

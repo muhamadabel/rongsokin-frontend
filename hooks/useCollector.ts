@@ -3,12 +3,12 @@ import api from '@/lib/axios';
 import { CollectorProfile, CollectorCatalog } from '@/types';
 import { useAuthStore } from '@/store/authStore';
 
+// Catatan: pengepul TIDAK lagi punya radius layanan (jangkauan unlimited) —
+// semua tawaran masuk ke antreannya & bisa ditolak kalau kejauhan.
 export interface SetupProfilePayload {
   shopName?: string;
   lapak_name?: string; // fallback
   description?: string;
-  radiusKm?: number;
-  radius_km?: number; // fallback
   isOpen?: boolean;
   is_open?: boolean; // fallback
   lat?: number;
@@ -47,7 +47,6 @@ export const useUpdateCollectorProfile = () => {
       const formatted: Record<string, unknown> = {
         shopName: payload.shopName || payload.lapak_name,
         description: payload.description,
-        radiusKm: payload.radiusKm || payload.radius_km,
         isOpen: payload.isOpen !== undefined ? payload.isOpen : payload.is_open,
       };
       if (payload.lat !== undefined) formatted.lat = payload.lat;

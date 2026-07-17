@@ -163,7 +163,7 @@ export default function PengepulDetailPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-3 mt-5">
+            <div className="grid grid-cols-2 gap-3 mt-5">
               {[
                 {
                   icon: Star,
@@ -176,12 +176,6 @@ export default function PengepulDetailPage() {
                   label: "Status",
                   value: collector.isOpen ? "BUKA" : "TUTUP",
                   cls: collector.isOpen ? "text-status-success" : "text-status-error",
-                },
-                {
-                  icon: MapPin,
-                  label: "Jangkauan",
-                  value: `${collector.radiusKm} km`,
-                  cls: "text-ink",
                 },
               ].map((s) => (
                 <div key={s.label} className="bg-surface rounded-2xl p-3">
@@ -358,10 +352,10 @@ export default function PengepulDetailPage() {
                   </div>
                   <div className="bg-surface p-4 rounded-2xl">
                     <span className="text-mute font-bold uppercase tracking-wider text-[10px] block">
-                      Radius Layanan
+                      Jangkauan
                     </span>
-                    <span className="font-extrabold text-ink text-sm font-mono">
-                      {collector.radiusKm} Kilometer
+                    <span className="font-extrabold text-ink text-sm">
+                      Tanpa batas
                     </span>
                   </div>
                 </div>

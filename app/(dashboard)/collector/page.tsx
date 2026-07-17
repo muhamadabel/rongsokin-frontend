@@ -472,7 +472,6 @@ export default function CollectorDashboard() {
         isOpen: newStatus,
         shopName: profile?.shopName || "Lapak Pengepul",
         description: profile?.description || "",
-        radiusKm: profile?.radiusKm || 5,
       },
       {
         onSuccess: () => toast.success(`Lapak berhasil ${newStatus ? "DIBUKA" : "DITUTUP"}!`),

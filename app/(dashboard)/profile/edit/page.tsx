@@ -49,7 +49,6 @@ export default function EditProfilePage() {
   const [avatarUrl, setAvatarUrl] = useState("");
   const [shopName, setShopName] = useState("");
   const [description, setDescription] = useState("");
-  const [radiusKm, setRadiusKm] = useState(5);
   const [isOpen, setIsOpen] = useState(true);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
 
@@ -67,9 +66,13 @@ export default function EditProfilePage() {
       setName(me.name || "");
       setPhone(me.phone || "");
       setAvatarUrl(me.avatarUrl || "");
-      if (me.lat != null && me.lng != null) {
-        setCoords({ lat: me.lat, lng: me.lng });
-      }
+      // Fallback default WAJIB di efek yang SAMA. Kalau dipisah jadi efek sendiri,
+      // efek itu masih melihat coords === null pada commit yang sama, lalu menimpa
+      // lokasi tersimpan dengan Jogja → pin selalu balik ke default tiap dibuka.
+      setCoords({
+        lat: me.lat ?? DEFAULT_COORDS.lat,
+        lng: me.lng ?? DEFAULT_COORDS.lng,
+      });
     }
   }, [me]);
 
@@ -78,17 +81,9 @@ export default function EditProfilePage() {
       hydratedProfile.current = true;
       setShopName(profile.shopName || "");
       setDescription(profile.description || "");
-      setRadiusKm(profile.radiusKm || 5);
       setIsOpen(profile.isOpen ?? true);
     }
   }, [profile]);
-
-  // Default coords kalau belum ada
-  useEffect(() => {
-    if (!coords && me && !isMeLoading) {
-      setCoords(DEFAULT_COORDS);
-    }
-  }, [coords, me, isMeLoading]);
 
   // ── Upload avatar ────────────────────────────────────────────────────────
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -155,7 +150,6 @@ export default function EditProfilePage() {
             {
               shopName,
               description,
-              radiusKm,
               isOpen,
             },
             {
@@ -339,36 +333,25 @@ export default function EditProfilePage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[10px] font-bold text-mute uppercase tracking-widest mb-1.5 block">
-                    Radius (km)
-                  </label>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={50}
-                    value={radiusKm}
-                    onChange={(e) => setRadiusKm(Number(e.target.value))}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-mute uppercase tracking-widest mb-1.5 block">
-                    Status Lapak
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setIsOpen(!isOpen)}
-                    className={`w-full h-12 rounded-md border font-bold text-sm transition-colors ${
-                      isOpen
-                        ? "bg-brand-500 text-ink border-brand-500"
-                        : "bg-surface text-ink-muted border-ink-faint"
-                    }`}
-                  >
-                    {isOpen ? "BUKA" : "TUTUP"}
-                  </button>
-                </div>
+              <div>
+                <label className="text-[10px] font-bold text-mute uppercase tracking-widest mb-1.5 block">
+                  Status Lapak
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setIsOpen(!isOpen)}
+                  className={`w-full h-12 rounded-md border font-bold text-sm transition-colors ${
+                    isOpen
+                      ? "bg-brand-500 text-ink border-brand-500"
+                      : "bg-surface text-ink-muted border-ink-faint"
+                  }`}
+                >
+                  {isOpen ? "BUKA" : "TUTUP"}
+                </button>
+                <p className="text-[10px] text-ink-muted mt-1">
+                  Jangkauanmu tanpa batas — semua pesanan masuk ke antrean, dan kamu bisa
+                  tolak yang kejauhan.
+                </p>
               </div>
             </section>
           )}
