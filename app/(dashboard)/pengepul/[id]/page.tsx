@@ -9,7 +9,6 @@ import {
   MapPin,
   Clock,
   Star,
-  Phone,
   MessageSquare,
   Archive,
   Wrench,
@@ -19,6 +18,7 @@ import {
   Sparkles,
   AlertCircle,
 } from "lucide-react";
+import { Whatsapp } from "flowbite-react-icons/solid";
 import { Button } from "@/components/ui/Button";
 import DesktopNav from "@/components/ui/DesktopNav";
 import BottomNav from "@/components/ui/BottomNav";
@@ -117,15 +117,32 @@ export default function PengepulDetailPage() {
 
         {/* PROFILE CARD */}
         <section className="bg-surface-raised md:rounded-2xl overflow-hidden">
-          <div className="h-28 md:h-40 bg-brand-100 relative">
+          <div className="h-28 md:h-40 bg-brand-100 relative overflow-hidden">
+            {collector.shopImageUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={collector.shopImageUrl}
+                alt="Banner Lapak"
+                className="w-full h-full object-cover"
+              />
+            )}
             <button
               onClick={handleShare}
               className="hidden md:flex absolute top-4 right-4 bg-surface-raised hover:bg-surface text-ink p-2.5 rounded-2xl gap-1.5 items-center text-xs font-bold transition-colors"
             >
               <Share2 size={16} /> Bagikan
             </button>
-            <div className="absolute -bottom-9 left-4 md:left-6 w-20 h-20 bg-surface-raised rounded-2xl border-4 border-surface-raised flex items-center justify-center text-ink">
-              <Archive size={32} />
+            <div className="absolute -bottom-9 left-4 md:left-6 w-20 h-20 bg-surface-raised rounded-full border-4 border-surface-raised flex items-center justify-center text-ink overflow-hidden z-10">
+              {collector.user?.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={collector.user.avatarUrl}
+                  alt={collector.shopName}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <Archive size={32} />
+              )}
             </div>
           </div>
           <div className="px-4 md:px-6 pt-12 pb-5">
@@ -148,15 +165,8 @@ export default function PengepulDetailPage() {
               <div className="hidden md:flex gap-3 shrink-0">
                 {waLink && (
                   <a href={waLink} target="_blank" rel="noopener noreferrer">
-                    <Button variant="outline" className="px-5">
-                      <MessageSquare size={18} /> WhatsApp
-                    </Button>
-                  </a>
-                )}
-                {partnerPhone && (
-                  <a href={`tel:${partnerPhone}`}>
-                    <Button className="px-5">
-                      <Phone size={18} /> Telepon
+                    <Button className="px-5 gap-2 bg-[#25D366] hover:bg-[#1ebe5b] border-[#25D366] hover:border-[#1ebe5b]">
+                      <Whatsapp className="w-[18px] h-[18px]" /> WhatsApp
                     </Button>
                   </a>
                 )}
@@ -373,15 +383,8 @@ export default function PengepulDetailPage() {
         <div className="max-w-3xl mx-auto bg-surface-raised rounded-2xl border border-ink-faint p-2 flex gap-2 shadow-lg">
           {waLink && (
             <a href={waLink} target="_blank" rel="noopener noreferrer" className="flex-1 block">
-              <Button variant="outline" className="w-full gap-2">
-                <MessageSquare size={18} /> Chat WA
-              </Button>
-            </a>
-          )}
-          {partnerPhone && (
-            <a href={`tel:${partnerPhone}`} className="flex-[2] block">
-              <Button className="w-full gap-2">
-                <Phone size={18} /> Hubungi
+              <Button className="w-full gap-2 bg-[#25D366] hover:bg-[#1ebe5b] border-[#25D366] hover:border-[#1ebe5b]">
+                <Whatsapp className="w-[18px] h-[18px]" /> Chat via WhatsApp
               </Button>
             </a>
           )}
