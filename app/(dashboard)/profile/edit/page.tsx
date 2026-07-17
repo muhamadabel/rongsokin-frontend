@@ -225,15 +225,14 @@ export default function EditProfilePage() {
 
       <main className="max-w-2xl mx-auto px-4 md:px-0 py-5 md:py-8 space-y-5">
         {/* Desktop heading + back */}
-        <div className="hidden md:flex items-center gap-3">
+        <div className="hidden md:flex flex-col gap-2 mb-2">
           <Link
             href="/profile"
-            className="flex items-center gap-1.5 text-sm font-semibold text-ink-muted hover:text-ink transition-colors"
+            className="flex items-center gap-1.5 text-sm font-semibold text-ink-muted hover:text-ink transition-colors w-fit"
           >
             <ArrowLeft size={16} /> Kembali
           </Link>
-          <span className="text-ink-faint">·</span>
-          <h1 className="font-display text-2xl font-extrabold tracking-tight text-ink">
+          <h1 className="font-display text-3xl font-extrabold tracking-tight text-ink">
             Edit Profil
           </h1>
         </div>
@@ -313,7 +312,7 @@ export default function EditProfilePage() {
                     <button
                       type="button"
                       onClick={() => setShopImageUrl("")}
-                      className="absolute bottom-3 left-3 bg-status-error/10 hover:bg-status-error/20 text-status-error px-3 py-1.5 rounded-xl border border-status-error/20 flex items-center gap-1 text-xs font-bold cursor-pointer transition-colors"
+                      className="absolute bottom-3 left-3 bg-surface-raised text-ink border border-ink hover:bg-surface-sunken px-3 py-1.5 rounded-xl flex items-center gap-1 text-xs font-bold cursor-pointer transition-colors"
                     >
                       Hapus
                     </button>
