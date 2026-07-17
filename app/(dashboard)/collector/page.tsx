@@ -381,6 +381,19 @@ export default function CollectorDashboard() {
   const incomingOrders = useOrderStore((state) => state.incomingOrders);
   const removeIncomingOrder = useOrderStore((state) => state.removeIncomingOrder);
 
+  // Antrean KADALUWARSA: tawaran order PENDING hanya berlaku 15 menit sejak dibuat.
+  // Difilter saat render (bukan dihapus dari store) supaya polling PENDING yang
+  // me-re-add order lama tidak bikin kartu muncul-hilang (flicker).
+  const OFFER_TTL_MS = 15 * 60 * 1000;
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNowTick(Date.now()), 5000);
+    return () => clearInterval(t);
+  }, []);
+  const liveIncoming = incomingOrders.filter(
+    (o) => nowTick - new Date(o.createdAt).getTime() < OFFER_TTL_MS
+  );
+
   const { data: me } = useMe();
   const needsVerify = me?.isVerified === false; // hanya gate kalau eksplisit false
 
@@ -584,9 +597,9 @@ export default function CollectorDashboard() {
                 <FileText className="text-brand-700" size={18} />
                 Request Jemput Terdekat
               </h3>
-              {incomingOrders.length > 0 && (
+              {liveIncoming.length > 0 && (
                 <span className="bg-brand-100 text-brand-800 text-[9px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-full">
-                  {incomingOrders.length} Aktif
+                  {liveIncoming.length} Aktif
                 </span>
               )}
             </div>
@@ -604,8 +617,8 @@ export default function CollectorDashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-ink-faint">
-                  {incomingOrders.length > 0 ? (
-                    incomingOrders.map((order, idx) => (
+                  {liveIncoming.length > 0 ? (
+                    liveIncoming.map((order, idx) => (
                       <RequestRow
                         key={order.id}
                         order={order}
@@ -636,16 +649,16 @@ export default function CollectorDashboard() {
             <h3 className="font-display font-extrabold text-base text-ink tracking-tight flex items-center gap-2">
               <Store className="text-brand-700" size={18} />
               Antrean Masuk
-              {incomingOrders.length > 0 && (
+              {liveIncoming.length > 0 && (
                 <span className="bg-brand-500 text-ink text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full">
-                  {incomingOrders.length}
+                  {liveIncoming.length}
                 </span>
               )}
             </h3>
 
             <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
-              {incomingOrders.length > 0 ? (
-                incomingOrders.map((order) => (
+              {liveIncoming.length > 0 ? (
+                liveIncoming.map((order) => (
                   <IncomingOrderCard
                     key={order.id}
                     order={order}

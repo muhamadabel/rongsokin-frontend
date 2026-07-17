@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import DesktopNav from "@/components/ui/DesktopNav";
@@ -83,7 +83,12 @@ export default function OrderTrackingPage() {
   const [ratingLoading, setRatingLoading] = useState(false);
 
   const [showEcoImpact, setShowEcoImpact] = useState(false);
-  const [ecoImpactSeen, setEcoImpactSeen] = useState(false);
+
+  // Modal perayaan (Eco Impact + rating) hanya muncul SEKALI — saat order baru
+  // selesai. Ditandai persisten di localStorage per order+user, supaya membuka
+  // lagi riwayat order yang sudah COMPLETED tidak memunculkannya berulang.
+  const celebrateKey = user?.id && id ? `rongsokin:orderCelebrated:${id}:${user.id}` : "";
+  const celebrateChecked = useRef(false);
 
   useEffect(() => {
     if (!token || !id) return;
@@ -107,16 +112,27 @@ export default function OrderTrackingPage() {
   }, [token, id, refetch]);
 
   useEffect(() => {
-    if (order?.status === "COMPLETED") {
-      const isCustomer = user?.role === "CUSTOMER";
-      if (isCustomer && !ecoImpactSeen) {
-        setShowEcoImpact(true);
-        setShowRating(false);
-      } else if (!ratingSubmitted) {
-        setShowRating(true);
-      }
+    if (order?.status !== "COMPLETED" || !celebrateKey) return;
+    if (celebrateChecked.current) return; // cukup sekali per mount
+    celebrateChecked.current = true;
+
+    let alreadyCelebrated = false;
+    try {
+      alreadyCelebrated = localStorage.getItem(celebrateKey) === "1";
+    } catch {
+      /* localStorage diblokir → jangan sampai modal ikut gagal */
     }
-  }, [order?.status, user?.role, ecoImpactSeen, ratingSubmitted]);
+    if (alreadyCelebrated) return; // sudah pernah tampil saat order ini selesai
+    try {
+      localStorage.setItem(celebrateKey, "1");
+    } catch {
+      /* abaikan */
+    }
+
+    // Customer: Eco Impact dulu, rating menyusul saat modal eco ditutup.
+    if (user?.role === "CUSTOMER") setShowEcoImpact(true);
+    else setShowRating(true);
+  }, [order?.status, celebrateKey, user?.role]);
 
   if (isLoading) {
     return <OrderDetailSkeleton />;
@@ -827,7 +843,7 @@ export default function OrderTrackingPage() {
           orderId={order.id}
           onClose={() => {
             setShowEcoImpact(false);
-            setEcoImpactSeen(true);
+            if (!ratingSubmitted) setShowRating(true); // lanjut minta rating, sekali ini saja
           }}
         />
       )}

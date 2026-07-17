@@ -45,3 +45,8 @@ before develop/
 implementation_plan.md
 task.md
 walkthrough.md
+
+# Dokumen & instruksi agent (disimpan lokal, tidak ikut ke repo)
+CLAUDE.md
+AGENTS.md
+FRONTEND_AGENT.md
