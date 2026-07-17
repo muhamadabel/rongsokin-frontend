@@ -21,12 +21,12 @@ interface Props {
 const centerIcon = () =>
   L.divIcon({
     className: "",
-    html: `<div style="display:flex;flex-direction:column;align-items:center;transform:translateY(-4px)">
-      <div style="width:26px;height:26px;border-radius:9999px;background:#9fe870;border:3px solid #0e0f0c;box-shadow:0 2px 6px rgba(13,34,0,.35)"></div>
-      <div style="width:2px;height:7px;background:#0e0f0c"></div>
+    html: `<div style="display:flex;flex-direction:column;align-items:center;transform:translateY(-3px)">
+      <div style="width:16px;height:16px;border-radius:9999px;background:#9fe870;border:2px solid #0e0f0c;box-shadow:0 1px 4px rgba(13,34,0,.35)"></div>
+      <div style="width:2px;height:5px;background:#0e0f0c"></div>
     </div>`,
-    iconSize: [26, 33],
-    iconAnchor: [13, 33],
+    iconSize: [16, 21],
+    iconAnchor: [8, 21],
   });
 
 // Selalu pas-kan viewport ke lingkaran tiap radius/lokasi berubah, biar lingkaran
