@@ -58,10 +58,7 @@ export const useCategoryTree = () => {
   return { ...tree, isLoading, error };
 };
 
-export const useSearchCollectors = (
-  params: SearchQueryParams,
-  options?: { enabled?: boolean }
-) => {
+export const useSearchCollectors = (params: SearchQueryParams) => {
   const { data: categories } = useWasteCategories();
 
   return useQuery({
@@ -100,12 +97,7 @@ export const useSearchCollectors = (
           priorityScore: c.priorityScore,
           avgRating: c.avgRating != null ? Number(c.avgRating) : 0,
           ownerName: c.ownerName,
-          // foto profil pengepul (avatar) & foto sampul lapak — utk kartu daftar
-          avatarUrl: c.avatarUrl || null,
-          shopImageUrl: c.shopImageUrl || null,
           distance: c.distance, // in meters
-          // Harga ambil tertinggi (utk sort "termahal"). undefined kalau BE belum kirim.
-          maxPrice: c.maxPrice != null ? Number(c.maxPrice) : undefined,
           isOpen: true,
           isVerified: Boolean(c.ownerVerified ?? c.isVerified),
         }));
@@ -117,7 +109,7 @@ export const useSearchCollectors = (
         throw err;
       }
     },
-    enabled: (!params.category || !!categories) && (options?.enabled ?? true),
+    enabled: !params.category || !!categories,
     retry: false,
   });
 };

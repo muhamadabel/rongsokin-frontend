@@ -1,8 +1,7 @@
-// OCR KTP — ekstrak NIK (16 digit) & Nama dari foto KTP.
-// Strategi: coba Gemini vision dulu (akurat) lewat route server /api/ktp-ocr
-// (API key aman di server, tidak pernah ke browser). Kalau Gemini belum diset
-// (env GEMINI_API_KEY kosong) atau gagal, otomatis fallback ke OCR lokal
-// Tesseract.js (gratis, tanpa server) — jadi fitur tetap jalan apa pun kondisinya.
+// OCR KTP di sisi klien (Tesseract.js, gratis, tanpa server).
+// Mengekstrak NIK (16 digit) & Nama dari foto KTP.
+// Pakai pre-processing (grayscale + normalisasi kontras + upscale) + 2 pass
+// (pass kedua khusus angka) supaya NIK lebih akurat terbaca.
 
 export interface KtpOcrResult {
   nik: string | null;
@@ -115,8 +114,8 @@ function extractName(text: string): string | null {
   return null;
 }
 
-// ── Recognize (lokal / Tesseract) — dipakai sebagai fallback ────────────────
-async function recognizeKtpLocal(image: Blob | string): Promise<KtpOcrResult> {
+// ── Recognize ──────────────────────────────────────────────────────────────
+export async function recognizeKtp(image: Blob | string): Promise<KtpOcrResult> {
   const { createWorker } = await import("tesseract.js");
   const img = await loadImage(image);
   const canvas = preprocess(img);
@@ -142,56 +141,4 @@ async function recognizeKtpLocal(image: Blob | string): Promise<KtpOcrResult> {
   } finally {
     await worker.terminate();
   }
-}
-
-// ── Helper: gambar → base64 (tanpa prefix data URL) ─────────────────────────
-async function toBase64(image: Blob | string): Promise<{ base64: string; mime: string }> {
-  let blob: Blob;
-  if (typeof image === "string") {
-    const res = await fetch(image);
-    blob = await res.blob();
-  } else {
-    blob = image;
-  }
-  const mime = blob.type || "image/jpeg";
-  const dataUrl: string = await new Promise((resolve, reject) => {
-    const fr = new FileReader();
-    fr.onload = () => resolve(fr.result as string);
-    fr.onerror = () => reject(new Error("Gagal membaca gambar."));
-    fr.readAsDataURL(blob);
-  });
-  return { base64: dataUrl.split(",")[1] || "", mime };
-}
-
-// ── Recognize (utama) — Gemini dulu, fallback ke Tesseract ──────────────────
-export async function recognizeKtp(image: Blob | string): Promise<KtpOcrResult> {
-  // 1) Coba Gemini lewat route server (akurat). Key aman di server.
-  try {
-    const { base64, mime } = await toBase64(image);
-    if (base64) {
-      const res = await fetch("/api/ktp-ocr", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageBase64: base64, mimeType: mime }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        // Sukses kalau NIK 16 digit terbaca; kalau buram (terbaca=false) nik kosong
-        // → diperlakukan sama seperti gagal baca (UI minta foto ulang).
-        if (data && typeof data.nik === "string") {
-          return {
-            nik: data.nik || null,
-            name: data.nama || null,
-            rawText: typeof data.alasan === "string" ? data.alasan : "",
-          };
-        }
-      }
-      // 503 (key belum diset) / 502 (gemini error) → lanjut ke fallback lokal.
-    }
-  } catch {
-    // route/jaringan gagal → fallback lokal
-  }
-
-  // 2) Fallback: OCR lokal Tesseract (tetap jalan walau Gemini belum siap).
-  return recognizeKtpLocal(image);
 }

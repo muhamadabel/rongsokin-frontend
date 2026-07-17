@@ -8,9 +8,8 @@ import { Input } from "@/components/ui/Input";
 import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
 import Link from "next/link";
 import { useSearchCollectors, useCategoryTree } from "@/hooks/useDiscovery";
-import { useUserCoords } from "@/hooks/useUserCoords";
 import { useAuthStore } from "@/store/authStore";
-import { formatDistance, formatRupiah } from "@/lib/utils";
+import { DEFAULT_COORDS, formatDistance } from "@/lib/utils";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PageSkeleton } from "@/components/ui/Skeleton";
 
@@ -39,11 +38,9 @@ function SearchInner() {
     }
   }, [token, user, router]);
 
-  // Lokasi pencarian: lokasi tersimpan customer > GPS > default Yogyakarta
-  const { coords, ready: coordsReady } = useUserCoords();
+  const [coords, setCoords] = useState(DEFAULT_COORDS);
   const [selectedMainId, setSelectedMainId] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState<"distance" | "rating" | "price">("distance");
 
   const { mains } = useCategoryTree();
 
@@ -57,16 +54,24 @@ function SearchInner() {
     setSelectedMainId((prev) => prev || byName?.id || mains[0].id);
   }, [mains, searchParams]);
 
+  useEffect(() => {
+    if (typeof navigator !== "undefined" && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setCoords({ lat: position.coords.latitude, lng: position.coords.longitude });
+        },
+        () => {}
+      );
+    }
+  }, []);
+
   const selectedMain = mains.find((m) => m.id === selectedMainId);
-  const { data: collectors, isLoading } = useSearchCollectors(
-    {
-      lat: coords.lat,
-      lng: coords.lng,
-      categoryId: selectedMainId || undefined,
-      radius: 50,
-    },
-    { enabled: coordsReady }
-  );
+  const { data: collectors, isLoading } = useSearchCollectors({
+    lat: coords.lat,
+    lng: coords.lng,
+    categoryId: selectedMainId || undefined,
+    radius: 50,
+  });
 
   const filteredCollectors =
     collectors?.filter(
@@ -74,27 +79,6 @@ function SearchInner() {
         c.shopName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (c.description && c.description.toLowerCase().includes(searchQuery.toLowerCase()))
     ) || [];
-
-  // Urutkan sesuai pilihan. Default: terdekat. Tie-break selalu jarak terdekat.
-  const sortedCollectors = [...filteredCollectors].sort((a, b) => {
-    const dist = (a.distance ?? Infinity) - (b.distance ?? Infinity);
-    if (sortBy === "rating") {
-      const r = (b.avgRating ?? 0) - (a.avgRating ?? 0);
-      return r !== 0 ? r : dist;
-    }
-    if (sortBy === "price") {
-      // termahal dulu; pengepul tanpa data harga ditaruh di bawah
-      const p = (b.maxPrice ?? -1) - (a.maxPrice ?? -1);
-      return p !== 0 ? p : dist;
-    }
-    return dist;
-  });
-
-  const SORT_OPTIONS = [
-    { key: "distance", label: "Terdekat" },
-    { key: "rating", label: "Rating Tertinggi" },
-    { key: "price", label: "Harga Tertinggi" },
-  ] as const;
 
   return (
     <div className="min-h-screen bg-surface pb-24 md:pb-8 flex flex-col">
@@ -158,31 +142,6 @@ function SearchInner() {
           </div>
         </section>
 
-        {/* SORTING */}
-        <section className="space-y-2.5">
-          <h4 className="text-[11px] font-bold text-mute uppercase tracking-widest font-mono">
-            Urutkan
-          </h4>
-          <div className="flex overflow-x-auto no-scrollbar gap-2.5 py-1">
-            {SORT_OPTIONS.map((opt) => {
-              const isActive = sortBy === opt.key;
-              return (
-                <button
-                  key={opt.key}
-                  onClick={() => setSortBy(opt.key)}
-                  className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap border ${
-                    isActive
-                      ? "bg-ink text-surface border-ink"
-                      : "bg-surface-raised text-ink-muted border-ink-faint hover:border-ink"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              );
-            })}
-          </div>
-        </section>
-
         {/* COLLECTORS LIST */}
         <section className="space-y-4">
           <h3 className="font-display font-extrabold text-base text-ink tracking-tight">
@@ -195,26 +154,17 @@ function SearchInner() {
                 <div key={i} className="bg-surface-raised rounded-2xl p-5 h-28 animate-pulse" />
               ))}
             </div>
-          ) : sortedCollectors.length > 0 ? (
+          ) : filteredCollectors.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {sortedCollectors.map((collector) => (
+              {filteredCollectors.map((collector) => (
                 <Link
                   key={collector.id}
                   href={`/pengepul/${collector.id}`}
                   className="block bg-surface-raised p-5 rounded-2xl hover:bg-brand-100 transition-colors cursor-pointer group"
                 >
                   <div className="flex items-start gap-4">
-                    <div className="w-14 h-14 bg-surface group-hover:bg-brand-500 text-ink rounded-2xl overflow-hidden flex items-center justify-center shrink-0 transition-colors">
-                      {collector.avatarUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={collector.avatarUrl}
-                          alt={collector.shopName}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <Archive size={24} />
-                      )}
+                    <div className="w-14 h-14 bg-surface group-hover:bg-brand-500 text-ink rounded-2xl flex items-center justify-center shrink-0 transition-colors">
+                      <Archive size={24} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-start gap-2">
@@ -240,13 +190,7 @@ function SearchInner() {
                           </span>
                         </span>
                         <span className="text-ink-faint">•</span>
-                        {collector.maxPrice != null ? (
-                          <span className="text-brand-700 font-bold font-mono">
-                            s/d {formatRupiah(collector.maxPrice)}/kg
-                          </span>
-                        ) : (
-                          <span className="text-status-success font-bold">Terima Jemput</span>
-                        )}
+                        <span className="text-status-success font-bold">Terima Jemput</span>
                       </div>
                     </div>
                   </div>

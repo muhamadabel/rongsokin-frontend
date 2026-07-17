@@ -89,12 +89,35 @@ export default function LoginPage() {
             />
           </div>
 
-          <Button type="submit" variant="primary" className="w-full mt-1" disabled={isPending}>
+          <div className="flex justify-end">
+            <Link href="#" className="text-xs font-semibold text-ink-muted hover:text-ink">
+              Lupa sandi?
+            </Link>
+          </div>
+
+          <Button type="submit" variant="primary" className="w-full" disabled={isPending}>
             {isPending ? "Memproses…" : "Masuk"} {!isPending && <ArrowRight size={16} />}
           </Button>
         </form>
 
-        <p className="text-center text-sm text-ink-muted mt-7">
+        <div className="relative flex items-center my-6">
+          <div className="flex-grow border-t border-ink-faint"></div>
+          <span className="flex-shrink mx-4 text-mute text-[11px] font-bold uppercase tracking-wider">
+            Atau
+          </span>
+          <div className="flex-grow border-t border-ink-faint"></div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 mb-7">
+          <Button variant="outline" onClick={() => toast.success("Segera hadir!")}>
+            Google
+          </Button>
+          <Button variant="outline" onClick={() => toast.success("Segera hadir!")}>
+            Facebook
+          </Button>
+        </div>
+
+        <p className="text-center text-sm text-ink-muted">
           Belum punya akun?{" "}
           <Link href="/register" className="text-ink font-bold hover:underline">
             Daftar di sini

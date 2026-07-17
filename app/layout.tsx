@@ -1,10 +1,9 @@
-import type { Metadata, Viewport } from "next";
+import type { Metadata } from "next";
 import { Manrope, Inter, JetBrains_Mono } from "next/font/google";
 import { Toaster } from "react-hot-toast";
 import "./globals.css";
 
 import QueryProvider from "@/components/providers/QueryProvider";
-import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 const fontDisplay = Manrope({
   variable: "--font-manrope",
@@ -28,15 +27,6 @@ export const metadata: Metadata = {
   description: "Platform Ekosistem Daur Ulang Sirkular",
 };
 
-// Matikan zoom (pinch / double-tap) di mobile supaya tidak mengganggu saat tap.
-export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
-  maximumScale: 1,
-  minimumScale: 1,
-  userScalable: false,
-};
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -51,7 +41,6 @@ export default function RootLayout({
         <QueryProvider>
           {children}
         </QueryProvider>
-        <ConfirmDialog />
         <Toaster
           position="top-center"
           toastOptions={{

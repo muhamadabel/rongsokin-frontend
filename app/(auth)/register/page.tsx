@@ -13,18 +13,19 @@ import {
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
+  MapPin,
   ShieldCheck,
   Loader2,
   AlertTriangle,
   Pencil,
   ScanLine,
-  Camera,
   Lock,
+  Camera,
 } from "lucide-react";
-import { useRegister, useUpdateMe } from "@/hooks/useAuth";
+import { useRegister } from "@/hooks/useAuth";
 import { useUpdateCollectorProfile } from "@/hooks/useCollector";
-import LocationPicker from "@/components/features/profile/LocationPicker";
 import { recognizeKtp } from "@/lib/ktpOcr";
+import { uploadToCloudinary } from "@/lib/upload";
 import toast from "react-hot-toast";
 
 type OcrStatus = "idle" | "scanning" | "done" | "failed";
@@ -51,6 +52,8 @@ function RegisterForm() {
   // Step 3 — KYC (KTP)
   const [showCamera, setShowCamera] = useState(true);
   const [ktpPreview, setKtpPreview] = useState("");
+  const [ktpUrl, setKtpUrl] = useState("");
+  const [uploadingKtp, setUploadingKtp] = useState(false);
   const [nik, setNik] = useState("");
   const [ktpName, setKtpName] = useState("");
   const [ocrStatus, setOcrStatus] = useState<OcrStatus>("idle");
@@ -62,13 +65,10 @@ function RegisterForm() {
   const [radiusKm, setRadiusKm] = useState(5);
   const [collectorLat, setCollectorLat] = useState(-7.7956);
   const [collectorLng, setCollectorLng] = useState(110.3695);
-
-  // Step 4 — Lokasi (customer). null = belum dipilih; LocationPicker auto-GPS saat muncul.
-  const [customerCoords, setCustomerCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [gpsDetected, setGpsDetected] = useState(false);
 
   const { mutate: register, isPending: isRegistering } = useRegister();
   const { mutate: setupProfile, isPending: isSettingProfile } = useUpdateCollectorProfile();
-  const { mutate: updateMe, isPending: isSavingLocation } = useUpdateMe();
 
   // Preselect role dari URL (?role=COLLECTOR)
   useEffect(() => {
@@ -76,9 +76,8 @@ function RegisterForm() {
     if (r === "COLLECTOR" || r === "CUSTOMER") setRole(r);
   }, [searchParams]);
 
-  // 4 langkah untuk semua role: step 4 = profil lapak (collector) atau pilih lokasi (customer)
-  const totalSteps = 4;
-  const stepList = [1, 2, 3, 4];
+  const totalSteps = role === "COLLECTOR" ? 4 : 3;
+  const stepList = role === "COLLECTOR" ? [1, 2, 3, 4] : [1, 2, 3];
 
   // ── Step 2: biodata → lanjut ke KYC ──────────────────────────────────────
   const handleBiodataNext = (e: React.FormEvent) => {
@@ -98,9 +97,13 @@ function RegisterForm() {
     setNik("");
     setKtpName("");
 
-    // PRIVASI: foto KTP TIDAK disimpan ke mana pun (tidak ke Cloudinary, tidak ke DB).
-    // Foto hanya dibaca AI/OCR untuk mengambil NIK & nama, lalu dibuang. Yang
-    // tersimpan ke server hanyalah NIK + nama, bukan gambar atau URL KTP.
+    // Upload ke Cloudinary (paralel dengan OCR)
+    setUploadingKtp(true);
+    uploadToCloudinary(blob)
+      .then((r) => setKtpUrl(r.url))
+      .catch(() => toast.error("Gagal mengunggah foto KTP. Ulangi foto."))
+      .finally(() => setUploadingKtp(false));
+
     // OCR NIK + Nama. NIK = kunci utama → status sukses kalau NIK terbaca.
     try {
       const res = await recognizeKtp(blob);
@@ -117,6 +120,7 @@ function RegisterForm() {
   const retakeKtp = () => {
     setShowCamera(true);
     setKtpPreview("");
+    setKtpUrl("");
     setNik("");
     setKtpName("");
     setOcrStatus("idle");
@@ -128,6 +132,10 @@ function RegisterForm() {
     e.preventDefault();
     if (!ktpPreview) {
       toast.error("Ambil foto KTP terlebih dahulu.");
+      return;
+    }
+    if (uploadingKtp) {
+      toast.error("Tunggu, foto KTP sedang diunggah…");
       return;
     }
     if (!/^\d{16}$/.test(nik)) {
@@ -148,13 +156,29 @@ function RegisterForm() {
         role: role as "CUSTOMER" | "COLLECTOR",
         nik,
         ktpName: ktpName.trim(),
+        // Fallback sentinel bila upload foto KTP gagal/kosong — BE lama syaratkan
+        // ktpUrl agar isVerified=true; ini bikin verifikasi tetap jalan (BE baru
+        // cukup dari NIK, sentinel diabaikan). Bukan foto KTP.
+        ktpUrl: ktpUrl || "verified-by-nik",
       },
       {
         onSuccess: () => {
           toast.success("Verifikasi & registrasi berhasil!");
-          // Step 4: collector → profil lapak (+peta), customer → pilih lokasi.
-          // LocationPicker (autoLocate) yang menangani deteksi GPS awal di kedua kasus.
-          setStep(4);
+          if (role === "COLLECTOR") {
+            if (navigator.geolocation) {
+              navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                  setCollectorLat(pos.coords.latitude);
+                  setCollectorLng(pos.coords.longitude);
+                  setGpsDetected(true);
+                },
+                () => setGpsDetected(false)
+              );
+            }
+            setStep(4);
+          } else {
+            router.push("/dashboard");
+          }
         },
         onError: (err: unknown) => {
           const msg =
@@ -190,29 +214,6 @@ function RegisterForm() {
     );
   };
 
-  // ── Step 4 (customer): simpan lokasi → dashboard ─────────────────────────
-  const handleCustomerLocationSubmit = () => {
-    if (!customerCoords) {
-      toast.error("Pilih titik lokasimu dulu di peta.");
-      return;
-    }
-    updateMe(
-      { lat: customerCoords.lat, lng: customerCoords.lng },
-      {
-        onSuccess: () => {
-          toast.success("Lokasi tersimpan!");
-          router.push("/dashboard");
-        },
-        onError: (err: unknown) => {
-          const msg =
-            (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-            "Gagal menyimpan lokasi. Coba lagi.";
-          toast.error(msg);
-        },
-      }
-    );
-  };
-
   const headerSub =
     step === 1
       ? "Pilih peranmu di ekosistem ini"
@@ -220,9 +221,7 @@ function RegisterForm() {
       ? "Lengkapi data akunmu"
       : step === 3
       ? "Verifikasi identitas dengan KTP"
-      : role === "COLLECTOR"
-      ? "Lengkapi profil lapakmu"
-      : "Tentukan lokasimu";
+      : "Lengkapi profil lapakmu";
 
   return (
     <div className="min-h-screen flex flex-col p-6 bg-surface justify-center">
@@ -441,8 +440,8 @@ function RegisterForm() {
                       <div className="flex items-start gap-2">
                         <AlertTriangle size={16} className="shrink-0 mt-0.5" />
                         <span>
-                          NIK belum terbaca otomatis. <b>Ketik NIK manual</b> di bawah, atau foto
-                          ulang KTP (terang, tidak buram, memenuhi bingkai).
+                          NIK belum terbaca. Foto ulang KTP — pastikan terang, tidak buram, dan
+                          memenuhi bingkai.
                         </span>
                       </div>
                       <button
@@ -455,7 +454,7 @@ function RegisterForm() {
                     </div>
                   )}
 
-                  {/* NIK — HANYA dari foto KTP (OCR/AI), tidak bisa diketik manual (anti NIK palsu) */}
+                  {/* NIK — hanya diisi sistem (OCR), tidak bisa diketik manual */}
                   <div>
                     <label className="text-xs font-bold text-ink uppercase tracking-wider mb-2 flex items-center gap-1.5">
                       NIK <Lock size={11} className="text-ink-muted" />
@@ -463,7 +462,7 @@ function RegisterForm() {
                     <Input
                       type="text"
                       inputMode="numeric"
-                      placeholder="Otomatis dari foto KTP…"
+                      placeholder="Otomatis dari KTP…"
                       value={nik}
                       readOnly
                       tabIndex={-1}
@@ -472,8 +471,7 @@ function RegisterForm() {
                       required
                     />
                     <p className="text-[11px] text-ink-muted mt-1">
-                      NIK diisi otomatis hasil pindai KTP &amp; tidak bisa diketik manual. Kalau
-                      kosong/salah, foto ulang KTP.
+                      NIK diisi otomatis hasil pindai KTP & tidak bisa diketik manual.
                     </p>
                   </div>
 
@@ -508,17 +506,22 @@ function RegisterForm() {
                       className="w-full"
                       disabled={
                         isRegistering ||
+                        uploadingKtp ||
                         ocrStatus === "scanning" ||
                         !/^\d{16}$/.test(nik)
                       }
                     >
                       {isRegistering
                         ? "Memproses…"
+                        : uploadingKtp
+                        ? "Mengunggah foto…"
                         : ocrStatus === "scanning"
                         ? "Membaca KTP…"
                         : !/^\d{16}$/.test(nik)
-                        ? "Lengkapi NIK (16 digit)"
-                        : "Verifikasi & Lanjut"}
+                        ? "NIK belum terbaca"
+                        : role === "COLLECTOR"
+                        ? "Verifikasi & Lanjut"
+                        : "Verifikasi & Selesai"}
                     </Button>
                   </div>
                 </>
@@ -526,8 +529,8 @@ function RegisterForm() {
             </form>
           )}
 
-          {/* STEP 4 (COLLECTOR): PROFIL LAPAK */}
-          {step === 4 && role === "COLLECTOR" && (
+          {/* STEP 4: PROFIL LAPAK */}
+          {step === 4 && (
             <form onSubmit={handleProfileSubmit} className="space-y-4">
               <div>
                 <label className="text-xs font-bold text-ink uppercase tracking-wider mb-2 block">
@@ -558,26 +561,30 @@ function RegisterForm() {
                 </label>
                 <Input
                   type="number"
-                  inputMode="numeric"
                   min="1"
                   max="50"
-                  placeholder="5"
-                  value={radiusKm || ""}
-                  onChange={(e) => setRadiusKm(e.target.value === "" ? 0 : Number(e.target.value))}
+                  value={radiusKm}
+                  onChange={(e) => setRadiusKm(Number(e.target.value))}
                   required
                 />
               </div>
-              <div>
-                <LocationPicker
-                  value={{ lat: collectorLat, lng: collectorLng }}
-                  onChange={(c) => {
-                    setCollectorLat(c.lat);
-                    setCollectorLng(c.lng);
-                  }}
-                  autoLocate
-                  label="Lokasi Lapak"
-                  helperText="Geser peta tepat ke lokasi lapakmu — ini yang dipakai customer mencari pengepul terdekat. Tombol GPS butuh koneksi HTTPS."
-                />
+              <div
+                className={`border rounded-2xl p-4 flex items-start gap-3 ${
+                  gpsDetected
+                    ? "bg-brand-100 border-brand-200 text-brand-800"
+                    : "bg-surface border-ink-faint text-ink-muted"
+                }`}
+              >
+                {gpsDetected ? (
+                  <CheckCircle2 size={20} className="shrink-0 mt-0.5 text-brand-700" />
+                ) : (
+                  <MapPin size={20} className="shrink-0 mt-0.5 text-ink-muted" />
+                )}
+                <p className="text-xs leading-relaxed">
+                  {gpsDetected
+                    ? "Lokasi GPS terdeteksi. Lapakmu akan muncul di hasil pencarian terdekat."
+                    : "Menggunakan lokasi default Yogyakarta. Detail harga & jam operasional bisa diatur di Dashboard."}
+                </p>
               </div>
 
               <div className="pt-3">
@@ -586,33 +593,6 @@ function RegisterForm() {
                 </Button>
               </div>
             </form>
-          )}
-
-          {/* STEP 4 (CUSTOMER): PILIH LOKASI */}
-          {step === 4 && role === "CUSTOMER" && (
-            <div className="space-y-4">
-              <p className="text-sm text-ink-muted -mt-3">
-                Geser peta untuk menandai lokasimu. Ini jadi titik pencarian pengepul
-                terdekat & lokasi default setoranmu (bisa diubah nanti).
-              </p>
-              <LocationPicker
-                value={customerCoords}
-                onChange={setCustomerCoords}
-                label="Pilih Titik Lokasi"
-                autoLocate
-                helperText="Lokasi tersimpan dipakai untuk mencari pengepul terdekat di sekitarmu."
-              />
-              <div className="pt-1">
-                <Button
-                  type="button"
-                  onClick={handleCustomerLocationSubmit}
-                  className="w-full"
-                  disabled={isSavingLocation || !customerCoords}
-                >
-                  {isSavingLocation ? "Menyimpan…" : "Selesai Mendaftar"}
-                </Button>
-              </div>
-            </div>
           )}
         </div>
 

@@ -65,9 +65,6 @@
 html {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  /* Tap responsif tanpa delay double-tap-zoom di mobile */
-  touch-action: manipulation;
-  -webkit-text-size-adjust: 100%;
 }
 
 body {
@@ -137,13 +134,21 @@ body {
 }
 
 /* ── Receipt wavy bottom edge (digital nota) ───────────────────────────── */
+/* Dua lapis mask:
+   (1) linear-gradient menutup SELURUH badan struk  → isi struk tetap terlihat.
+   (2) tile radial-gradient HANYA di strip bawah    → gerigi/wavy edge.
+   Sebelumnya cuma pakai lapis (2) (repeat-x, position bottom): area di luar strip
+   bawah tidak tertutup mask apa pun → transparan → seluruh isi struk ikut terpotong. */
 .receipt-edge {
-  -webkit-mask-image: radial-gradient(circle at 10px -4px, transparent 10px, #000 11px);
-  mask-image: radial-gradient(circle at 10px -4px, transparent 10px, #000 11px);
-  -webkit-mask-size: 20px 20px;
-  mask-size: 20px 20px;
-  -webkit-mask-repeat: repeat-x;
-  mask-repeat: repeat-x;
-  mask-position: bottom;
-  -webkit-mask-position: bottom;
+  --receipt-scallop: 10px;
+  -webkit-mask-image: linear-gradient(#000 0 0),
+    radial-gradient(circle at 10px 10px, transparent 9px, #000 9.5px);
+  mask-image: linear-gradient(#000 0 0),
+    radial-gradient(circle at 10px 10px, transparent 9px, #000 9.5px);
+  -webkit-mask-size: 100% calc(100% - var(--receipt-scallop)), 20px var(--receipt-scallop);
+  mask-size: 100% calc(100% - var(--receipt-scallop)), 20px var(--receipt-scallop);
+  -webkit-mask-repeat: no-repeat, repeat-x;
+  mask-repeat: no-repeat, repeat-x;
+  -webkit-mask-position: top left, bottom left;
+  mask-position: top left, bottom left;
 }

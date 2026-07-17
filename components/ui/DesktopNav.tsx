@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Bell,
   User,
   Home,
   Search,
@@ -12,10 +13,8 @@ import {
   Store,
   Plus,
   ShieldCheck,
-  Leaf,
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
-import NotificationBell from "@/components/ui/NotificationBell";
 import { useAuthStore } from "@/store/authStore";
 
 type NavItem = { href: string; label: string; icon: React.ComponentType<{ size?: number }> };
@@ -59,7 +58,6 @@ export default function DesktopNav() {
         { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
         { href: "/search", label: "Cari", icon: Search },
         { href: "/orders", label: "Pesanan", icon: Clock },
-        { href: "/eco", label: "Eco", icon: Leaf },
       ];
 
   const showSellCta = !isCollector && !isAdmin;
@@ -109,7 +107,12 @@ export default function DesktopNav() {
             </Link>
           )}
 
-          {token && <NotificationBell />}
+          {token && (
+            <button className="text-mute hover:text-ink transition-colors relative p-2">
+              <Bell size={20} />
+              <span className="absolute top-1.5 right-2 w-2 h-2 bg-status-error rounded-full border border-surface-raised"></span>
+            </button>
+          )}
 
           <Link
             href={token ? "/profile" : "/login"}

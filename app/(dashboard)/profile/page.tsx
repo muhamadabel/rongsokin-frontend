@@ -7,8 +7,9 @@ import {
   User,
   Settings,
   MapPin,
-  BookOpen,
-  Bell,
+  CreditCard,
+  HelpCircle,
+  FileText,
   LogOut,
   ChevronRight,
   ShieldAlert,
@@ -18,9 +19,7 @@ import DesktopNav from "@/components/ui/DesktopNav";
 import { ProfileSkeleton } from "@/components/ui/Skeleton";
 import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
 import { useMe } from "@/hooks/useAuth";
-import { useCollectorProfile } from "@/hooks/useCollector";
 import { useOrdersList } from "@/hooks/useOrders";
-import { RatingSection } from "@/components/features/rating/RatingSection";
 import { useAuthStore } from "@/store/authStore";
 import { formatRupiah, getOrderTotalPrice } from "@/lib/utils";
 import toast from "react-hot-toast";
@@ -35,8 +34,6 @@ export default function ProfilePage() {
   }, [initFromStorage]);
 
   const { data: me, isLoading: isMeLoading } = useMe();
-  const isCollector = me?.role === "COLLECTOR";
-  const { data: collectorProfile } = useCollectorProfile();
   const { data: orders, isLoading: isOrdersLoading } = useOrdersList({
     role: me?.role === "COLLECTOR" ? "collector" : "customer",
     limit: 100,
@@ -61,17 +58,19 @@ export default function ProfilePage() {
   interface MenuItem {
     icon: any;
     label: string;
-    href: string;
+    href?: string;
+    toast?: string;
   }
 
   const menuGroups: MenuItem[][] = [
     [
       { icon: User, label: "Edit Profil", href: "/profile/edit" },
       { icon: MapPin, label: "Alamat & Lokasi", href: "/profile/edit" },
+      { icon: CreditCard, label: "Rekening & E-Wallet", toast: "Fitur Rekening segera hadir!" },
     ],
     [
-      { icon: Bell, label: "Notifikasi", href: "/notifications" },
-      { icon: BookOpen, label: "Cara Kerja", href: "/cara-kerja" },
+      { icon: HelpCircle, label: "Pusat Bantuan", toast: "Fitur Pusat Bantuan segera hadir!" },
+      { icon: FileText, label: "Syarat & Ketentuan", toast: "Syarat & Ketentuan Rongsok.in" },
     ],
   ];
 
@@ -80,16 +79,7 @@ export default function ProfilePage() {
       <DesktopNav />
       <main className="flex-1 max-w-2xl w-full mx-auto px-4 md:px-0 py-5 md:py-8 space-y-5">
         {/* PROFILE SUMMARY */}
-        <header className="bg-surface-raised rounded-2xl overflow-hidden">
-          {isCollector && collectorProfile?.shopImageUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={collectorProfile.shopImageUrl}
-              alt="Sampul lapak"
-              className="w-full h-24 md:h-32 object-cover"
-            />
-          )}
-          <div className="p-6 flex flex-col items-center">
+        <header className="bg-surface-raised rounded-2xl p-6 flex flex-col items-center">
           <div className="w-24 h-24 rounded-full bg-brand-100 mb-4 relative overflow-hidden">
             {me?.avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -148,24 +138,7 @@ export default function ProfilePage() {
               </span>
             </div>
           </div>
-          </div>
         </header>
-
-        {/* PENILAIAN / RATING */}
-        <RatingSection
-          userId={me?.id}
-          fallbackAvg={me?.avgRating}
-          title={
-            me?.role === "COLLECTOR"
-              ? "Penilaian dari Customer"
-              : "Penilaian dari Pengepul"
-          }
-          emptyText={
-            me?.role === "COLLECTOR"
-              ? "Belum ada ulasan. Customer bisa menilai lapakmu setelah transaksi selesai."
-              : "Belum ada ulasan. Pengepul bisa menilaimu setelah transaksi selesai."
-          }
-        />
 
         {/* MENU GROUPS */}
         <section className="space-y-4">
@@ -190,10 +163,21 @@ export default function ProfilePage() {
                     />
                   </>
                 );
+                if (item.href) {
+                  return (
+                    <Link key={item.label} href={item.href} className={baseCls}>
+                      {inner}
+                    </Link>
+                  );
+                }
                 return (
-                  <Link key={item.label} href={item.href} className={baseCls}>
+                  <button
+                    key={item.label}
+                    onClick={() => item.toast && toast.success(item.toast)}
+                    className={baseCls}
+                  >
                     {inner}
-                  </Link>
+                  </button>
                 );
               })}
             </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, Suspense } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
@@ -11,30 +11,24 @@ import {
   Tv,
   Droplets,
   ArrowLeft,
+  MapPin,
   CheckCircle2,
   Truck,
   Sparkles,
   X,
   ChevronRight,
   Check,
-  Lock,
-  ShieldCheck,
-  MapPin,
 } from "lucide-react";
-import { iconForCategory } from "@/lib/categoryIcons";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { CameraCapture } from "@/components/ui/CameraCapture";
 import DesktopNav from "@/components/ui/DesktopNav";
 import BottomNav from "@/components/ui/BottomNav";
 import { PageSkeleton } from "@/components/ui/Skeleton";
-import { unitLabel } from "@/lib/utils";
-import type { AreaInfo } from "@/lib/geocode";
+import { DEFAULT_COORDS, unitLabel } from "@/lib/utils";
 import { uploadToCloudinary } from "@/lib/upload";
-import LocationPicker from "@/components/features/profile/LocationPicker";
 import { useCategoryTree } from "@/hooks/useDiscovery";
-import { useCreateOrder, useOrdersList } from "@/hooks/useOrders";
-import { useMe } from "@/hooks/useAuth";
+import { useCreateOrder } from "@/hooks/useOrders";
 import { useAuthStore } from "@/store/authStore";
 import toast from "react-hot-toast";
 
@@ -84,16 +78,6 @@ function OrderForm() {
 
   const { mains, byId, isLoading: isCategoriesLoading } = useCategoryTree();
   const createOrder = useCreateOrder();
-  const { data: me } = useMe();
-
-  // Anti-scam: PICKUP hanya untuk user yang sudah punya >=1 transaksi COMPLETED.
-  // User baru wajib DROP-OFF dulu (antar sendiri) agar tidak ada pesanan jemput fiktif.
-  // Saat loading, anggap BELUM punya (fail-safe ke DROPOFF).
-  const { data: completedOrders, isLoading: isCompletedLoading } = useOrdersList({
-    status: "COMPLETED",
-    limit: 1,
-  });
-  const pickupUnlocked = (completedOrders?.length ?? 0) > 0;
 
   const [step, setStep] = useState(1);
 
@@ -104,42 +88,9 @@ function OrderForm() {
   const [method, setMethod] = useState<"PICKUP" | "DROPOFF" | "">("");
   const [lat, setLat] = useState<number | null>(null);
   const [lng, setLng] = useState<number | null>(null);
-  const [addressText, setAddressText] = useState(""); // deskripsi alamat jemput/antar
-  const [mapArea, setMapArea] = useState<AreaInfo | null>(null);
-  const autoBaseRef = useRef("");
 
   const [isUploading, setIsUploading] = useState(false);
-
-  // Seed titik lokasi awal dari lokasi tersimpan customer (yang di-set saat register/
-  // edit profil). User bisa geser peta untuk menyesuaikan per pesanan. Sekali saja
-  // supaya tidak menimpa hasil geser/GPS user (hindari race seperti bug lokasi dulu).
-  const seededCoords = useRef(false);
-  useEffect(() => {
-    if (seededCoords.current) return;
-    if (me?.lat != null && me?.lng != null) {
-      seededCoords.current = true;
-      setLat(me.lat);
-      setLng(me.lng);
-      // Seed deskripsi alamat dari profil; autoBase kosong agar geocode pertama tak menimpa
-      setAddressText(me.addressText || "");
-      autoBaseRef.current = "";
-    }
-  }, [me]);
-
-  // Auto-isi deskripsi alamat dari reverse-geocode (kecuali user sudah ubah manual)
-  const handleAreaResolved = (info: AreaInfo) => {
-    setMapArea(info);
-    setAddressText((prev) => {
-      if (prev && prev !== autoBaseRef.current) return prev;
-      autoBaseRef.current = info.full;
-      return info.full;
-    });
-  };
-  const handleUseMapAddress = () => {
-    if (!mapArea) return;
-    autoBaseRef.current = mapArea.full;
-    setAddressText(mapArea.full);
-  };
+  const [isLocating, setIsLocating] = useState(false);
 
   // Pre-select dari URL (?category=) — id atau nama kategori
   useEffect(() => {
@@ -154,14 +105,6 @@ function OrderForm() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initCat, mains, byId]);
-
-  // Kalau user memilih PICKUP lalu ternyata belum boleh (atau status berubah),
-  // reset pilihan supaya tidak lolos ke langkah berikutnya.
-  useEffect(() => {
-    if (method === "PICKUP" && !pickupUnlocked) {
-      setMethod("");
-    }
-  }, [method, pickupUnlocked]);
 
   // ── Toggle kategori (multi-select) ───────────────────────────────────────
   const toggleCategory = (catId: string) => {
@@ -200,14 +143,37 @@ function OrderForm() {
     setPhotoPreview("");
   };
 
+  // ── Lokasi GPS ───────────────────────────────────────────────────────────
+  const handleGetLocation = () => {
+    setIsLocating(true);
+    if (typeof window !== "undefined" && "geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setLat(pos.coords.latitude);
+          setLng(pos.coords.longitude);
+          setIsLocating(false);
+          toast.success("Lokasi GPS berhasil didapat!");
+        },
+        () => {
+          setLat(DEFAULT_COORDS.lat);
+          setLng(DEFAULT_COORDS.lng);
+          setIsLocating(false);
+          toast("Gagal GPS, memakai lokasi default Yogyakarta.", { icon: "📍" });
+        },
+        { timeout: 10000 }
+      );
+    } else {
+      setLat(DEFAULT_COORDS.lat);
+      setLng(DEFAULT_COORDS.lng);
+      setIsLocating(false);
+      toast("GPS tidak didukung, memakai lokasi default.", { icon: "📍" });
+    }
+  };
+
   // ── Submit ───────────────────────────────────────────────────────────────
   const handleSubmit = () => {
     if (items.length === 0 || !method || !lat || !lng) {
       toast.error("Mohon lengkapi semua data setoran.");
-      return;
-    }
-    if (method === "PICKUP" && !pickupUnlocked) {
-      toast.error("Transaksi pertama wajib antar sendiri (drop-off) untuk mencegah pesanan fiktif.");
       return;
     }
     if (!photoUrl) {
@@ -228,7 +194,6 @@ function OrderForm() {
           notes: it.notes?.trim() || undefined,
         })),
         photoUrl: photoUrl || undefined,
-        addressText: addressText.trim() || undefined,
         lat,
         lng,
         method: method as "PICKUP" | "DROPOFF",
@@ -253,8 +218,7 @@ function OrderForm() {
     items.every((it) => Number(it.weight) > 0) &&
     !!photoUrl &&
     !isUploading;
-  const canGoStep4 =
-    !!method && (method === "DROPOFF" || pickupUnlocked) && !!lat && !!lng;
+  const canGoStep4 = !!method && !!lat && !!lng;
   const canSubmit = canGoStep2 && canGoStep3 && canGoStep4;
 
   if (!token) {
@@ -353,7 +317,7 @@ function OrderForm() {
               ) : mains.length > 0 ? (
                 <div className="space-y-2">
                   {mains.map((cat) => {
-                    const Icon = iconForCategory(cat);
+                    const Icon = mainIcon(cat.name);
                     const isSel = items.some((it) => it.categoryId === cat.id);
                     return (
                       <button
@@ -452,7 +416,7 @@ function OrderForm() {
                 {items.map((it) => {
                   const leaf = byId[it.categoryId];
                   const parent = leaf?.parentId ? byId[leaf.parentId] : leaf;
-                  const Icon = parent ? iconForCategory(parent) : Sparkles;
+                  const Icon = parent ? mainIcon(parent.name) : Sparkles;
                   const unit = unitLabel(leaf?.unit);
                   return (
                     <div key={it.categoryId} className="bg-surface rounded-2xl p-3 space-y-2.5">
@@ -572,18 +536,6 @@ function OrderForm() {
                 Opsi Pengiriman
               </h2>
 
-              {/* Anti-scam: transaksi pertama wajib drop-off */}
-              {!pickupUnlocked && !isCompletedLoading && (
-                <div className="bg-surface border border-ink-faint rounded-2xl p-3.5 flex items-start gap-3">
-                  <ShieldCheck size={18} className="text-brand-700 shrink-0 mt-0.5" />
-                  <p className="text-xs text-ink-muted leading-relaxed">
-                    Transaksi pertamamu wajib <b className="text-ink">Antar Sendiri</b> ke lapak
-                    pengepul. Opsi <b className="text-ink">dijemput</b> terbuka otomatis setelah 1×
-                    transaksi selesai — ini mencegah pesanan jemput fiktif.
-                  </p>
-                </div>
-              )}
-
               <div className="space-y-3">
                 {(
                   [
@@ -600,96 +552,87 @@ function OrderForm() {
                       emoji: "🚶",
                     },
                   ] as const
-                ).map((opt) => {
-                  const locked = opt.value === "PICKUP" && !pickupUnlocked;
-                  const selected = method === opt.value;
-                  return (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      disabled={locked}
-                      onClick={() => {
-                        if (locked) return;
-                        setMethod(opt.value);
-                      }}
-                      className={`w-full border rounded-2xl p-4 flex items-start gap-4 text-left transition-all ${
-                        locked
-                          ? "border-ink-faint bg-surface opacity-60 cursor-not-allowed"
-                          : selected
-                          ? "border-ink bg-brand-100"
-                          : "border-ink-faint hover:border-ink"
+                ).map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setMethod(opt.value)}
+                    className={`w-full border rounded-2xl p-4 flex items-start gap-4 text-left transition-all ${
+                      method === opt.value
+                        ? "border-ink bg-brand-100"
+                        : "border-ink-faint hover:border-ink"
+                    }`}
+                  >
+                    <div
+                      className={`w-5 h-5 rounded-full border-2 mt-0.5 flex shrink-0 items-center justify-center ${
+                        method === opt.value ? "border-ink" : "border-ink-faint"
                       }`}
                     >
-                      <div
-                        className={`w-5 h-5 rounded-full border-2 mt-0.5 flex shrink-0 items-center justify-center ${
-                          selected ? "border-ink" : "border-ink-faint"
-                        }`}
-                      >
-                        {selected && <div className="w-2.5 h-2.5 bg-brand-500 rounded-full" />}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-sm text-ink mb-1 flex items-center gap-1.5 flex-wrap">
-                          <span>
-                            {opt.emoji} {opt.title}
-                          </span>
-                          {locked && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-ink-muted bg-surface-raised border border-ink-faint rounded-full px-2 py-0.5">
-                              <Lock size={10} /> Terkunci
-                            </span>
-                          )}
-                        </h3>
-                        <p className="text-xs text-ink-muted">
-                          {locked ? "Tersedia setelah 1× transaksi selesai." : opt.desc}
-                        </p>
-                      </div>
-                    </button>
-                  );
-                })}
+                      {method === opt.value && <div className="w-2.5 h-2.5 bg-brand-500 rounded-full" />}
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-sm text-ink mb-1">
+                        {opt.emoji} {opt.title}
+                      </h3>
+                      <p className="text-xs text-ink-muted">{opt.desc}</p>
+                    </div>
+                  </button>
+                ))}
               </div>
 
               <div>
                 <label className="text-[10px] font-bold text-mute uppercase tracking-widest mb-2 block">
                   Lokasi Setoran <span className="text-status-error">*</span>
                 </label>
-                <LocationPicker
-                  value={lat != null && lng != null ? { lat, lng } : null}
-                  onChange={(c) => {
-                    setLat(c.lat);
-                    setLng(c.lng);
-                  }}
-                  autoLocate={me?.lat == null}
-                  onAreaResolved={handleAreaResolved}
-                  label={method === "PICKUP" ? "Titik Penjemputan" : "Lokasimu"}
-                  helperText="Geser peta untuk menandai titik tepat. Tombol GPS butuh koneksi HTTPS (jalan di situs live)."
-                />
 
-                {/* DESKRIPSI ALAMAT — auto dari titik, bisa ditambah patokan manual */}
-                <div className="mt-3">
-                  <div className="flex items-center justify-between gap-3 mb-1.5">
-                    <label className="text-[10px] font-bold text-mute uppercase tracking-widest flex items-center gap-1.5">
-                      <MapPin size={12} className="text-brand-700" /> Deskripsi Alamat
-                    </label>
-                    {mapArea && (
+                {lat && lng ? (
+                  <div className="bg-brand-100 rounded-2xl p-4 flex items-start gap-3">
+                    <MapPin className="text-brand-700 shrink-0 mt-0.5" size={20} />
+                    <div className="flex-1">
+                      <h4 className="font-bold text-sm text-brand-800">Lokasi Terkunci ✓</h4>
+                      <p className="text-[11px] text-brand-700 font-mono mt-0.5">
+                        {lat.toFixed(5)}, {lng.toFixed(5)}
+                      </p>
                       <button
-                        type="button"
-                        onClick={handleUseMapAddress}
-                        className="text-[10px] font-bold text-brand-700 hover:text-ink underline underline-offset-2"
+                        onClick={handleGetLocation}
+                        className="text-[11px] font-bold text-ink underline mt-1"
+                        disabled={isLocating}
                       >
-                        Pakai alamat dari peta
+                        {isLocating ? "Memperbarui…" : "Perbarui Lokasi GPS"}
                       </button>
-                    )}
+                    </div>
                   </div>
-                  <textarea
-                    value={addressText}
-                    onChange={(e) => setAddressText(e.target.value)}
-                    placeholder="Jalan, kelurahan… + patokan (mis. rumah pagar hijau, dekat masjid)"
-                    className="w-full rounded-md border border-ink bg-surface-raised px-4 py-3 text-sm font-body text-ink placeholder:text-mute focus:outline-none focus:ring-2 focus:ring-brand-500 min-h-[72px]"
-                    maxLength={500}
-                  />
-                  <p className="text-[10px] text-ink-muted mt-1">
-                    Membantu pengepul menemukan lokasimu dengan tepat.
-                  </p>
-                </div>
+                ) : (
+                  <button
+                    onClick={handleGetLocation}
+                    disabled={isLocating}
+                    className="w-full border-2 border-dashed border-ink-faint hover:border-ink rounded-2xl py-6 flex flex-col items-center gap-2 transition-colors disabled:opacity-60"
+                  >
+                    {isLocating ? (
+                      <RefreshCw size={24} className="animate-spin text-brand-700" />
+                    ) : (
+                      <MapPin size={24} className="text-ink-muted" />
+                    )}
+                    <span className="text-sm font-bold text-ink-muted">
+                      {isLocating ? "Mendeteksi GPS…" : "Klik untuk deteksi lokasi GPS"}
+                    </span>
+                    <span className="text-xs text-ink-faint">
+                      Atau gunakan lokasi default Yogyakarta
+                    </span>
+                  </button>
+                )}
+
+                {!lat && !lng && !isLocating && (
+                  <button
+                    onClick={() => {
+                      setLat(DEFAULT_COORDS.lat);
+                      setLng(DEFAULT_COORDS.lng);
+                      toast("Memakai lokasi default Yogyakarta.", { icon: "📍" });
+                    }}
+                    className="w-full mt-2 text-xs font-bold text-ink underline"
+                  >
+                    Gunakan lokasi default Yogyakarta
+                  </button>
+                )}
               </div>
 
               <div className="flex gap-3 pt-2">
@@ -731,7 +674,7 @@ function OrderForm() {
                     {items.map((it) => {
                       const leaf = byId[it.categoryId];
                       const parent = leaf?.parentId ? byId[leaf.parentId] : leaf;
-                      const Icon = parent ? iconForCategory(parent) : Sparkles;
+                      const Icon = parent ? mainIcon(parent.name) : Sparkles;
                       return (
                         <div key={it.categoryId} className="space-y-0.5">
                           <div className="flex items-center justify-between gap-3">
@@ -783,17 +726,6 @@ function OrderForm() {
                       {lat?.toFixed(4)}, {lng?.toFixed(4)}
                     </span>
                   </div>
-
-                  {addressText.trim() && (
-                    <div className="px-5 py-4">
-                      <span className="text-xs font-bold text-mute uppercase tracking-wider block mb-1">
-                        Alamat
-                      </span>
-                      <p className="text-xs text-ink-muted leading-relaxed">
-                        {addressText.trim()}
-                      </p>
-                    </div>
-                  )}
 
                   <div className="px-5 py-4 flex items-center justify-between">
                     <span className="text-xs font-bold text-mute uppercase tracking-wider">

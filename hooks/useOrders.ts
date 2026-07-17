@@ -21,8 +21,6 @@ export interface CreateOrderItemInput {
 export interface CreateOrderPayload {
   items: CreateOrderItemInput[];
   photoUrl?: string;
-  /** Deskripsi alamat jemput/antar (jalan, patokan) — opsional */
-  addressText?: string;
   lat: number;
   lng: number;
   method: 'PICKUP' | 'DROPOFF';
@@ -43,10 +41,6 @@ export const useCreateOrder = () => {
         method: payload.method,
       };
 
-      if (payload.addressText) {
-        body.addressText = payload.addressText;
-      }
-
       if (payload.collectorId) {
         body.collectorId = payload.collectorId;
       }
@@ -63,6 +57,8 @@ export const useCreateOrder = () => {
 // ── List & Detail ────────────────────────────────────────────────────────
 export const useOrdersList = (
   params: { status?: string; role?: string; limit?: number },
+  /** Polling opsional — dipakai antrean pengepul & notifikasi agar sinkron real-time
+   *  walau WebSocket mati. refetchIntervalInBackground: tetap polling saat tab tak aktif. */
   options?: { refetchInterval?: number; refetchIntervalInBackground?: boolean }
 ) => {
   const token = useAuthStore((state) => state.token);
@@ -87,15 +83,10 @@ export const useOrdersList = (
     },
     enabled: !!token,
     retry: (count, err) => !isMissingRoute(err) && count < 2,
-    // Polling opsional (fallback real-time kalau WebSocket mati di hosting)
     refetchInterval: options?.refetchInterval,
-    // Default false (hemat saat tab tak aktif). Khusus notifikasi → true supaya
-    // tetap berdenyut di background dan alert tetap muncul.
     refetchIntervalInBackground: options?.refetchIntervalInBackground ?? false,
   });
 };
-
-const ACTIVE_ORDER_STATUSES = ['PENDING', 'CONFIRMED', 'IN_PROGRESS', 'AWAITING_CONFIRMATION'];
 
 export const useOrderDetails = (id: string) => {
   const token = useAuthStore((state) => state.token);
@@ -107,13 +98,6 @@ export const useOrderDetails = (id: string) => {
       return res.data.data;
     },
     enabled: !!token && !!id,
-    // Fallback real-time: selama order masih berjalan, poll tiap 5 dtk supaya
-    // perubahan status (mis. pengepul menerima/sampai) cepat terlihat walau
-    // WebSocket di hosting belum aktif. Berhenti saat COMPLETED/CANCELLED.
-    refetchInterval: (query) => {
-      const status = (query.state.data as Order | undefined)?.status;
-      return status && ACTIVE_ORDER_STATUSES.includes(status) ? 5000 : false;
-    },
   });
 };
 
@@ -126,7 +110,7 @@ export interface ValidateItemInput {
 }
 
 export interface UpdateOrderPayload {
-  action: 'accept' | 'reject' | 'validate' | 'confirm' | 'cancel' | 'arrive';
+  action: 'accept' | 'reject' | 'validate' | 'confirm' | 'cancel';
   /** Items wajib untuk validate */
   items?: ValidateItemInput[];
   /** Bukti timbangan opsional (URL Cloudinary) */

@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import { toPng } from "html-to-image";
-import { Sparkles, Download, ArrowRight, ShieldCheck } from "lucide-react";
+import { Sparkles, Download, ArrowRight, CheckCircle2, ShieldCheck } from "lucide-react";
 import toast from "react-hot-toast";
 import { ecoTier } from "@/lib/eco";
 
@@ -10,14 +10,14 @@ interface EcoImpactModalProps {
   customerName: string;
   actualWeight: number;
   orderId: string;
-  /** Foto profil pemilik akun (Cloudinary URL / data URL). Tampil di kartu. */
-  avatarUrl?: string;
   onClose: () => void;
-  /** 'order' = dampak 1 pesanan (default); 'lifetime' = total kumulatif customer */
+  /** Foto profil pemilik akun — tampil di kartu yang dibagikan */
+  avatarUrl?: string;
+  /** "order" = dampak 1 transaksi (default) · "lifetime" = akumulasi total */
   variant?: "order" | "lifetime";
-  /** Teks gelar di kartu (mis. tier gamifikasi). Default "Pahlawan Lingkungan". */
+  /** Label di bawah nama (default: "Pahlawan Lingkungan") */
   titleLabel?: string;
-  /** Label tombol tutup. Default "Lanjut Beri Rating". */
+  /** Teks tombol tutup (default: "Lanjut Beri Rating") */
   closeLabel?: string;
   /** Berat total kumulatif (lifetime) untuk menghitung tier/badge yang tepat */
   lifetimeWeight?: number;
@@ -27,8 +27,8 @@ export default function EcoImpactModal({
   customerName,
   actualWeight,
   orderId,
-  avatarUrl,
   onClose,
+  avatarUrl,
   variant = "order",
   titleLabel = "Pahlawan Lingkungan",
   closeLabel = "Lanjut Beri Rating",
@@ -36,12 +36,12 @@ export default function EcoImpactModal({
 }: EcoImpactModalProps) {
   const computedTier = ecoTier(lifetimeWeight !== undefined ? lifetimeWeight : actualWeight);
   const resolvedBadge = computedTier.badge;
-  const resolvedTitle = titleLabel === "Pahlawan Lingkungan" ? computedTier.label : titleLabel;
+  const resolvedTitle = titleLabel === "Pahlawan Lingkungan" || !titleLabel ? computedTier.label : titleLabel;
   const periodText = variant === "lifetime" ? "sampah sampai hari ini" : "sampah hari ini";
   const [isDownloading, setIsDownloading] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
-  // Perhitungan dampak: 1 kg sampah daur ulang ~ mengurangi emisi berkendara motor ~5 km
+  // 1 kg of waste recycled = ~5 km of motorcycle ride emission reduction
   const carbonKm = actualWeight * 5;
 
   const handleDownload = async () => {
@@ -50,29 +50,17 @@ export default function EcoImpactModal({
     const toastId = toast.loading("Sedang membuat kartu dampak ekologi...");
 
     try {
-      // Delay singkat agar aset gambar (badge) dimuat penuh sebelum dicapture
+      // Small delay to ensure resources are loaded
       await new Promise((resolve) => setTimeout(resolve, 300));
 
-      // Safety net: di sebagian browser, toPng bisa menggantung (onload SVG tak ter-fire).
-      // Race dengan timeout supaya tombol tidak nyangkut "Mengunduh…" selamanya.
-      const render = toPng(cardRef.current, {
+      const dataUrl = await toPng(cardRef.current, {
         cacheBust: true,
-        pixelRatio: 2, // 2x sudah tajam untuk sosmed & jauh lebih ringan dirasterisasi
-        // skipFonts: html-to-image bisa menggantung saat mencoba meng-embed webfont
-        // (fetch @font-face dari stylesheet). Kartu tetap ter-render rapi dengan
-        // fallback sans-serif — layout, warna, & badge utuh.
-        skipFonts: true,
+        pixelRatio: 3, // Premium quality for social sharing
         style: {
           transform: "scale(1)",
           borderRadius: "24px",
         },
       });
-      const dataUrl = await Promise.race([
-        render,
-        new Promise<string>((_, reject) =>
-          setTimeout(() => reject(new Error("Render gambar timeout")), 20000)
-        ),
-      ]);
 
       const link = document.createElement("a");
       link.download = `Rongsok_EcoImpact_${customerName}_${orderId.slice(0, 8)}.png`;
@@ -81,7 +69,7 @@ export default function EcoImpactModal({
 
       toast.success("Kartu dampak ekologi berhasil diunduh!", { id: toastId });
     } catch (error) {
-      console.error("Gagal membuat gambar:", error);
+      console.error("Failed to generate image:", error);
       toast.error("Gagal mengunduh gambar. Silakan coba lagi.", { id: toastId });
     } finally {
       setIsDownloading(false);
@@ -91,7 +79,8 @@ export default function EcoImpactModal({
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-ink/70 backdrop-blur-md overflow-y-auto">
       <div className="w-full max-w-md bg-surface-raised rounded-2xl p-6 space-y-6 shadow-2xl relative my-8">
-        {/* HEADER MODAL */}
+        
+        {/* HEADER SECTION */}
         <div className="text-center space-y-2">
           <div className="w-12 h-12 bg-brand-100 rounded-full flex items-center justify-center text-brand-800 mx-auto">
             <Sparkles className="text-brand-800 animate-pulse" size={24} />
@@ -100,29 +89,23 @@ export default function EcoImpactModal({
             Kontribusi Ekologismu! 🌿
           </h3>
           <p className="text-xs text-ink-muted leading-relaxed max-w-sm mx-auto">
-            Unduh kartu dampak ekologis ini untuk dibagikan di media sosial dan ajak
-            teman-temanmu hidup berkelanjutan!
+            Unduh kartu dampak ekologis ini untuk dibagikan di media sosial dan ajak teman-temanmu hidup berkelanjutan!
           </p>
         </div>
 
-        {/* PREVIEW KARTU YANG BISA DIUNDUH */}
+        {/* SHAREABLE CARD container with overflow hidden to fit nicely */}
         <div className="border border-ink-faint/30 rounded-2xl overflow-hidden bg-surface-sunken p-2">
+          
+          {/* THE CARD ELEM (Captured by html-to-image) */}
           <div
             ref={cardRef}
             id="eco-impact-card"
             className="w-full bg-[#0d2200] text-[#f0fbe8] rounded-[24px] p-6 space-y-5 flex flex-col items-center text-center relative overflow-hidden"
             style={{ fontFamily: "var(--font-inter), sans-serif" }}
           >
-            {/* Dekorasi Background Glow — pakai radial-gradient (BUKAN filter blur),
-                karena CSS filter sering bikin html-to-image menggantung saat capture. */}
-            <div
-              className="absolute -top-20 -left-20 w-44 h-44 rounded-full"
-              style={{ background: "radial-gradient(circle, rgba(159,232,112,0.18), transparent 70%)" }}
-            />
-            <div
-              className="absolute -bottom-20 -right-20 w-44 h-44 rounded-full"
-              style={{ background: "radial-gradient(circle, rgba(159,232,112,0.22), transparent 70%)" }}
-            />
+            {/* Background highlights */}
+            <div className="absolute -top-16 -left-16 w-36 h-36 bg-brand-500/10 rounded-full blur-2xl" />
+            <div className="absolute -bottom-16 -right-16 w-36 h-36 bg-brand-500/15 rounded-full blur-2xl" />
 
             {/* BRAND HEADER */}
             <div className="flex items-center gap-2 z-10">
@@ -182,7 +165,7 @@ export default function EcoImpactModal({
               )}
             </div>
 
-            {/* DETAIL DAMPAK EKOLOGIS */}
+            {/* MAIN METRIC & IMPACT */}
             <div className="space-y-3 z-10 w-full">
               <div>
                 <h4 className="font-display font-black text-2xl tracking-tight text-brand-400 leading-tight">
@@ -200,8 +183,7 @@ export default function EcoImpactModal({
                 <span className="font-mono text-white font-extrabold text-sm border-b border-brand-400 pb-0.5">
                   {actualWeight.toFixed(1)} kg
                 </span>{" "}
-                {periodText}. Dampaknya setara dengan mengurangi emisi karbon dari
-                perjalanan motor sejauh{" "}
+                {variant === "lifetime" ? "sampah sejauh ini" : "sampah hari ini"}. Dampaknya setara dengan mengurangi emisi karbon dari perjalanan motor sejauh{" "}
                 <span className="font-mono text-brand-400 font-extrabold text-sm border-b border-brand-400 pb-0.5">
                   {carbonKm.toFixed(1)} km
                 </span>
@@ -209,7 +191,7 @@ export default function EcoImpactModal({
               </p>
             </div>
 
-            {/* FOOTER KARTU */}
+            {/* FOOTER */}
             <div className="pt-2 w-full flex justify-between items-center text-[8px] text-brand-300/60 font-mono z-10">
               <span>📍 Yogyakarta, Indonesia</span>
               <span>rongsok.in/eco</span>
@@ -217,7 +199,7 @@ export default function EcoImpactModal({
           </div>
         </div>
 
-        {/* BUTTON ACTIONS */}
+        {/* BUTTON ACTION SECTION */}
         <div className="flex flex-col gap-2.5">
           <button
             onClick={handleDownload}
@@ -227,13 +209,13 @@ export default function EcoImpactModal({
             <Download size={18} />
             {isDownloading ? "Mengunduh..." : "Unduh Gambar"}
           </button>
-
+          
           <button
             onClick={onClose}
             className="w-full border border-ink-faint hover:bg-surface-sunken text-ink-muted font-bold py-3.5 px-6 rounded-2xl flex items-center justify-center gap-1.5 transition-all active:scale-[0.98] cursor-pointer text-sm"
           >
-            {closeLabel}
-            <ArrowRight size={16} />
+            {closeLabel || "Lanjut Beri Rating"}
+            {!closeLabel && <ArrowRight size={16} />}
           </button>
         </div>
       </div>

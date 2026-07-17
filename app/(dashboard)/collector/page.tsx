@@ -6,7 +6,6 @@ import Link from "next/link";
 import DesktopNav from "@/components/ui/DesktopNav";
 import BottomNav from "@/components/ui/BottomNav";
 import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
-import IncomingOrderModal from "@/components/features/collector/IncomingOrderModal";
 import {
   Store,
   Archive,
@@ -29,7 +28,6 @@ import {
   ShieldAlert,
   ImageOff,
 } from "lucide-react";
-import { iconForCategory } from "@/lib/categoryIcons";
 import { Button } from "@/components/ui/Button";
 import { CollectorSkeleton } from "@/components/ui/Skeleton";
 import { useAuthStore } from "@/store/authStore";
@@ -46,7 +44,6 @@ import { useCategoryTree } from "@/hooks/useDiscovery";
 import {
   formatRupiah,
   formatDate,
-  formatDistance,
   unitLabel,
   getOrderTotalEstWeight,
   getOrderTotalActualWeight,
@@ -70,27 +67,30 @@ const mainIcon = (name: string): any => {
 function IncomingOrderCard({
   order,
   onRemove,
-  onOpenDetail,
   canAccept = true,
 }: {
   order: Order;
   onRemove: (id: string) => void;
-  onOpenDetail: (order: Order) => void;
   canAccept?: boolean;
 }) {
   const router = useRouter();
-  const [timeLeft, setTimeLeft] = useState(900);
   const [showPhoto, setShowPhoto] = useState(false);
   const updateOrderStatus = useUpdateOrderStatus(order.id);
 
+  // Sisa waktu tawaran DIHITUNG dari order.createdAt — bukan reset ke 15:00 tiap
+  // refresh. Expiry 15 menit sejak order dibuat; kalau lewat, tampil 00:00 (tak
+  // auto-hapus supaya tak flicker dengan polling PENDING yang re-add order).
+  const OFFER_TTL = 900; // detik (15 menit)
+  const computeLeft = () =>
+    Math.max(0, Math.ceil(OFFER_TTL - (Date.now() - new Date(order.createdAt).getTime()) / 1000));
+  const [timeLeft, setTimeLeft] = useState(computeLeft);
+
   useEffect(() => {
-    if (timeLeft <= 0) {
-      onRemove(order.id);
-      return;
-    }
-    const timer = setInterval(() => setTimeLeft((prev) => prev - 1), 1000);
+    setTimeLeft(computeLeft());
+    const timer = setInterval(() => setTimeLeft(computeLeft()), 1000);
     return () => clearInterval(timer);
-  }, [timeLeft, order.id, onRemove]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order.createdAt]);
 
   const handleAccept = () => {
     if (!canAccept) {
@@ -135,10 +135,7 @@ function IncomingOrderCard({
     .padStart(2, "0")}`;
 
   return (
-    <div
-      className="bg-surface rounded-2xl p-4 cursor-pointer hover:ring-2 hover:ring-brand-200 transition-shadow"
-      onClick={() => onOpenDetail(order)}
-    >
+    <div className="bg-surface rounded-2xl p-4">
       <div className="flex justify-between items-start mb-3">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-surface-raised text-ink rounded-2xl flex items-center justify-center shrink-0">
@@ -203,20 +200,14 @@ function IncomingOrderCard({
       <div className="flex gap-2 pt-1">
         <Button
           variant="outline"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleReject();
-          }}
+          onClick={handleReject}
           className="flex-1 py-2 text-xs"
           disabled={updateOrderStatus.isPending}
         >
           <X size={14} /> Tolak
         </Button>
         <Button
-          onClick={(e) => {
-            e.stopPropagation();
-            handleAccept();
-          }}
+          onClick={handleAccept}
           className="flex-1 py-2 text-xs"
           disabled={updateOrderStatus.isPending || !canAccept}
         >
@@ -228,10 +219,7 @@ function IncomingOrderCard({
       {showPhoto && order.photoUrl && (
         <div
           className="fixed inset-0 z-[100] bg-ink/90 flex items-center justify-center p-4"
-          onClick={(e) => {
-            e.stopPropagation();
-            setShowPhoto(false);
-          }}
+          onClick={() => setShowPhoto(false)}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -241,10 +229,7 @@ function IncomingOrderCard({
           />
           <button
             type="button"
-            onClick={(e) => {
-            e.stopPropagation();
-            setShowPhoto(false);
-          }}
+            onClick={() => setShowPhoto(false)}
             className="absolute top-4 right-4 w-10 h-10 rounded-full bg-surface-raised text-ink flex items-center justify-center"
             aria-label="Tutup"
           >
@@ -261,23 +246,17 @@ function RequestRow({
   order,
   index,
   onAccepted,
-  onOpenDetail,
   canAccept = true,
 }: {
   order: Order;
   index: number;
   onAccepted: (id: string) => void;
-  onOpenDetail: (order: Order) => void;
   canAccept?: boolean;
 }) {
   const router = useRouter();
   const [showPhoto, setShowPhoto] = useState(false);
   const updateOrderStatus = useUpdateOrderStatus(order.id);
-  // Jarak asli dari BE (km). Fallback estimasi berbasis urutan bila BE belum kirim.
-  const distance =
-    order.distanceKm != null
-      ? formatDistance(order.distanceKm * 1000)
-      : `~${((index + 1) * 0.8).toFixed(1)} km`;
+  const distance = `${((index + 1) * 0.8).toFixed(1)} km`;
 
   const handleAccept = () => {
     if (!canAccept) {
@@ -302,19 +281,13 @@ function RequestRow({
   const items = getOrderItems(order);
 
   return (
-    <tr
-      className="hover:bg-surface transition-colors cursor-pointer"
-      onClick={() => onOpenDetail(order)}
-    >
+    <tr className="hover:bg-surface transition-colors">
       <td className="p-3 font-bold text-ink">
         <div className="flex items-center gap-2">
           {order.photoUrl ? (
             <button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowPhoto(true);
-              }}
+              onClick={() => setShowPhoto(true)}
               className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-ink-faint"
               aria-label="Lihat foto rongsok"
             >
@@ -337,10 +310,7 @@ function RequestRow({
         {showPhoto && order.photoUrl && (
           <div
             className="fixed inset-0 z-[100] bg-ink/90 flex items-center justify-center p-4"
-            onClick={(e) => {
-            e.stopPropagation();
-            setShowPhoto(false);
-          }}
+            onClick={() => setShowPhoto(false)}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -350,10 +320,7 @@ function RequestRow({
             />
             <button
               type="button"
-              onClick={(e) => {
-            e.stopPropagation();
-            setShowPhoto(false);
-          }}
+              onClick={() => setShowPhoto(false)}
               className="absolute top-4 right-4 w-10 h-10 rounded-full bg-surface-raised text-ink flex items-center justify-center"
               aria-label="Tutup"
             >
@@ -370,7 +337,7 @@ function RequestRow({
                 key={it.id || it.categoryId}
                 className="bg-brand-100 text-brand-800 px-2 py-0.5 rounded-full font-bold uppercase tracking-wide text-[9px] font-mono"
               >
-                {it.category?.name || "Rongsokan"}
+                {it.category?.name || it.categoryId.slice(0, 6)}
               </span>
             ))
           ) : (
@@ -389,10 +356,7 @@ function RequestRow({
       </td>
       <td className="p-3 text-right">
         <button
-          onClick={(e) => {
-            e.stopPropagation();
-            handleAccept();
-          }}
+          onClick={handleAccept}
           disabled={updateOrderStatus.isPending || !canAccept}
           className="bg-brand-500 hover:bg-brand-600 text-ink font-bold text-[10px] px-3.5 py-2 rounded-2xl transition-all inline-flex items-center gap-1 cursor-pointer disabled:opacity-50"
         >
@@ -418,9 +382,18 @@ export default function CollectorDashboard() {
   const removeIncomingOrder = useOrderStore((state) => state.removeIncomingOrder);
   const addIncomingOrder = useOrderStore((state) => state.addIncomingOrder);
 
-  // Detail pesanan masuk (modal) — disimpan by id supaya data ikut ter-update saat
-  // versi REST yang diperkaya (customer/koordinat) melengkapi entri socket.
-  const [detailOrderId, setDetailOrderId] = useState<string | null>(null);
+  // Antrean KADALUWARSA: tawaran order PENDING hanya berlaku 15 menit sejak dibuat.
+  // Difilter saat render (bukan dihapus dari store) supaya polling PENDING yang
+  // me-re-add order lama tidak bikin kartu muncul-hilang (flicker).
+  const OFFER_TTL_MS = 15 * 60 * 1000;
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNowTick(Date.now()), 5000);
+    return () => clearInterval(t);
+  }, []);
+  const liveIncoming = incomingOrders.filter(
+    (o) => nowTick - new Date(o.createdAt).getTime() < OFFER_TTL_MS
+  );
 
   const { data: me } = useMe();
   const needsVerify = me?.isVerified === false; // hanya gate kalau eksplisit false
@@ -432,20 +405,17 @@ export default function CollectorDashboard() {
     limit: 100,
   });
 
-  // Bootstrap antrean: order PENDING yang di-broadcast ke pengepul ini, diambil saat
-  // dashboard load (selain realtime socket) — supaya order yang masuk sebelum app
-  // dibuka tetap muncul. Butuh BE getOrders mendukung role=collector&status=PENDING
-  // (via tabel OrderCollector); sebelum BE deploy, query ini balik [] dengan aman.
+  // Antrean TIDAK boleh cuma mengandalkan socket: kalau halaman di-refresh (atau
+  // order masuk sebelum dashboard dibuka), event socket sudah lewat & store kosong.
+  // Tarik ulang order PENDING yang di-broadcast ke pengepul ini lewat REST — ini
+  // juga sumber createdAt ASLI (payload socket cuma punya waktu event tiba),
+  // supaya countdown 15 menit akurat & tidak mulai ulang tiap refresh.
   const { data: pendingBroadcast } = useOrdersList(
     { role: "collector", status: "PENDING", limit: 100 },
-    { refetchInterval: 8000 } // fallback real-time: rebutan masuk tiap 8 dtk walau WS mati
+    { refetchInterval: 8000 }
   );
-
   useEffect(() => {
-    if (pendingBroadcast && pendingBroadcast.length > 0) {
-      // addIncomingOrder dedupe by id → aman digabung dengan yang dari socket
-      pendingBroadcast.forEach((o) => addIncomingOrder(o));
-    }
+    pendingBroadcast?.forEach((o) => addIncomingOrder(o));
   }, [pendingBroadcast, addIncomingOrder]);
 
   const updateProfile = useUpdateCollectorProfile();
@@ -455,24 +425,6 @@ export default function CollectorDashboard() {
   const [editedCatalogs, setEditedCatalogs] = useState<
     Record<string, { minPrice: number; maxPrice: number; isActive: boolean }>
   >({});
-
-  // Deep-link dari BottomNav: /collector#katalog (auto-expand) & /collector#antrean
-  useEffect(() => {
-    const applyHash = () => {
-      const hash = window.location.hash;
-      if (hash !== "#katalog" && hash !== "#antrean") return;
-      if (hash === "#katalog") setIsCatalogExpanded(true);
-      // Tunggu render dulu (katalog baru muncul setelah expand)
-      requestAnimationFrame(() => {
-        document
-          .querySelector(hash)
-          ?.scrollIntoView({ behavior: "smooth", block: "start" });
-      });
-    };
-    applyHash();
-    window.addEventListener("hashchange", applyHash);
-    return () => window.removeEventListener("hashchange", applyHash);
-  }, []);
 
   // Init harga per kategori
   useEffect(() => {
@@ -508,11 +460,6 @@ export default function CollectorDashboard() {
     label: `${getOrderCategoryLabel(o)} #${o.id.slice(-5).toUpperCase()}`,
     amount: getOrderTotalPrice(o),
   }));
-
-  // Order yang sedang dibuka detailnya (ambil versi terbaru dari antrean by id)
-  const detailOrder = detailOrderId
-    ? incomingOrders.find((o) => o.id === detailOrderId) ?? null
-    : null;
 
   const handleToggleOpen = () => {
     if (needsVerify) {
@@ -664,9 +611,9 @@ export default function CollectorDashboard() {
                 <FileText className="text-brand-700" size={18} />
                 Request Jemput Terdekat
               </h3>
-              {incomingOrders.length > 0 && (
+              {liveIncoming.length > 0 && (
                 <span className="bg-brand-100 text-brand-800 text-[9px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-full">
-                  {incomingOrders.length} Aktif
+                  {liveIncoming.length} Aktif
                 </span>
               )}
             </div>
@@ -684,14 +631,13 @@ export default function CollectorDashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-ink-faint">
-                  {incomingOrders.length > 0 ? (
-                    incomingOrders.map((order, idx) => (
+                  {liveIncoming.length > 0 ? (
+                    liveIncoming.map((order, idx) => (
                       <RequestRow
                         key={order.id}
                         order={order}
                         index={idx}
                         onAccepted={removeIncomingOrder}
-                        onOpenDetail={(o) => setDetailOrderId(o.id)}
                         canAccept={!needsVerify}
                       />
                     ))
@@ -713,25 +659,24 @@ export default function CollectorDashboard() {
           </section>
 
           {/* INCOMING QUEUE */}
-          <section id="antrean" className="bg-surface-raised rounded-2xl p-6 space-y-4 scroll-mt-20">
+          <section className="bg-surface-raised rounded-2xl p-6 space-y-4">
             <h3 className="font-display font-extrabold text-base text-ink tracking-tight flex items-center gap-2">
               <Store className="text-brand-700" size={18} />
               Antrean Masuk
-              {incomingOrders.length > 0 && (
+              {liveIncoming.length > 0 && (
                 <span className="bg-brand-500 text-ink text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full">
-                  {incomingOrders.length}
+                  {liveIncoming.length}
                 </span>
               )}
             </h3>
 
             <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
-              {incomingOrders.length > 0 ? (
-                incomingOrders.map((order) => (
+              {liveIncoming.length > 0 ? (
+                liveIncoming.map((order) => (
                   <IncomingOrderCard
                     key={order.id}
                     order={order}
                     onRemove={removeIncomingOrder}
-                    onOpenDetail={(o) => setDetailOrderId(o.id)}
                     canAccept={!needsVerify}
                   />
                 ))
@@ -837,7 +782,7 @@ export default function CollectorDashboard() {
         </section>
 
         {/* CATALOG MANAGER (COLLAPSIBLE) */}
-        <section id="katalog" className="bg-surface-raised rounded-2xl overflow-hidden scroll-mt-20">
+        <section className="bg-surface-raised rounded-2xl overflow-hidden">
           <button
             onClick={() => setIsCatalogExpanded(!isCatalogExpanded)}
             className="w-full p-5 flex items-center justify-between cursor-pointer hover:bg-surface transition-colors text-left"
@@ -858,7 +803,7 @@ export default function CollectorDashboard() {
 
               <div className="space-y-2.5">
                 {mains.map((cat) => {
-                  const Icon = iconForCategory(cat);
+                  const Icon = mainIcon(cat.name);
                   const data =
                     editedCatalogs[cat.id] || { minPrice: 1000, maxPrice: 2000, isActive: false };
                   const unit = unitLabel(cat.unit);
@@ -905,11 +850,9 @@ export default function CollectorDashboard() {
                           </label>
                           <input
                             type="number"
-                            inputMode="numeric"
-                            value={data.minPrice || ""}
-                            placeholder="0"
+                            value={data.minPrice}
                             onChange={(e) =>
-                              handleValChange(cat.id, "minPrice", e.target.value === "" ? 0 : Number(e.target.value))
+                              handleValChange(cat.id, "minPrice", Number(e.target.value))
                             }
                             disabled={!data.isActive}
                             className="w-full bg-surface-raised border border-ink rounded-md p-2 text-sm font-mono font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-50"
@@ -921,11 +864,9 @@ export default function CollectorDashboard() {
                           </label>
                           <input
                             type="number"
-                            inputMode="numeric"
-                            value={data.maxPrice || ""}
-                            placeholder="0"
+                            value={data.maxPrice}
                             onChange={(e) =>
-                              handleValChange(cat.id, "maxPrice", e.target.value === "" ? 0 : Number(e.target.value))
+                              handleValChange(cat.id, "maxPrice", Number(e.target.value))
                             }
                             disabled={!data.isActive}
                             className="w-full bg-surface-raised border border-ink rounded-md p-2 text-sm font-mono font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-50"
@@ -946,18 +887,6 @@ export default function CollectorDashboard() {
           )}
         </section>
       </main>
-
-      {detailOrder && (
-        <IncomingOrderModal
-          order={detailOrder}
-          canAccept={!needsVerify}
-          onClose={() => setDetailOrderId(null)}
-          onDone={(id) => {
-            removeIncomingOrder(id);
-            setDetailOrderId(null);
-          }}
-        />
-      )}
 
       <BottomNav />
     </div>

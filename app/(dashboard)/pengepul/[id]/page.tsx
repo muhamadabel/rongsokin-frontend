@@ -18,7 +18,6 @@ import {
   Monitor,
   Sparkles,
   AlertCircle,
-  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import DesktopNav from "@/components/ui/DesktopNav";
@@ -26,10 +25,8 @@ import BottomNav from "@/components/ui/BottomNav";
 import { PengepulDetailSkeleton } from "@/components/ui/Skeleton";
 import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
 import { useCollectorDetails, useWasteCategories } from "@/hooks/useDiscovery";
-import { useUserCoords } from "@/hooks/useUserCoords";
 import { useUserRatings } from "@/hooks/useRatings";
-import OrderRouteMap from "@/components/features/orders/OrderRouteMap";
-import { formatRupiah, formatDate, formatDistance, haversineMeters, googleMapsLink } from "@/lib/utils";
+import { formatRupiah, formatDate } from "@/lib/utils";
 import toast from "react-hot-toast";
 
 const categoryIcons: Record<string, any> = {
@@ -50,7 +47,6 @@ export default function PengepulDetailPage() {
 
   const collectorUserId = collector?.user?.id ?? (collector as { userId?: string } | undefined)?.userId;
   const { data: ratings, isLoading: isRatingsLoading } = useUserRatings(collectorUserId);
-  const { coords: userCoords, source: coordsSource } = useUserCoords();
 
   if (isCollectorLoading || isCategoriesLoading) {
     return <PengepulDetailSkeleton />;
@@ -88,15 +84,6 @@ export default function PengepulDetailPage() {
     ? `https://wa.me/${waNumber.startsWith("0") ? "62" + waNumber.slice(1) : waNumber}`
     : "";
 
-  // Lokasi lapak (dari BE) + jarak dari lokasi customer (kalau lokasi customer asli)
-  const lapakCoords =
-    collector.user?.lat != null && collector.user?.lng != null
-      ? { lat: collector.user.lat, lng: collector.user.lng }
-      : null;
-  const coordsReal = coordsSource === "saved" || coordsSource === "gps";
-  const distMeters =
-    lapakCoords && coordsReal ? haversineMeters(userCoords, lapakCoords) : null;
-
   const handleShare = () => {
     if (typeof window !== "undefined") {
       navigator.clipboard.writeText(window.location.href);
@@ -130,32 +117,15 @@ export default function PengepulDetailPage() {
 
         {/* PROFILE CARD */}
         <section className="bg-surface-raised md:rounded-2xl overflow-hidden">
-          <div className="h-28 md:h-40 bg-brand-100 relative overflow-hidden">
-            {collector.shopImageUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={collector.shopImageUrl}
-                alt={`Sampul ${collector.shopName}`}
-                className="absolute inset-0 w-full h-full object-cover"
-              />
-            )}
+          <div className="h-28 md:h-40 bg-brand-100 relative">
             <button
               onClick={handleShare}
-              className="hidden md:flex absolute top-4 right-4 z-10 bg-surface-raised hover:bg-surface text-ink p-2.5 rounded-2xl gap-1.5 items-center text-xs font-bold transition-colors"
+              className="hidden md:flex absolute top-4 right-4 bg-surface-raised hover:bg-surface text-ink p-2.5 rounded-2xl gap-1.5 items-center text-xs font-bold transition-colors"
             >
               <Share2 size={16} /> Bagikan
             </button>
-            <div className="absolute -bottom-9 left-4 md:left-6 z-10 w-20 h-20 bg-surface-raised rounded-2xl border-4 border-surface-raised overflow-hidden flex items-center justify-center text-ink">
-              {collector.user?.avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={collector.user.avatarUrl}
-                  alt={collector.shopName}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <Archive size={32} />
-              )}
+            <div className="absolute -bottom-9 left-4 md:left-6 w-20 h-20 bg-surface-raised rounded-2xl border-4 border-surface-raised flex items-center justify-center text-ink">
+              <Archive size={32} />
             </div>
           </div>
           <div className="px-4 md:px-6 pt-12 pb-5">
@@ -226,47 +196,6 @@ export default function PengepulDetailPage() {
             </div>
           </div>
         </section>
-
-        {/* LOKASI LAPAK + JARAK DARI CUSTOMER */}
-        {lapakCoords && (
-          <section className="bg-surface-raised mt-4 md:rounded-2xl p-4 md:p-6 space-y-3">
-            <div className="flex items-center justify-between gap-2">
-              <h3 className="font-display font-extrabold text-sm text-ink tracking-tight flex items-center gap-2">
-                <MapPin size={16} className="text-brand-700" /> Lokasi Lapak
-              </h3>
-              {distMeters != null && (
-                <span className="text-[11px] font-bold text-brand-700 font-mono">
-                  ± {formatDistance(distMeters)} dari lokasimu
-                </span>
-              )}
-            </div>
-            <OrderRouteMap collector={lapakCoords} customer={coordsReal ? userCoords : null} />
-
-            {collector.user?.addressText && (
-              <div className="flex items-start gap-2 text-xs text-ink-muted bg-surface rounded-2xl px-3.5 py-2.5">
-                <MapPin size={14} className="text-brand-700 shrink-0 mt-0.5" />
-                <span className="leading-relaxed">{collector.user.addressText}</span>
-              </div>
-            )}
-
-            <a
-              href={googleMapsLink(lapakCoords.lat, lapakCoords.lng)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block"
-            >
-              <Button variant="outline" className="w-full gap-2">
-                <ExternalLink size={16} /> Buka di Google Maps
-              </Button>
-            </a>
-
-            <p className="text-[11px] text-ink-muted leading-relaxed">
-              {coordsReal
-                ? "Titik perkiraan lokasi lapak; garis menunjukkan jarak dari lokasimu."
-                : "Titik perkiraan lokasi lapak. Lengkapi lokasimu (profil/GPS) untuk melihat jarak."}
-            </p>
-          </section>
-        )}
 
         {/* TABS */}
         <section className="bg-surface-raised mt-4 md:rounded-2xl">
@@ -435,42 +364,9 @@ export default function PengepulDetailPage() {
                       {collector.radiusKm} Kilometer
                     </span>
                   </div>
-                  <div className="bg-surface p-4 rounded-2xl">
-                    <span className="text-mute font-bold uppercase tracking-wider text-[10px] flex items-center gap-1">
-                      <Clock size={11} /> Jam Buka
-                    </span>
-                    <span className="font-extrabold text-ink text-sm mt-0.5 block">
-                      {collector.operatingHours || "Belum ditentukan"}
-                    </span>
-                  </div>
-                  <div className="bg-surface p-4 rounded-2xl">
-                    <span className="text-mute font-bold uppercase tracking-wider text-[10px] flex items-center gap-1">
-                      <Clock size={11} /> Status Saat Ini
-                    </span>
-                    <span
-                      className={`font-extrabold text-sm mt-0.5 block ${
-                        collector.isOpen ? "text-status-success" : "text-status-error"
-                      }`}
-                    >
-                      {collector.isOpen ? "BUKA" : "TUTUP"}
-                    </span>
-                  </div>
                 </div>
-
-                {collector.user?.addressText && (
-                  <div className="bg-surface p-4 rounded-2xl">
-                    <span className="text-mute font-bold uppercase tracking-wider text-[10px] flex items-center gap-1 mb-1">
-                      <MapPin size={11} /> Alamat Lapak
-                    </span>
-                    <p className="text-sm text-ink leading-relaxed">
-                      {collector.user.addressText}
-                    </p>
-                  </div>
-                )}
-
                 <p className="text-xs text-ink-muted leading-relaxed">
-                  Jam buka di atas hanya informasi. Status BUKA/TUTUP diatur manual oleh
-                  pengepul, jadi bisa berbeda dengan jam tertera.
+                  Lokasi presisi lapak dibagikan setelah transaksi dibuat.
                 </p>
               </div>
             )}

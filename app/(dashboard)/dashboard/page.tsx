@@ -5,8 +5,8 @@ import { useState, useEffect } from "react";
 import { useMe } from "@/hooks/useAuth";
 import { useOrdersList } from "@/hooks/useOrders";
 import { useCategoryTree, useSearchCollectors } from "@/hooks/useDiscovery";
-import { useUserCoords } from "@/hooks/useUserCoords";
 import {
+  DEFAULT_COORDS,
   formatRupiah,
   formatDistance,
   formatDate,
@@ -40,12 +40,8 @@ import {
   ChevronRight,
   Bell,
   Plus,
-  Leaf,
-  Trophy,
 } from "lucide-react";
-import { iconForCategory } from "@/lib/categoryIcons";
 import { useAuthStore } from "@/store/authStore";
-import { useNotificationStore } from "@/store/notificationStore";
 import { useRouter } from "next/navigation";
 
 const mainIcon = (name: string): any => {
@@ -72,8 +68,6 @@ export default function CustomerDashboard() {
   const initFromStorage = useAuthStore((state) => state.initFromStorage);
   const token = useAuthStore((state) => state.token);
   const user = useAuthStore((state) => state.user);
-  const notifItems = useNotificationStore((s) => s.items);
-  const unreadCount = notifItems.filter((n) => n.userId === user?.id && !n.read).length;
 
   useEffect(() => {
     initFromStorage();
@@ -88,12 +82,10 @@ export default function CustomerDashboard() {
   useSocket();
 
   const { data: me, isLoading: isMeLoading } = useMe();
-  const { data: orders, isLoading: isOrdersLoading } = useOrdersList(
-    { limit: 50 },
-    { refetchInterval: 8000 } // fallback real-time: status pesanan aktif ke-update walau WS mati
-  );
+  const { data: orders, isLoading: isOrdersLoading } = useOrdersList({ limit: 50 });
   const { mains } = useCategoryTree();
 
+  const [coords, setCoords] = useState(DEFAULT_COORDS);
   const [greeting, setGreeting] = useState("Halo");
 
   useEffect(() => {
@@ -104,17 +96,22 @@ export default function CustomerDashboard() {
     else setGreeting("Selamat malam");
   }, []);
 
-  // Lokasi pencarian: lokasi tersimpan customer > GPS > default Yogyakarta
-  const { coords, source: coordsSource, ready: coordsReady } = useUserCoords();
+  useEffect(() => {
+    if (typeof navigator !== "undefined" && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setCoords({ lat: position.coords.latitude, lng: position.coords.longitude });
+        },
+        () => {}
+      );
+    }
+  }, []);
 
-  const { data: nearbyCollectors, isLoading: isNearbyLoading } = useSearchCollectors(
-    { lat: coords.lat, lng: coords.lng, radius: 50 },
-    { enabled: coordsReady }
-  );
-  // Urut dari yang PALING DEKAT (tanpa batas 5km — biar tidak kosong kalau jauh)
-  const nearbySorted = [...(nearbyCollectors || [])].sort(
-    (a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity)
-  );
+  const { data: nearbyCollectors, isLoading: isNearbyLoading } = useSearchCollectors({
+    lat: coords.lat,
+    lng: coords.lng,
+    radius: 5,
+  });
 
   const activeOrder = orders?.find(
     (o) => o.status !== "COMPLETED" && o.status !== "CANCELLED"
@@ -149,18 +146,9 @@ export default function CustomerDashboard() {
           <h1 className="font-display font-extrabold text-base text-ink">{firstName} 👋</h1>
         </div>
         <div className="flex items-center gap-2">
-          <Link
-            href="/notifications"
-            aria-label="Notifikasi"
-            className="relative w-9 h-9 rounded-2xl bg-surface flex items-center justify-center text-ink-muted hover:text-ink transition-colors"
-          >
+          <button className="w-9 h-9 rounded-2xl bg-surface flex items-center justify-center text-ink-muted hover:text-ink transition-colors">
             <Bell size={18} />
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 bg-status-error text-white text-[10px] font-bold rounded-full flex items-center justify-center border border-surface-raised">
-                {unreadCount > 9 ? "9+" : unreadCount}
-              </span>
-            )}
-          </Link>
+          </button>
           <button
             onClick={handleLogout}
             className="w-9 h-9 rounded-2xl bg-surface flex items-center justify-center text-ink-muted hover:text-status-error transition-colors"
@@ -256,34 +244,6 @@ export default function CustomerDashboard() {
           </div>
         </section>
 
-        {/* ECO IMPACT + LEADERBOARD ENTRY */}
-        <Link
-          href="/eco"
-          className="block bg-ink rounded-2xl p-5 text-forest-ink hover:brightness-110 transition-all relative overflow-hidden"
-        >
-          <div
-            className="absolute -top-12 -right-12 w-36 h-36 rounded-full"
-            style={{ background: "radial-gradient(circle, rgba(159,232,112,0.2), transparent 70%)" }}
-          />
-          <div className="relative z-10 flex items-center gap-4">
-            <div className="w-11 h-11 rounded-2xl bg-brand-500 flex items-center justify-center shrink-0 text-ink">
-              <Leaf size={22} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <h3 className="font-bold text-sm text-forest-ink">Dampak Ekologismu</h3>
-                <span className="inline-flex items-center gap-1 text-[9px] font-extrabold uppercase tracking-wider text-brand-500 bg-brand-500/15 rounded-full px-2 py-0.5">
-                  <Trophy size={10} /> Papan Peringkat
-                </span>
-              </div>
-              <p className="text-[11px] text-forest-muted mt-0.5">
-                Sudah {totalWeight.toFixed(1)} kg terdaur ulang — lihat dampak & peringkatmu!
-              </p>
-            </div>
-            <ChevronRight size={18} className="text-brand-500 shrink-0" />
-          </div>
-        </Link>
-
         {/* JUAL PER KATEGORI */}
         <section className="space-y-3">
           <h2 className="text-base font-display font-extrabold text-ink tracking-tight">
@@ -292,7 +252,7 @@ export default function CustomerDashboard() {
           <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
             {mains && mains.length > 0
               ? mains.map((cat) => {
-                  const Icon = iconForCategory(cat);
+                  const Icon = mainIcon(cat.name);
                   return (
                     <Link
                       key={cat.id}
@@ -325,7 +285,7 @@ export default function CustomerDashboard() {
             </h2>
             <span className="text-xs font-semibold text-mute flex items-center gap-1">
               <MapPin size={12} className="text-brand-700" />
-              {coordsSource === "default" ? "Yogyakarta" : "Lokasimu"}
+              {coords === DEFAULT_COORDS ? "Yogyakarta" : "Lokasimu"}
             </span>
           </div>
 
@@ -334,27 +294,14 @@ export default function CustomerDashboard() {
               [1, 2].map((i) => (
                 <div key={i} className="bg-surface-raised rounded-2xl p-4 h-20 animate-pulse" />
               ))
-            ) : nearbySorted.length > 0 ? (
-              nearbySorted.slice(0, 3).map((collector) => (
+            ) : nearbyCollectors && nearbyCollectors.length > 0 ? (
+              nearbyCollectors.slice(0, 3).map((collector) => (
                 <div
                   key={collector.id}
                   className="bg-surface-raised rounded-2xl p-4 flex items-center gap-3"
                 >
-                  <Link
-                    href={`/pengepul/${collector.id}`}
-                    className="flex items-center gap-3 flex-1 min-w-0"
-                  >
-                  <div className="w-11 h-11 bg-surface rounded-2xl overflow-hidden flex items-center justify-center shrink-0 text-ink">
-                    {collector.avatarUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={collector.avatarUrl}
-                        alt={collector.shopName}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <Archive size={20} />
-                    )}
+                  <div className="w-11 h-11 bg-surface rounded-2xl flex items-center justify-center shrink-0 text-ink">
+                    <Archive size={20} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
@@ -386,7 +333,6 @@ export default function CustomerDashboard() {
                       )}
                     </div>
                   </div>
-                  </Link>
                   <Link
                     href="/orders/new"
                     className="shrink-0 text-xs font-bold text-ink bg-brand-500 hover:bg-brand-600 rounded-2xl px-4 py-2 transition-colors"
@@ -397,7 +343,7 @@ export default function CustomerDashboard() {
               ))
             ) : (
               <div className="bg-surface-raised rounded-2xl p-6 text-center text-xs text-ink-muted">
-                Belum ada pengepul aktif di sekitarmu.
+                Belum ada pengepul di sekitarmu (radius 5km).
               </div>
             )}
           </div>
@@ -430,7 +376,7 @@ export default function CustomerDashboard() {
                   <Link
                     key={order.id}
                     href={`/orders/${order.id}`}
-                    className="bg-surface-raised rounded-2xl p-4 flex items-center gap-3 hover:bg-brand-100 transition-colors"
+                    className="bg-surface-raised rounded-2xl p-4 flex items-center gap-3 border border-transparent transition-all duration-150 hover:bg-brand-100 hover:border-ink hover:shadow-lg hover:-translate-y-0.5"
                   >
                     <div className="w-9 h-9 bg-surface rounded-2xl flex items-center justify-center shrink-0">
                       {order.status === "COMPLETED" ? (

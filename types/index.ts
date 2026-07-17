@@ -22,8 +22,6 @@ export interface User {
   /** Lokasi tersimpan: lat & lng dari PostGIS Point. Diharapkan BE return ini di /auth/me. */
   lat?: number;
   lng?: number;
-  /** Deskripsi alamat tertulis (jalan, kecamatan, patokan) — pelengkap titik lokasi. */
-  addressText?: string;
   /** KYC — verifikasi KTP (anti akun-ganda). Diisi BE setelah register ber-KYC. */
   nik?: string;
   ktpName?: string;
@@ -53,8 +51,6 @@ export interface CollectorProfile {
   radiusKm: number;
   isOpen: boolean;
   isPremium: boolean;
-  /** Jam buka lapak (teks bebas, informatif). Buka/tutup tetap manual via isOpen. */
-  operatingHours?: string;
   priorityScore: number;
   /** Batas maks pesanan aktif yang bisa di-accept (default 5 di BE) */
   maxConcurrentOrders?: number;
@@ -107,8 +103,6 @@ export interface Order {
   collectorId?: string;
   method: OrderMethod;
   photoUrl?: string;
-  /** Deskripsi alamat jemput/antar untuk order ini (disalin dari profil saat order dibuat). */
-  addressText?: string;
   transactionProofUrl?: string;
   totalPrice?: number;
   status: OrderStatus;
@@ -129,14 +123,12 @@ export interface Order {
   collector?: User;
   receipt?: Receipt;
 
-  /** Koordinat lokasi (di-parse dari User.location) untuk peta rute antar/jemput.
-   *  Diisi oleh getOrderDetails di BE; null kalau pihak terkait belum set lokasi. */
+  /** Koordinat kedua pihak (di-parse BE dari User.location/PostGIS) untuk peta rute
+   *  antar/jemput & deteksi "sudah sampai". null bila pihak terkait belum set lokasi. */
   customerLat?: number | null;
   customerLng?: number | null;
   collectorLat?: number | null;
   collectorLng?: number | null;
-  /** Jarak garis lurus customer↔pengepul (km), dihitung BE. Null bila lokasi tak lengkap. */
-  distanceKm?: number | null;
 }
 
 export interface OrderCollector {
