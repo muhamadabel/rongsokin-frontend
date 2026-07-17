@@ -80,22 +80,22 @@ export default function ProfilePage() {
       <main className="flex-1 max-w-2xl w-full mx-auto px-4 md:px-0 py-5 md:py-8 space-y-5">
         {/* PROFILE SUMMARY */}
         <header className="bg-surface-raised rounded-2xl p-6 flex flex-col items-center">
-          <div className="w-24 h-24 rounded-full bg-brand-100 mb-4 relative overflow-hidden">
+          <div className="w-24 h-24 rounded-full bg-brand-100 mb-4 relative overflow-visible">
             {me?.avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={me.avatarUrl}
                 alt={me.name || "Avatar"}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover rounded-full"
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-ink">
+              <div className="w-full h-full flex items-center justify-center text-ink rounded-full">
                 <User size={40} />
               </div>
             )}
             <Link
               href="/profile/edit"
-              className="absolute bottom-0 right-0 bg-brand-500 text-ink p-2 rounded-full border-2 border-surface-raised hover:bg-brand-600 transition-colors"
+              className="absolute -bottom-1 -right-1 bg-brand-500 text-ink p-2 rounded-full border-2 border-surface-raised hover:bg-brand-600 transition-colors z-10"
               aria-label="Edit profil"
             >
               <Settings size={14} />

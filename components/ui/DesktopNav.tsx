@@ -13,6 +13,7 @@ import {
   Store,
   Plus,
   ShieldCheck,
+  Leaf,
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { useAuthStore } from "@/store/authStore";
@@ -57,6 +58,7 @@ export default function DesktopNav() {
     : [
         { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
         { href: "/search", label: "Cari", icon: Search },
+        { href: "/eco", label: "Eco", icon: Leaf },
         { href: "/orders", label: "Pesanan", icon: Clock },
       ];
 

@@ -749,7 +749,7 @@ export default function OrderTrackingPage() {
               <section className="bg-surface-raised rounded-t-2xl p-6 pb-8 space-y-4 relative receipt-edge">
                 <div className="flex justify-between items-center border-b border-dashed border-ink-faint pb-3">
                   <h4 className="font-display font-extrabold text-sm text-ink uppercase tracking-wider flex items-center gap-1.5">
-                    🧾 Digital Receipt
+                     Digital Receipt
                   </h4>
                   <span className="bg-brand-500 text-ink rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-widest">
                     LUNAS
