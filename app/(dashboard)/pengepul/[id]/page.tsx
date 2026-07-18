@@ -17,6 +17,10 @@ import {
   Monitor,
   Sparkles,
   AlertCircle,
+  Box,
+  Wine,
+  Tv,
+  Droplets,
 } from "lucide-react";
 import { Whatsapp } from "flowbite-react-icons/solid";
 import { Button } from "@/components/ui/Button";
@@ -29,12 +33,14 @@ import { useUserRatings } from "@/hooks/useRatings";
 import { formatRupiah, formatDate } from "@/lib/utils";
 import toast from "react-hot-toast";
 
-const categoryIcons: Record<string, any> = {
-  Kardus: Archive,
-  Plastik: RefreshCw,
-  Logam: Wrench,
-  Kertas: FileText,
-  Elektronik: Monitor,
+const getCategoryIcon = (name: string): any => {
+  const n = name.toLowerCase();
+  if (n.includes("plastik")) return RefreshCw;
+  if (n.includes("kertas") || n.includes("kardus")) return Box;
+  if (n.includes("logam") || n.includes("besi")) return Wrench;
+  if (n.includes("kaca") || n.includes("botol")) return Wine;
+  if (n.includes("elektronik")) return Tv;
+  return Droplets;
 };
 
 export default function PengepulDetailPage() {
@@ -227,7 +233,7 @@ export default function PengepulDetailPage() {
             {activeTab === "harga" && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {categories?.map((cat) => {
-                  const IconComponent = categoryIcons[cat.name] || Sparkles;
+                  const IconComponent = getCategoryIcon(cat.name);
                   const catalogItem = collector.catalogs?.find(
                     (c) => c.categoryId === cat.id && c.isActive
                   );
