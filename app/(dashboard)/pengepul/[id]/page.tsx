@@ -21,7 +21,6 @@ import {
   Wine,
   Tv,
   Droplets,
-  Handshake,
 } from "lucide-react";
 import { Whatsapp } from "flowbite-react-icons/solid";
 import { Button } from "@/components/ui/Button";
@@ -379,8 +378,7 @@ export default function PengepulDetailPage() {
                     <span className="text-mute font-bold uppercase tracking-wider text-[10px] block">
                       Metode Pembayaran
                     </span>
-                    <span className="font-extrabold text-ink text-sm flex items-center gap-1.5 mt-0.5">
-                      <Handshake size={16} className="text-brand-600 shrink-0" />
+                    <span className="font-extrabold text-ink text-sm mt-1 block">
                       Cash on Delivery (COD)
                     </span>
                   </div>
