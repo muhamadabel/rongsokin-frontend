@@ -174,9 +174,13 @@ export default function CustomerDashboard() {
           <h1 className="font-display font-extrabold text-base text-ink">{firstName} 👋</h1>
         </div>
         <div className="flex items-center gap-2">
-          <button className="w-9 h-9 rounded-2xl bg-surface flex items-center justify-center text-ink-muted hover:text-ink transition-colors">
+          <Link
+            href="/notifications"
+            aria-label="Notifikasi"
+            className="w-9 h-9 rounded-2xl bg-surface flex items-center justify-center text-ink-muted hover:text-ink transition-colors"
+          >
             <Bell size={18} />
-          </button>
+          </Link>
           <button
             onClick={handleLogout}
             className="w-9 h-9 rounded-2xl bg-surface flex items-center justify-center text-ink-muted hover:text-status-error transition-colors"

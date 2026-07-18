@@ -3,6 +3,7 @@ export type UserRole = 'CUSTOMER' | 'COLLECTOR' | 'ADMIN';
 export type OrderStatus =
   | 'PENDING'
   | 'CONFIRMED'
+  | 'ON_THE_WAY'
   | 'IN_PROGRESS'
   | 'AWAITING_CONFIRMATION'
   | 'COMPLETED'
@@ -129,6 +130,8 @@ export interface Order {
   customerLng?: number | null;
   collectorLat?: number | null;
   collectorLng?: number | null;
+  /** Jarak garis lurus customer↔pengepul (km) dari BE. Untuk kartu antrean pengepul. */
+  distanceKm?: number | null;
 }
 
 export interface OrderCollector {

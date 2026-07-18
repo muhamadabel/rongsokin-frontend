@@ -37,7 +37,9 @@ export function useLiveTracking({
   const cbRef = useRef(onAutoArrive);
   cbRef.current = onAutoArrive;
 
-  const enabled = !!order && order.status === 'CONFIRMED';
+  // Live tracking aktif saat DALAM PERJALANAN (ON_THE_WAY). CONFIRMED tetap didukung
+  // untuk order lama yang belum lewat alur "Dalam Perjalanan".
+  const enabled = !!order && (order.status === 'ON_THE_WAY' || order.status === 'CONFIRMED');
   const moverIsCollector = order?.method === 'PICKUP';
   const iAmMover = moverIsCollector ? role === 'COLLECTOR' : role === 'CUSTOMER';
   // Tujuan pihak yang bergerak: PICKUP → lokasi customer; DROPOFF → lokasi pengepul

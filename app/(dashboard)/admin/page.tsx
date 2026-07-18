@@ -53,6 +53,7 @@ const ORDER_STATUS_FILTERS: { label: string; value: string }[] = [
 const STATUS_BADGE: Record<OrderStatus, string> = {
   PENDING: "bg-[#fff4cc] text-[#4a3b1c]",
   CONFIRMED: "bg-brand-100 text-brand-800",
+  ON_THE_WAY: "bg-[#dbeeff] text-[#0b4a6b]",
   IN_PROGRESS: "bg-[#dbeeff] text-[#0b4a6b]",
   AWAITING_CONFIRMATION: "bg-[#ecdcff] text-[#3b1c5a]",
   COMPLETED: "bg-brand-100 text-brand-800",
@@ -62,7 +63,8 @@ const STATUS_BADGE: Record<OrderStatus, string> = {
 const STATUS_LABEL: Record<OrderStatus, string> = {
   PENDING: "Menunggu",
   CONFIRMED: "Diterima",
-  IN_PROGRESS: "Berjalan",
+  ON_THE_WAY: "Perjalanan",
+  IN_PROGRESS: "Timbang",
   AWAITING_CONFIRMATION: "Konfirmasi",
   COMPLETED: "Selesai",
   CANCELLED: "Batal",

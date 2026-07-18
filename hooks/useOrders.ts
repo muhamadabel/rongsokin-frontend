@@ -110,7 +110,7 @@ export interface ValidateItemInput {
 }
 
 export interface UpdateOrderPayload {
-  action: 'accept' | 'reject' | 'validate' | 'confirm' | 'cancel';
+  action: 'accept' | 'reject' | 'depart' | 'arrive' | 'validate' | 'confirm' | 'cancel';
   /** Items wajib untuk validate */
   items?: ValidateItemInput[];
   /** Bukti timbangan opsional (URL Cloudinary) */

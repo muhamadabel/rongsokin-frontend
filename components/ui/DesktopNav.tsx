@@ -110,10 +110,14 @@ export default function DesktopNav() {
           )}
 
           {token && (
-            <button className="text-mute hover:text-ink transition-colors relative p-2">
+            <Link
+              href="/notifications"
+              aria-label="Notifikasi"
+              className="text-mute hover:text-ink transition-colors relative p-2"
+            >
               <Bell size={20} />
               <span className="absolute top-1.5 right-2 w-2 h-2 bg-status-error rounded-full border border-surface-raised"></span>
-            </button>
+            </Link>
           )}
 
           <Link

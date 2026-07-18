@@ -30,7 +30,8 @@ import { PengepulDetailSkeleton } from "@/components/ui/Skeleton";
 import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
 import { useCollectorDetails, useWasteCategories } from "@/hooks/useDiscovery";
 import { useUserRatings } from "@/hooks/useRatings";
-import { formatRupiah, formatDate } from "@/lib/utils";
+import { useUserCoords } from "@/hooks/useUserCoords";
+import { formatRupiah, formatDate, formatDistance, haversineMeters } from "@/lib/utils";
 import toast from "react-hot-toast";
 
 const getCategoryIcon = (name: string): any => {
@@ -53,6 +54,7 @@ export default function PengepulDetailPage() {
 
   const collectorUserId = collector?.user?.id ?? (collector as { userId?: string } | undefined)?.userId;
   const { data: ratings, isLoading: isRatingsLoading } = useUserRatings(collectorUserId);
+  const { coords: myCoords, source: coordsSource } = useUserCoords();
 
   if (isCollectorLoading || isCategoriesLoading) {
     return <PengepulDetailSkeleton />;
@@ -89,6 +91,14 @@ export default function PengepulDetailPage() {
   const waLink = waNumber
     ? `https://wa.me/${waNumber.startsWith("0") ? "62" + waNumber.slice(1) : waNumber}`
     : "";
+
+  // Jarak lapak dari lokasi customer (radius sudah unlimited → yang relevan = jarak).
+  const lapakCoords =
+    collector.user?.lat != null && collector.user?.lng != null
+      ? { lat: collector.user.lat, lng: collector.user.lng }
+      : null;
+  const coordsReal = coordsSource === "saved" || coordsSource === "gps";
+  const distMeters = lapakCoords && coordsReal ? haversineMeters(myCoords, lapakCoords) : null;
 
   const handleShare = () => {
     if (typeof window !== "undefined") {
@@ -179,7 +189,7 @@ export default function PengepulDetailPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 mt-5">
+            <div className="grid grid-cols-3 gap-3 mt-5">
               {[
                 {
                   icon: Star,
@@ -192,6 +202,12 @@ export default function PengepulDetailPage() {
                   label: "Status",
                   value: collector.isOpen ? "BUKA" : "TUTUP",
                   cls: collector.isOpen ? "text-status-success" : "text-status-error",
+                },
+                {
+                  icon: MapPin,
+                  label: "Jarak",
+                  value: distMeters != null ? formatDistance(distMeters) : "—",
+                  cls: "text-ink",
                 },
               ].map((s) => (
                 <div key={s.label} className="bg-surface rounded-2xl p-3">
@@ -311,8 +327,17 @@ export default function PengepulDetailPage() {
                     <div key={r.id} className="bg-surface rounded-2xl p-4">
                       <div className="flex justify-between items-start gap-3">
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-9 h-9 rounded-full bg-brand-100 flex items-center justify-center text-brand-800 font-bold text-sm shrink-0">
-                            {(r.rater?.name || "P").charAt(0).toUpperCase()}
+                          <div className="w-9 h-9 rounded-full bg-brand-100 overflow-hidden flex items-center justify-center text-brand-800 font-bold text-sm shrink-0">
+                            {r.rater?.avatarUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={r.rater.avatarUrl}
+                                alt={r.rater.name || "Pengguna"}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              (r.rater?.name || "P").charAt(0).toUpperCase()
+                            )}
                           </div>
                           <div className="min-w-0">
                             <h5 className="font-bold text-sm text-ink truncate">

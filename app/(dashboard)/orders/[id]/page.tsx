@@ -24,6 +24,7 @@ import {
   Loader2,
   XCircle,
   Download,
+  Navigation,
 } from "lucide-react";
 
 const categoryIcons: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
@@ -72,8 +73,24 @@ export default function OrderTrackingPage() {
   const updateOrderStatus = useUpdateOrderStatus(id);
   const { data: ecoData } = useEcoLeaderboard();
 
-  const statusFlow = ["PENDING", "CONFIRMED", "IN_PROGRESS", "AWAITING_CONFIRMATION", "COMPLETED"];
-  const currentStepIdx = statusFlow.indexOf(order?.status || "PENDING");
+  // Live tracking (ShopeeFood-style): pihak yang BERGERAK memancarkan posisi GPS,
+  // pihak yang MENUNGGU menerimanya. Aktif saat status ON_THE_WAY.
+  const livePos = useLiveTracking({
+    order,
+    orderId: id,
+    role: user?.role,
+    onAutoArrive: () => {
+      if (order?.status === "ON_THE_WAY") {
+        updateOrderStatus.mutate({ action: "arrive" }, { onSuccess: () => refetch() });
+      }
+    },
+  });
+
+  // Langkah stepper (tampilan). AWAITING_CONFIRMATION dipetakan ke langkah "Timbang".
+  const statusFlow = ["PENDING", "CONFIRMED", "ON_THE_WAY", "IN_PROGRESS", "COMPLETED"];
+  const stepOf = (s?: string) =>
+    s === "AWAITING_CONFIRMATION" ? 3 : Math.max(0, statusFlow.indexOf(s || "PENDING"));
+  const currentStepIdx = stepOf(order?.status);
 
   /** Form validate per-item: key = OrderItem.id atau categoryId fallback */
   const [validateForm, setValidateForm] = useState<
@@ -155,6 +172,19 @@ export default function OrderTrackingPage() {
   const isCustomer = user?.role === "CUSTOMER";
   const isCollector = user?.role === "COLLECTOR";
 
+  // Siapa yang bergerak: PICKUP → pengepul menjemput; DROPOFF → customer mengantar.
+  const moverIsCollector = order.method === "PICKUP";
+  const iAmMover = moverIsCollector ? isCollector : isCustomer;
+  const journeyMethodLabel = moverIsCollector ? "🛵 Pengepul menjemput" : "🚶 Customer mengantar";
+  const customerCoords =
+    order.customerLat != null && order.customerLng != null
+      ? { lat: order.customerLat, lng: order.customerLng }
+      : null;
+  const collectorCoords =
+    order.collectorLat != null && order.collectorLng != null
+      ? { lat: order.collectorLat, lng: order.collectorLng }
+      : null;
+
   const partner = isCustomer ? order.collector : order.customer;
   const partnerName =
     partner?.name ||
@@ -182,16 +212,29 @@ export default function OrderTrackingPage() {
       : order.status === "CONFIRMED"
       ? {
           title: `${partnerName} menerima pesananmu`,
-          desc: "Koordinasikan waktu & lokasi lewat WhatsApp.",
+          desc: iAmMover
+            ? `Giliranmu berangkat — tekan "Dalam Perjalanan" saat mulai ${moverIsCollector ? "menjemput" : "mengantar"}.`
+            : `Menunggu ${moverIsCollector ? "pengepul berangkat menjemput" : "customer berangkat mengantar"}. Koordinasi lewat WhatsApp.`,
           tone: "active",
           Icon: CheckCircle2,
         }
-      : order.status === "IN_PROGRESS"
+      : order.status === "ON_THE_WAY"
       ? {
-          title: isCustomer ? "Pengepul sedang menuju lokasimu" : "Menuju lokasi customer",
-          desc: "Hubungi via WhatsApp untuk koordinasi titik temu di jalan.",
+          title: moverIsCollector ? "Pengepul dalam perjalanan" : "Customer dalam perjalanan",
+          desc: iAmMover
+            ? 'Lokasimu dibagikan real-time. Tekan "Sudah Sampai" saat tiba di tujuan.'
+            : `Pantau posisi ${moverIsCollector ? "pengepul" : "customer"} di peta real-time. Koordinasi titik temu via WhatsApp.`,
           tone: "active",
           Icon: Truck,
+        }
+      : order.status === "IN_PROGRESS"
+      ? {
+          title: "Sudah sampai — proses timbang",
+          desc: isCustomer
+            ? "Pengepul sedang menimbang & menghitung harga rongsokanmu."
+            : "Timbang rongsokan & masukkan harga per kategori.",
+          tone: "active",
+          Icon: Scale,
         }
       : order.status === "AWAITING_CONFIRMATION"
       ? {
@@ -224,6 +267,34 @@ export default function OrderTrackingPage() {
       : statusMeta.tone === "cancel"
       ? "bg-status-error/10 border-status-error/30"
       : "bg-surface border-ink-faint";
+
+  const handleDepart = () => {
+    updateOrderStatus.mutate(
+      { action: "depart" },
+      {
+        onSuccess: () => {
+          toast.success("Perjalanan dimulai! Lokasimu dibagikan real-time.");
+          refetch();
+        },
+        onError: (err: any) =>
+          toast.error(err.response?.data?.message || "Gagal memulai perjalanan."),
+      }
+    );
+  };
+
+  const handleArrive = () => {
+    updateOrderStatus.mutate(
+      { action: "arrive" },
+      {
+        onSuccess: () => {
+          toast.success("Ditandai sudah sampai. Lanjut ke timbang.");
+          refetch();
+        },
+        onError: (err: any) =>
+          toast.error(err.response?.data?.message || "Gagal menandai sampai."),
+      }
+    );
+  };
 
   const handleValidateSubmit = () => {
     const items = getOrderItems(order);
@@ -395,8 +466,8 @@ export default function OrderTrackingPage() {
 
               let label = "Menunggu";
               if (s === "CONFIRMED") label = "Diterima";
-              if (s === "IN_PROGRESS") label = "Jemput";
-              if (s === "AWAITING_CONFIRMATION") label = "Timbang";
+              if (s === "ON_THE_WAY") label = "Perjalanan";
+              if (s === "IN_PROGRESS") label = "Timbang";
               if (s === "COMPLETED") label = "Selesai";
 
               return (
@@ -516,7 +587,13 @@ export default function OrderTrackingPage() {
                         Metode Penyerahan
                       </span>
                       <span className="text-xs font-extrabold text-ink">
-                        {order.method === "PICKUP" ? "📦 Dijemput Kurir" : "🚶 Antar Sendiri"}
+                        {["CONFIRMED", "ON_THE_WAY", "IN_PROGRESS", "AWAITING_CONFIRMATION"].includes(
+                          order.status
+                        )
+                          ? journeyMethodLabel
+                          : order.method === "PICKUP"
+                          ? "📦 Dijemput pengepul"
+                          : "🚶 Antar sendiri"}
                       </span>
                     </div>
                   </div>
@@ -548,8 +625,61 @@ export default function OrderTrackingPage() {
 
           {/* RIGHT: ACTIONS */}
           <div className="space-y-6">
+            {/* PETA & PERJALANAN (live tracking) */}
+            {["CONFIRMED", "ON_THE_WAY", "IN_PROGRESS"].includes(order.status) && (
+              <section className="bg-surface-raised rounded-2xl p-5 space-y-4">
+                <div className="flex items-center gap-2 text-ink">
+                  <Navigation size={18} className="text-brand-700" />
+                  <h3 className="font-display font-extrabold text-sm tracking-tight">
+                    {journeyMethodLabel}
+                  </h3>
+                </div>
+
+                {customerCoords && collectorCoords ? (
+                  <OrderRouteMap
+                    customer={customerCoords}
+                    collector={collectorCoords}
+                    live={order.status === "ON_THE_WAY" ? livePos : null}
+                    height={200}
+                  />
+                ) : (
+                  <p className="text-[11px] text-ink-muted bg-surface rounded-2xl p-3">
+                    Lokasi salah satu pihak belum lengkap — peta belum bisa ditampilkan.
+                  </p>
+                )}
+
+                {iAmMover && order.status === "CONFIRMED" && (
+                  <Button
+                    onClick={handleDepart}
+                    disabled={updateOrderStatus.isPending}
+                    className="w-full gap-2"
+                  >
+                    <Navigation size={16} />
+                    {updateOrderStatus.isPending ? "Memproses…" : "Dalam Perjalanan"}
+                  </Button>
+                )}
+                {iAmMover && order.status === "ON_THE_WAY" && (
+                  <Button
+                    onClick={handleArrive}
+                    disabled={updateOrderStatus.isPending}
+                    className="w-full gap-2"
+                  >
+                    <CheckCircle2 size={16} />
+                    {updateOrderStatus.isPending ? "Memproses…" : "Sudah Sampai"}
+                  </Button>
+                )}
+                {!iAmMover && (order.status === "CONFIRMED" || order.status === "ON_THE_WAY") && (
+                  <p className="text-[11px] text-ink-muted text-center leading-relaxed">
+                    {order.status === "ON_THE_WAY"
+                      ? `Posisi ${moverIsCollector ? "pengepul" : "customer"} tampil real-time di peta.`
+                      : `Menunggu ${moverIsCollector ? "pengepul" : "customer"} menekan "Dalam Perjalanan".`}
+                  </p>
+                )}
+              </section>
+            )}
+
             {/* COLLECTOR VALIDATE — per item */}
-            {isCollector && (order.status === "CONFIRMED" || order.status === "IN_PROGRESS") && (
+            {isCollector && ["ON_THE_WAY", "IN_PROGRESS"].includes(order.status) && (
               <section className="bg-surface-raised border border-ink rounded-2xl p-6 space-y-4">
                 <div className="flex items-center gap-2 text-ink">
                   <Scale size={20} />
@@ -728,7 +858,7 @@ export default function OrderTrackingPage() {
             )}
 
             {/* CANCEL */}
-            {["PENDING", "CONFIRMED", "IN_PROGRESS"].includes(order.status) && (
+            {["PENDING", "CONFIRMED", "ON_THE_WAY", "IN_PROGRESS"].includes(order.status) && (
               <section className="bg-surface-raised rounded-2xl p-5 space-y-3">
                 <h4 className="font-display font-extrabold text-xs text-mute uppercase tracking-widest">
                   Kelola Pesanan
