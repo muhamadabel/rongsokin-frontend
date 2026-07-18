@@ -6,12 +6,13 @@ import { ArrowLeft, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Logo } from "@/components/ui/Logo";
+import { useForgotPassword } from "@/hooks/useAuth";
 import toast from "react-hot-toast";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
-  const [isPending, setIsPending] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const { mutate: sendResetLink, isPending } = useForgotPassword();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,13 +21,16 @@ export default function ForgotPasswordPage() {
       return;
     }
 
-    setIsPending(true);
-    // Simulasikan pengiriman link atur ulang sandi
-    setTimeout(() => {
-      setIsPending(false);
-      setIsSubmitted(true);
-      toast.success("Tautan atur ulang kata sandi berhasil dikirim!");
-    }, 1500);
+    sendResetLink(email, {
+      onSuccess: () => {
+        setIsSubmitted(true);
+        toast.success("Tautan atur ulang kata sandi berhasil dikirim!");
+      },
+      onError: (err: any) => {
+        const errMsg = err.response?.data?.message || "Gagal mengirim tautan pemulihan.";
+        toast.error(errMsg);
+      },
+    });
   };
 
   return (
