@@ -121,3 +121,21 @@ export const useUpdateMe = () => {
     },
   });
 };
+
+export const useForgotPassword = () => {
+  return useMutation({
+    mutationFn: async (email: string) => {
+      const res = await api.post<{ status: string; message: string }>('/auth/forgot-password', { email });
+      return res.data;
+    },
+  });
+};
+
+export const useResetPassword = () => {
+  return useMutation({
+    mutationFn: async (payload: any) => {
+      const res = await api.post<{ status: string; message: string }>('/auth/reset-password', payload);
+      return res.data;
+    },
+  });
+};
