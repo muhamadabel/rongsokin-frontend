@@ -21,6 +21,7 @@ import {
   Wine,
   Tv,
   Droplets,
+  Handshake,
 } from "lucide-react";
 import { Whatsapp } from "flowbite-react-icons/solid";
 import { Button } from "@/components/ui/Button";
@@ -357,7 +358,7 @@ export default function PengepulDetailPage() {
 
             {activeTab === "info" && (
               <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div className="bg-surface p-4 rounded-2xl">
                     <span className="text-mute font-bold uppercase tracking-wider text-[10px] block">
                       Pemilik Lapak
@@ -372,6 +373,15 @@ export default function PengepulDetailPage() {
                     </span>
                     <span className="font-extrabold text-ink text-sm">
                       Tanpa batas
+                    </span>
+                  </div>
+                  <div className="bg-surface p-4 rounded-2xl">
+                    <span className="text-mute font-bold uppercase tracking-wider text-[10px] block">
+                      Metode Pembayaran
+                    </span>
+                    <span className="font-extrabold text-ink text-sm flex items-center gap-1.5 mt-0.5">
+                      <Handshake size={16} className="text-brand-600 shrink-0" />
+                      Cash on Delivery (COD)
                     </span>
                   </div>
                 </div>
