@@ -16,6 +16,7 @@ import {
   Leaf,
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
+import NotificationBell from "@/components/ui/NotificationBell";
 import { useAuthStore } from "@/store/authStore";
 
 type NavItem = { href: string; label: string; icon: React.ComponentType<{ size?: number }> };
@@ -109,16 +110,7 @@ export default function DesktopNav() {
             </Link>
           )}
 
-          {token && (
-            <Link
-              href="/notifications"
-              aria-label="Notifikasi"
-              className="text-mute hover:text-ink transition-colors relative p-2"
-            >
-              <Bell size={20} />
-              <span className="absolute top-1.5 right-2 w-2 h-2 bg-status-error rounded-full border border-surface-raised"></span>
-            </Link>
-          )}
+          {token && <NotificationBell />}
 
           <Link
             href={token ? "/profile" : "/login"}

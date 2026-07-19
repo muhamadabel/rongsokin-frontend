@@ -196,25 +196,39 @@ export default function OrderTrackingPage() {
     : "";
 
   // Kontak aktif: ada partner & order sedang berjalan (penjemputan/otw/timbang)
-  const activeStatuses = ["CONFIRMED", "IN_PROGRESS", "AWAITING_CONFIRMATION"];
+  const activeStatuses = ["CONFIRMED", "ON_THE_WAY", "IN_PROGRESS", "AWAITING_CONFIRMATION"];
   const showContact = !!partner && activeStatuses.includes(order.status);
+
+  // Order "forward" (private) kalau customer memilih lapak tertentu langsung —
+  // collectorId sudah terisi SEJAK dibuat, meski masih PENDING. Order "war"
+  // (broadcast) collectorId-nya null sampai ada pengepul yang menerima.
+  const isForwardOrder = !!order.collectorId && order.status === "PENDING";
 
   // Pesan hero per status
   const partnerLabel = isCustomer ? "Pengepul" : "Customer";
   const statusMeta: { title: string; desc: string; tone: "wait" | "active" | "done" | "cancel"; Icon: React.ComponentType<{ size?: number; className?: string }> } =
     order.status === "PENDING"
-      ? {
-          title: "Menunggu pengepul…",
-          desc: "Pesananmu sedang ditawarkan ke pengepul terdekat. Mohon tunggu sebentar.",
-          tone: "wait",
-          Icon: Loader2,
-        }
+      ? isForwardOrder
+        ? {
+            title: "Menunggu persetujuan pengepul…",
+            desc: `Pesananmu dikirim langsung ke ${
+              order.collector?.collectorProfile?.shopName || order.collector?.name || "lapak pilihanmu"
+            } — menunggu mereka menerima, bukan ditawarkan ke pengepul lain.`,
+            tone: "wait",
+            Icon: Loader2,
+          }
+        : {
+            title: "Menunggu pengepul…",
+            desc: "Pesananmu sedang ditawarkan ke pengepul terdekat. Mohon tunggu sebentar.",
+            tone: "wait",
+            Icon: Loader2,
+          }
       : order.status === "CONFIRMED"
       ? {
+          // CONFIRMED kini transien (langsung lompat ke ON_THE_WAY saat diterima) —
+          // teks ini hanya jaga-jaga untuk order lama yang sempat berhenti di sini.
           title: `${partnerName} menerima pesananmu`,
-          desc: iAmMover
-            ? `Giliranmu berangkat — tekan "Dalam Perjalanan" saat mulai ${moverIsCollector ? "menjemput" : "mengantar"}.`
-            : `Menunggu ${moverIsCollector ? "pengepul berangkat menjemput" : "customer berangkat mengantar"}. Koordinasi lewat WhatsApp.`,
+          desc: "Perjalanan segera dimulai secara otomatis.",
           tone: "active",
           Icon: CheckCircle2,
         }
@@ -267,20 +281,6 @@ export default function OrderTrackingPage() {
       : statusMeta.tone === "cancel"
       ? "bg-status-error/10 border-status-error/30"
       : "bg-surface border-ink-faint";
-
-  const handleDepart = () => {
-    updateOrderStatus.mutate(
-      { action: "depart" },
-      {
-        onSuccess: () => {
-          toast.success("Perjalanan dimulai! Lokasimu dibagikan real-time.");
-          refetch();
-        },
-        onError: (err: any) =>
-          toast.error(err.response?.data?.message || "Gagal memulai perjalanan."),
-      }
-    );
-  };
 
   const handleArrive = () => {
     updateOrderStatus.mutate(
@@ -648,17 +648,10 @@ export default function OrderTrackingPage() {
                   </p>
                 )}
 
-                {iAmMover && order.status === "CONFIRMED" && (
-                  <Button
-                    onClick={handleDepart}
-                    disabled={updateOrderStatus.isPending}
-                    className="w-full gap-2"
-                  >
-                    <Navigation size={16} />
-                    {updateOrderStatus.isPending ? "Memproses…" : "Dalam Perjalanan"}
-                  </Button>
-                )}
-                {iAmMover && order.status === "ON_THE_WAY" && (
+                {/* Tak ada tombol "Dalam Perjalanan" lagi — status ON_THE_WAY otomatis
+                    begitu order diterima. "Sudah Sampai" tetap manual, plus auto-arrive
+                    via GPS (useLiveTracking) kalau sudah dekat tujuan. */}
+                {iAmMover && (order.status === "ON_THE_WAY" || order.status === "CONFIRMED") && (
                   <Button
                     onClick={handleArrive}
                     disabled={updateOrderStatus.isPending}
@@ -670,16 +663,20 @@ export default function OrderTrackingPage() {
                 )}
                 {!iAmMover && (order.status === "CONFIRMED" || order.status === "ON_THE_WAY") && (
                   <p className="text-[11px] text-ink-muted text-center leading-relaxed">
-                    {order.status === "ON_THE_WAY"
-                      ? `Posisi ${moverIsCollector ? "pengepul" : "customer"} tampil real-time di peta.`
-                      : `Menunggu ${moverIsCollector ? "pengepul" : "customer"} menekan "Dalam Perjalanan".`}
+                    Posisi {moverIsCollector ? "pengepul" : "customer"} tampil real-time di peta.
+                  </p>
+                )}
+                {order.status === "ON_THE_WAY" && (
+                  <p className="text-[10px] text-ink-faint text-center">
+                    Pesanan otomatis dibatalkan jika dalam 3 jam belum ditandai sampai.
                   </p>
                 )}
               </section>
             )}
 
-            {/* COLLECTOR VALIDATE — per item */}
-            {isCollector && ["ON_THE_WAY", "IN_PROGRESS"].includes(order.status) && (
+            {/* COLLECTOR VALIDATE — per item. Hanya SETELAH "Sudah Sampai" diklik
+                (IN_PROGRESS) — form timbangan tak boleh muncul selagi masih OTW. */}
+            {isCollector && order.status === "IN_PROGRESS" && (
               <section className="bg-surface-raised border border-ink rounded-2xl p-6 space-y-4">
                 <div className="flex items-center gap-2 text-ink">
                   <Scale size={20} />

@@ -19,7 +19,14 @@ function timeAgo(iso: string): string {
   return `${d} hr lalu`;
 }
 
-export default function NotificationBell() {
+interface Props {
+  /** Ukuran ikon bel (px). Default 20. */
+  size?: number;
+  /** Override kelas tombol bel — dipakai supaya cocok dgn tiap header (DesktopNav vs dashboard). */
+  buttonClassName?: string;
+}
+
+export default function NotificationBell({ size = 20, buttonClassName }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -62,9 +69,12 @@ export default function NotificationBell() {
       <button
         onClick={toggle}
         aria-label="Notifikasi"
-        className="text-mute hover:text-ink transition-colors relative p-2"
+        className={
+          buttonClassName ||
+          "text-mute hover:text-ink transition-colors relative p-2"
+        }
       >
-        <Bell size={20} />
+        <Bell size={size} />
         {unread > 0 && (
           <span className="absolute top-0.5 right-0.5 min-w-[16px] h-4 px-1 bg-status-error text-white text-[10px] font-bold rounded-full flex items-center justify-center border border-surface-raised">
             {unread > 9 ? "9+" : unread}

@@ -67,6 +67,10 @@ function OrderForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initCat = searchParams.get("category");
+  // Forward langsung ke satu lapak (dari tombol "Jual" di profil pengepul) — BUKAN
+  // war/broadcast. Kalau kosong, order dibuka ke semua pengepul terdekat (war).
+  const forwardCollectorId = searchParams.get("collectorId");
+  const forwardShopName = searchParams.get("shopName");
   const token = useAuthStore((s) => s.token);
   const user = useAuthStore((s) => s.user);
 
@@ -197,10 +201,15 @@ function OrderForm() {
         lat,
         lng,
         method: method as "PICKUP" | "DROPOFF",
+        collectorId: forwardCollectorId || undefined,
       },
       {
         onSuccess: (res) => {
-          toast.success("Setoran berhasil dibuat! Mencari pengepul…");
+          toast.success(
+            forwardCollectorId
+              ? `Setoran terkirim ke ${forwardShopName || "pengepul pilihanmu"}! Menunggu persetujuan…`
+              : "Setoran berhasil dibuat! Mencari pengepul…"
+          );
           const orderId = (res as any)?.data?.id || (res as any)?.id;
           router.push(orderId ? `/orders/${orderId}` : "/orders");
         },
@@ -739,7 +748,14 @@ function OrderForm() {
               </div>
 
               <div className="bg-brand-100 rounded-2xl p-4 text-xs text-brand-800 font-medium">
-                💡 Pengepul yang menerima <b>semua</b> kategori di pesananmu akan dinotifikasi.
+                {forwardCollectorId ? (
+                  <>
+                    📨 Pesanan ini dikirim <b>langsung</b> ke {forwardShopName ? <b>{forwardShopName}</b> : "lapak pilihanmu"} —
+                    bukan ditawarkan ke pengepul lain.
+                  </>
+                ) : (
+                  <>💡 Pengepul yang menerima <b>semua</b> kategori di pesananmu akan dinotifikasi.</>
+                )}
               </div>
 
               <div className="flex gap-3">

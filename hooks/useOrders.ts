@@ -110,7 +110,8 @@ export interface ValidateItemInput {
 }
 
 export interface UpdateOrderPayload {
-  action: 'accept' | 'reject' | 'depart' | 'arrive' | 'validate' | 'confirm' | 'cancel';
+  // 'depart' dihapus — status ON_THE_WAY kini otomatis begitu order diterima (accept).
+  action: 'accept' | 'reject' | 'arrive' | 'validate' | 'confirm' | 'cancel';
   /** Items wajib untuk validate */
   items?: ValidateItemInput[];
   /** Bukti timbangan opsional (URL Cloudinary) */

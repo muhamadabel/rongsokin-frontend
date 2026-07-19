@@ -276,7 +276,13 @@ export default function PengepulDetailPage() {
                         )}
                       </div>
                       {catalogItem && (
-                        <Link href={`/orders/new?category=${cat.id}`}>
+                        <Link
+                          href={`/orders/new?category=${cat.id}${
+                            collectorUserId
+                              ? `&collectorId=${collectorUserId}&shopName=${encodeURIComponent(collector.shopName)}`
+                              : ""
+                          }`}
+                        >
                           <Button className="px-4 py-2 h-auto text-xs">Jual</Button>
                         </Link>
                       )}

@@ -2,14 +2,25 @@ import { useEffect } from 'react';
 import { getSocket, disconnectSocket } from '@/lib/socket';
 import { useAuthStore } from '@/store/authStore';
 import { useOrderStore } from '@/store/orderStore';
+import { useNotificationStore } from '@/store/notificationStore';
 import { Order, OrderItem } from '@/types';
 import { toast } from 'react-hot-toast';
+
+const STATUS_LABEL_ID: Record<string, string> = {
+  CONFIRMED: 'diterima pengepul',
+  ON_THE_WAY: 'dalam perjalanan',
+  IN_PROGRESS: 'sudah sampai — sedang ditimbang',
+  AWAITING_CONFIRMATION: 'menunggu konfirmasimu',
+  COMPLETED: 'selesai',
+  CANCELLED: 'dibatalkan',
+};
 
 export const useSocket = () => {
   const token = useAuthStore((state) => state.token);
   const user = useAuthStore((state) => state.user);
   const addIncomingOrder = useOrderStore((state) => state.addIncomingOrder);
   const updateOrderStatus = useOrderStore((state) => state.updateOrderStatus);
+  const addNotification = useNotificationStore((state) => state.add);
 
   useEffect(() => {
     if (!token || !user) {
@@ -73,14 +84,37 @@ export const useSocket = () => {
         icon: '♻️',
         duration: 5000,
       });
+      if (user) {
+        addNotification({
+          id: `new_order:${payload.orderId}`,
+          userId: user.id,
+          type: 'new_order',
+          title: 'Pesanan baru masuk',
+          body: `Estimasi ${totalWeight.toFixed(1)} kg — cek antreanmu.`,
+          href: '/collector',
+          createdAt: new Date().toISOString(),
+        });
+      }
     });
 
     // Handle order status update
     const handleStatusUpdate = (payload: { orderId: string; status: any }) => {
       updateOrderStatus(payload.orderId, payload.status);
+      const label = STATUS_LABEL_ID[payload.status] || payload.status;
       toast(`Status pesanan ${payload.orderId.slice(0, 5)}... berubah menjadi ${payload.status}`, {
         icon: "♻️",
       });
+      if (user) {
+        addNotification({
+          id: `status:${payload.orderId}:${payload.status}`,
+          userId: user.id,
+          type: 'status',
+          title: 'Status pesanan diperbarui',
+          body: `Pesanan #${payload.orderId.slice(-5).toUpperCase()} kini ${label}.`,
+          href: `/orders/${payload.orderId}`,
+          createdAt: new Date().toISOString(),
+        });
+      }
     };
 
     socket.on('order_status_update', handleStatusUpdate);
@@ -91,5 +125,5 @@ export const useSocket = () => {
       socket.off('order_status_update');
       socket.off('order_status_updated');
     };
-  }, [token, user, addIncomingOrder, updateOrderStatus]);
+  }, [token, user, addIncomingOrder, updateOrderStatus, addNotification]);
 };

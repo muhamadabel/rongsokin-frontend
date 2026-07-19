@@ -7,6 +7,7 @@ import DesktopNav from "@/components/ui/DesktopNav";
 import BottomNav from "@/components/ui/BottomNav";
 import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
 import CustomerReviewModal from "@/components/features/collector/CustomerReviewModal";
+import NotificationBell from "@/components/ui/NotificationBell";
 import {
   Store,
   Archive,
@@ -54,7 +55,7 @@ import {
   getOrderCategoryLabel,
   getOrderItems,
 } from "@/lib/utils";
-import { Star } from "lucide-react";
+import { Star, MapPin } from "lucide-react";
 import { Order } from "@/types";
 import toast from "react-hot-toast";
 
@@ -442,6 +443,11 @@ export default function CollectorDashboard() {
   const liveIncoming = incomingOrders.filter(
     (o) => nowTick - new Date(o.createdAt).getTime() < OFFER_TTL_MS
   );
+  // WAR (broadcast/rebutan): order belum ber-collector, ditawarkan ke banyak pengepul
+  // sekaligus — first-come-first-served. FORWARD (private): customer memilih lapak
+  // ini langsung, collectorId sudah terisi sejak dibuat meski masih PENDING.
+  const warOrders = liveIncoming.filter((o) => !o.collectorId);
+  const forwardOrders = liveIncoming.filter((o) => !!o.collectorId);
 
   const { data: me } = useMe();
   const needsVerify = me?.isVerified === false; // hanya gate kalau eksplisit false
@@ -585,12 +591,18 @@ export default function CollectorDashboard() {
             Dasbor Lapak
           </h1>
         </div>
-        <button
-          onClick={handleLogout}
-          className="p-2 text-ink-muted hover:text-status-error transition-colors rounded-full hover:bg-surface cursor-pointer"
-        >
-          <LogOut size={20} />
-        </button>
+        <div className="flex items-center gap-1">
+          <NotificationBell
+            size={20}
+            buttonClassName="relative p-2 text-ink-muted hover:text-ink transition-colors rounded-full hover:bg-surface cursor-pointer"
+          />
+          <button
+            onClick={handleLogout}
+            className="p-2 text-ink-muted hover:text-status-error transition-colors rounded-full hover:bg-surface cursor-pointer"
+          >
+            <LogOut size={20} />
+          </button>
+        </div>
       </header>
 
       <main className="flex-1 px-4 md:px-8 py-5 md:py-8 max-w-6xl w-full mx-auto space-y-6">
@@ -654,16 +666,19 @@ export default function CollectorDashboard() {
 
         {/* REQUESTS + INCOMING QUEUE */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* REQUEST TABLE */}
+          {/* REQUEST TABLE — WAR (broadcast/rebutan, first-come-first-served) */}
           <section className="lg:col-span-2 bg-surface-raised rounded-2xl p-6 space-y-4">
             <div className="flex justify-between items-center gap-3 flex-wrap">
               <h3 className="font-display font-extrabold text-base text-ink tracking-tight flex items-center gap-2">
-                <FileText className="text-brand-700" size={18} />
+                <MapPin className="text-brand-700" size={18} />
                 Request Jemput Terdekat
+                <span className="bg-status-error/10 text-status-error text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full">
+                  War
+                </span>
               </h3>
-              {liveIncoming.length > 0 && (
+              {warOrders.length > 0 && (
                 <span className="bg-brand-100 text-brand-800 text-[9px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-full">
-                  {liveIncoming.length} Aktif
+                  {warOrders.length} Aktif
                 </span>
               )}
             </div>
@@ -681,8 +696,8 @@ export default function CollectorDashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-ink-faint">
-                  {liveIncoming.length > 0 ? (
-                    liveIncoming.map((order, idx) => (
+                  {warOrders.length > 0 ? (
+                    warOrders.map((order, idx) => (
                       <RequestRow
                         key={order.id}
                         order={order}
@@ -709,21 +724,24 @@ export default function CollectorDashboard() {
             </div>
           </section>
 
-          {/* INCOMING QUEUE */}
+          {/* INCOMING QUEUE — FORWARD (private, langsung dari 1 customer ke lapak ini) */}
           <section className="bg-surface-raised rounded-2xl p-6 space-y-4">
             <h3 className="font-display font-extrabold text-base text-ink tracking-tight flex items-center gap-2">
               <Store className="text-brand-700" size={18} />
               Antrean Masuk
-              {liveIncoming.length > 0 && (
+              <span className="bg-brand-100 text-brand-800 text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full">
+                Forward
+              </span>
+              {forwardOrders.length > 0 && (
                 <span className="bg-brand-500 text-ink text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full">
-                  {liveIncoming.length}
+                  {forwardOrders.length}
                 </span>
               )}
             </h3>
 
             <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
-              {liveIncoming.length > 0 ? (
-                liveIncoming.map((order) => (
+              {forwardOrders.length > 0 ? (
+                forwardOrders.map((order) => (
                   <IncomingOrderCard
                     key={order.id}
                     order={order}
@@ -735,7 +753,9 @@ export default function CollectorDashboard() {
               ) : (
                 <div className="bg-surface rounded-2xl p-8 flex flex-col items-center text-center">
                   <Clock size={28} className="text-ink-faint mb-2" />
-                  <span className="text-xs font-bold text-ink">Antrean Kosong</span>
+                  <span className="text-xs font-bold text-ink">
+                    Sedang tidak ada request private dari customer
+                  </span>
                 </div>
               )}
             </div>
