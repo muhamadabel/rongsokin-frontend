@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useMe } from "@/hooks/useAuth";
+import { useUserCoords } from "@/hooks/useUserCoords";
 import { useOrdersList } from "@/hooks/useOrders";
 import { useCategoryTree, useSearchCollectors } from "@/hooks/useDiscovery";
 import {
-  DEFAULT_COORDS,
   formatRupiah,
   formatDistance,
   formatDate,
@@ -89,7 +89,10 @@ export default function CustomerDashboard() {
   const { data: orders, isLoading: isOrdersLoading } = useOrdersList({ limit: 50 });
   const { mains } = useCategoryTree();
 
-  const [coords, setCoords] = useState(DEFAULT_COORDS);
+  // Prioritas: lokasi TERSIMPAN (di-set di Edit Profil) > GPS perangkat > default
+  // Yogyakarta. Dulu di sini pakai GPS-langsung yang mengabaikan lokasi tersimpan —
+  // akibatnya titik "Jangkauan Pencarian" tak ikut pindah walau profil diubah.
+  const { coords, source: coordsSource } = useUserCoords();
   const [greeting, setGreeting] = useState("Halo");
 
   useEffect(() => {
@@ -98,17 +101,6 @@ export default function CustomerDashboard() {
     else if (hour < 15) setGreeting("Selamat siang");
     else if (hour < 18) setGreeting("Selamat sore");
     else setGreeting("Selamat malam");
-  }, []);
-
-  useEffect(() => {
-    if (typeof navigator !== "undefined" && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setCoords({ lat: position.coords.latitude, lng: position.coords.longitude });
-        },
-        () => {}
-      );
-    }
   }, []);
 
   // Radius pencarian dipilih customer sendiri & diingat antar kunjungan.
@@ -341,7 +333,7 @@ export default function CustomerDashboard() {
             </h2>
             <span className="text-xs font-semibold text-mute flex items-center gap-1">
               <MapPin size={12} className="text-brand-700" />
-              {coords === DEFAULT_COORDS ? "Yogyakarta" : "Lokasimu"}
+              {coordsSource === "default" ? "Yogyakarta" : "Lokasimu"}
             </span>
           </div>
 
