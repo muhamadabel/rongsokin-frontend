@@ -65,6 +65,10 @@ export const useSocket = () => {
       const mockOrder: Order = {
         id: payload.orderId,
         customerId: '',
+        // War (broadcast) = null/undefined; Forward (private, dipilih langsung
+        // dari lapak) = userId pengepul. Dulu field ini tak dikirim BE sama sekali
+        // → order forward sempat tampil sbg War sampai polling REST membetulkan.
+        collectorId: payload.collectorId || undefined,
         method: payload.method,
         status: 'PENDING',
         // Pakai createdAt ASLI dari BE supaya countdown 15 menit akurat sejak awal.
