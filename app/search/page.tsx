@@ -8,8 +8,9 @@ import { Input } from "@/components/ui/Input";
 import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
 import Link from "next/link";
 import { useSearchCollectors, useCategoryTree } from "@/hooks/useDiscovery";
+import { useUserCoords } from "@/hooks/useUserCoords";
 import { useAuthStore } from "@/store/authStore";
-import { DEFAULT_COORDS, formatDistance } from "@/lib/utils";
+import { formatDistance } from "@/lib/utils";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PageSkeleton } from "@/components/ui/Skeleton";
 
@@ -38,7 +39,11 @@ function SearchInner() {
     }
   }, [token, user, router]);
 
-  const [coords, setCoords] = useState(DEFAULT_COORDS);
+  // Prioritas: lokasi TERSIMPAN (di-set di Edit Profil) > GPS perangkat > default
+  // Yogyakarta — sama seperti dashboard & profil pengepul. Dulu di sini pakai
+  // GPS-langsung yang mengabaikan lokasi tersimpan, jadi jarak yang ditampilkan
+  // beda dengan halaman lain untuk lapak yang sama.
+  const { coords } = useUserCoords();
   const [selectedMainId, setSelectedMainId] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -58,17 +63,6 @@ function SearchInner() {
       setSearchQuery(q);
     }
   }, [mains, searchParams]);
-
-  useEffect(() => {
-    if (typeof navigator !== "undefined" && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setCoords({ lat: position.coords.latitude, lng: position.coords.longitude });
-        },
-        () => {}
-      );
-    }
-  }, []);
 
   const selectedMain = mains.find((m) => m.id === selectedMainId);
   const { data: collectors, isLoading } = useSearchCollectors({
