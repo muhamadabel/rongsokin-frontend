@@ -4,7 +4,7 @@ import { useState, useRef } from "react";
 import { toPng } from "html-to-image";
 import { Sparkles, Download, ArrowRight, CheckCircle2, ShieldCheck } from "lucide-react";
 import toast from "react-hot-toast";
-import { ecoTier } from "@/lib/eco";
+import { ecoTier, co2KmFromKg } from "@/lib/eco";
 
 interface EcoImpactModalProps {
   customerName: string;
@@ -41,8 +41,7 @@ export default function EcoImpactModal({
   const [isDownloading, setIsDownloading] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
-  // 1 kg of waste recycled = ~5 km of motorcycle ride emission reduction
-  const carbonKm = actualWeight * 5;
+  const carbonKm = co2KmFromKg(actualWeight);
 
   const handleDownload = async () => {
     if (!cardRef.current) return;
