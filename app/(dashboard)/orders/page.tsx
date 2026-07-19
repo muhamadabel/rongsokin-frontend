@@ -64,10 +64,11 @@ export default function OrdersPage() {
       return true;
     }) || [];
 
-  const getStatusLabel = (status: string) => {
+  const getStatusLabel = (order: any) => {
+    const status = order.status;
     switch (status) {
       case "PENDING":
-        return "Mencari Pengepul";
+        return order.collectorId ? "Menunggu Persetujuan" : "Mencari Pengepul";
       case "CONFIRMED":
         return "Diterima";
       case "IN_PROGRESS":
@@ -184,7 +185,7 @@ export default function OrdersPage() {
                       order.status
                     )}`}
                   >
-                    {getStatusIcon(order.status)} {getStatusLabel(order.status)}
+                    {getStatusIcon(order.status)} {getStatusLabel(order)}
                   </span>
                 </div>
 

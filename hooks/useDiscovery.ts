@@ -18,6 +18,7 @@ export interface SearchQueryParams {
 
 export interface CollectorSearchResult {
   id: string;
+  userId?: string;
   shopName: string;
   description?: string;
   priorityScore: number;
@@ -116,6 +117,7 @@ export const useSearchCollectors = (params: SearchQueryParams) => {
         // Map result database fields into front-end models
         return res.data.data.map((c) => ({
           id: c.id,
+          userId: c.userId,
           shopName: c.shopName,
           description: c.description,
           priorityScore: c.priorityScore,

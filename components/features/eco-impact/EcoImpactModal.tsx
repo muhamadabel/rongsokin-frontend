@@ -194,7 +194,7 @@ export default function EcoImpactModal({
             {/* FOOTER */}
             <div className="pt-2 w-full flex justify-between items-center text-[8px] text-brand-300/60 font-mono z-10">
               <span>📍 Yogyakarta, Indonesia</span>
-              <span>rongsok.in/eco</span>
+              <span>rongsokin.vercel.app</span>
             </div>
           </div>
         </div>

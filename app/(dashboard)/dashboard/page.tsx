@@ -145,6 +145,13 @@ export default function CustomerDashboard() {
   );
   const totalEarnings = completedOrders.reduce((sum, o) => sum + getOrderTotalPrice(o), 0);
 
+  const getStatusLabel = (order: any) => {
+    if (order.status === "PENDING") {
+      return order.collectorId ? "Menunggu Persetujuan" : "Menunggu Pengepul";
+    }
+    return STATUS_CONFIG[order.status]?.label || order.status;
+  };
+
   const handleLogout = () => {
     logout();
     router.push("/login");
@@ -234,7 +241,7 @@ export default function CustomerDashboard() {
                       STATUS_CONFIG[activeOrder.status]?.style || "bg-surface text-ink-muted"
                     }`}
                   >
-                    {STATUS_CONFIG[activeOrder.status]?.label || activeOrder.status}
+                    {getStatusLabel(activeOrder)}
                   </span>
                 </div>
                 <p className="text-sm font-bold text-forest-ink truncate">
@@ -410,7 +417,11 @@ export default function CustomerDashboard() {
                     </div>
                   </div>
                   <Link
-                    href="/orders/new"
+                    href={`/orders/new${
+                      collector.userId
+                        ? `?collectorId=${collector.userId}&shopName=${encodeURIComponent(collector.shopName)}`
+                        : ""
+                    }`}
                     onClick={(e) => e.stopPropagation()} // jangan ikut buka profil lapak
                     className="shrink-0 text-xs font-bold text-ink bg-brand-500 hover:bg-brand-600 rounded-2xl px-4 py-2 transition-colors"
                   >
@@ -480,7 +491,7 @@ export default function CustomerDashboard() {
                       <span
                         className={`inline-block text-[9px] font-extrabold px-2 py-0.5 rounded-full tracking-wide uppercase mt-1 ${statusConf.style}`}
                       >
-                        {statusConf.label}
+                        {getStatusLabel(order)}
                       </span>
                     </div>
                   </Link>
