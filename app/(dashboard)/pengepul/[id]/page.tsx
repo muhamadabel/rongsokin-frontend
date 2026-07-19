@@ -399,10 +399,10 @@ export default function PengepulDetailPage() {
                   </div>
                   <div className="bg-surface p-4 rounded-2xl">
                     <span className="text-mute font-bold uppercase tracking-wider text-[10px] block">
-                      Jangkauan
+                      Jarak
                     </span>
                     <span className="font-extrabold text-ink text-sm">
-                      Tanpa batas
+                      {distMeters != null ? formatDistance(distMeters) : "—"}
                     </span>
                   </div>
                   <div className="bg-surface p-4 rounded-2xl">
