@@ -937,27 +937,27 @@ export default function OrderTrackingPage() {
                   </div>
                 </div>
 
-                <div className="bg-brand-100 rounded-2xl p-3.5 flex flex-col gap-3">
-                  <div className="flex items-start gap-3">
-                    <RefreshCw className="text-brand-800 shrink-0 mt-0.5" size={16} />
-                    <div>
-                      <h5 className="font-bold text-brand-800 text-xs">Dampak Ekologis Kamu</h5>
-                      <p className="text-[10px] text-brand-700 leading-relaxed mt-0.5">
-                        Dengan mendaur ulang {getOrderTotalActualWeight(order).toFixed(1)} kg sampah
-                        di pesanan ini, kamu mencegah emisi karbon berbahaya dan menyelamatkan
-                        sumber daya alam!
-                      </p>
+                {isCustomer && (
+                  <div className="bg-brand-100 rounded-2xl p-3.5 flex flex-col gap-3">
+                    <div className="flex items-start gap-3">
+                      <RefreshCw className="text-brand-800 shrink-0 mt-0.5" size={16} />
+                      <div>
+                        <h5 className="font-bold text-brand-800 text-xs">Dampak Ekologis Kamu</h5>
+                        <p className="text-[10px] text-brand-700 leading-relaxed mt-0.5">
+                          Dengan mendaur ulang {getOrderTotalActualWeight(order).toFixed(1)} kg sampah
+                          di pesanan ini, kamu mencegah emisi karbon berbahaya dan menyelamatkan
+                          sumber daya alam!
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                  {isCustomer && (
                     <button
                       onClick={() => setShowEcoImpact(true)}
                       className="w-full text-xs font-semibold py-2 px-3 flex items-center justify-center gap-1.5 border border-brand-800 text-brand-800 hover:bg-brand-200 rounded-2xl cursor-pointer transition-colors"
                     >
                       <Download size={14} /> Unduh Kartu Dampak
                     </button>
-                  )}
-                </div>
+                  </div>
+                )}
               </section>
             )}
           </div>
