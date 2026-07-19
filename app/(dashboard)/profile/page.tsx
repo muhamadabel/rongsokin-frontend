@@ -13,6 +13,7 @@ import {
   LogOut,
   ChevronRight,
   ShieldAlert,
+  Star,
 } from "lucide-react";
 import BottomNav from "@/components/ui/BottomNav";
 import DesktopNav from "@/components/ui/DesktopNav";
@@ -69,6 +70,7 @@ export default function ProfilePage() {
   const menuGroups: MenuItem[][] = [
     [
       { icon: User, label: "Edit Profil", href: "/profile/edit" },
+      { icon: Star, label: "Ulasan & Rating Saya", href: "/profile/reviews" },
       { icon: MapPin, label: "Alamat & Lokasi", href: "/profile/edit" },
       { icon: CreditCard, label: "Rekening & E-Wallet", soon: true },
     ],

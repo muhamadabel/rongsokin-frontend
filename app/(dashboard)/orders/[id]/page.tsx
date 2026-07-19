@@ -116,10 +116,14 @@ export default function OrderTrackingPage() {
     const socket = getSocket(token);
     socket.emit("join_room", `order:${id}`);
 
+    // Cukup refetch — JANGAN toast generik di sini. Tiap aksi (terima/sampai/
+    // timbang/setujui/batal) sudah punya toast spesifik & jelas sendiri di
+    // handler onSuccess masing-masing; broadcast socket dari aksi sendiri balik
+    // ke room ini dan dulu memicu toast KEDUA yang membingungkan ("Status
+    // pesanan diperbarui menjadi COMPLETED!") menumpuk di atas toast spesifik.
     const handleStatusUpdate = (payload: { orderId: string; status: any }) => {
       if (payload.orderId === id) {
         refetch();
-        toast.success(`Status pesanan diperbarui menjadi ${payload.status}!`, { icon: "🔔" });
       }
     };
 

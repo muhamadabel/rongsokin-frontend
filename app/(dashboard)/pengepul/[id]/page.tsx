@@ -388,21 +388,14 @@ export default function PengepulDetailPage() {
 
             {activeTab === "info" && (
               <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {/* Jarak SENGAJA tak diulang di sini — sudah ada di kartu profil atas. */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div className="bg-surface p-4 rounded-2xl">
                     <span className="text-mute font-bold uppercase tracking-wider text-[10px] block">
                       Pemilik Lapak
                     </span>
                     <span className="font-extrabold text-ink text-sm">
                       {collector.user?.name || "Mitra Pengepul"}
-                    </span>
-                  </div>
-                  <div className="bg-surface p-4 rounded-2xl">
-                    <span className="text-mute font-bold uppercase tracking-wider text-[10px] block">
-                      Jarak
-                    </span>
-                    <span className="font-extrabold text-ink text-sm">
-                      {distMeters != null ? formatDistance(distMeters) : "—"}
                     </span>
                   </div>
                   <div className="bg-surface p-4 rounded-2xl">
