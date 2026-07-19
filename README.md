@@ -35,15 +35,17 @@ npm install
 npm run dev
 ```
 
-Buat `.env.local` di root project:
+Copy `.env.example` menjadi `.env.local` — nilainya sudah terisi BE production (publik, sama seperti yang dipakai [rongsokin.vercel.app](https://rongsokin.vercel.app)), jadi bisa langsung jalan tanpa perlu minta kredensial apa pun:
+
+```bash
+cp .env.example .env.local
+```
+
+Isi `.env.example`:
 
 ```bash
 NEXT_PUBLIC_API_URL=https://be-rongsokin.hallojanu.xyz/api/v1
 NEXT_PUBLIC_SOCKET_URL=https://be-rongsokin.hallojanu.xyz
-
-# Cloudinary (unsigned upload dari FE)
-NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=
-NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=
 
 # OCR KTP (opsional — tanpa ini otomatis fallback ke Tesseract.js)
 GEMINI_API_KEY=
